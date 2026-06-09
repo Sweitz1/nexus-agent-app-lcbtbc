@@ -1,0 +1,54 @@
+name: Build Windows MSI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install app dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build Expo web export
+        run: npx expo export --platform web
+        env:
+          EXPO_NO_TELEMETRY: 1
+
+      - name: Install Electron build tools
+        run: npm install --save-dev electron electron-builder png-to-ico
+
+      - name: Convert PNG icon to ICO
+        run: |
+          node -e "
+          const pngToIco = require('png-to-ico');
+          const fs = require('fs');
+          pngToIco('assets/icon.png').then(buf => {
+            fs.writeFileSync('assets/icon.ico', buf);
+            console.log('icon.ico created');
+          }).catch(e => {
+            console.error(e);
+            process.exit(1);
+          });
+          "
+
+      - name: Build Windows MSI
+        run: npx electron-builder --win msi --config electron-builder.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-agent-windows-msi
+          path: dist-electron/*.msi
+          retention-days: 30
