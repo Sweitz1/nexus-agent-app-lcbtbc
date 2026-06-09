@@ -5,6 +5,7 @@ on:
     branches: [claude/android-bootloader-unlock-usb-d25oa3, prod]
     paths:
       - 'android-bootloader-unlock/**'
+      - '.github/workflows/build-bootloader-unlock-apk.yml'
   pull_request:
     paths:
       - 'android-bootloader-unlock/**'
@@ -23,32 +24,33 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: gradle
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
+
+      - name: Cache Gradle wrapper
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('android-bootloader-unlock/gradle/wrapper/gradle-wrapper.properties') }}
 
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-bootloader-${{ hashFiles('android-bootloader-unlock/**/*.gradle*') }}
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android-bootloader-unlock/**/*.gradle*') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-bootloader-
+            ${{ runner.os }}-gradle-
 
       - name: Make gradlew executable
         run: chmod +x android-bootloader-unlock/gradlew
-        continue-on-error: true
 
       - name: Build debug APK
         working-directory: android-bootloader-unlock
-        run: |
-          if [ -f gradlew ]; then
-            ./gradlew assembleDebug --no-daemon
-          else
-            gradle assembleDebug --no-daemon
-          fi
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
