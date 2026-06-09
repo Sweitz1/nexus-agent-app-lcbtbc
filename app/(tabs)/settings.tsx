@@ -15,22 +15,26 @@ import {
   User,
   Bell,
   Shield,
-  HelpCircle,
   ChevronRight,
   Trash2,
   LogOut,
   Key,
+  GitBranch,
+  Activity,
+  Zap,
   LucideProps,
 } from 'lucide-react-native';
 
 const UserIcon = withStrippedProps(User);
 const BellIcon = withStrippedProps(Bell);
 const ShieldIcon = withStrippedProps(Shield);
-const HelpCircleIcon = withStrippedProps(HelpCircle);
 const ChevronRightIcon = withStrippedProps(ChevronRight);
 const Trash2Icon = withStrippedProps(Trash2);
 const LogOutIcon = withStrippedProps(LogOut);
 const KeyIcon = withStrippedProps(Key);
+const GitBranchIcon = withStrippedProps(GitBranch);
+const ActivityIcon = withStrippedProps(Activity);
+const ZapIcon = withStrippedProps(Zap);
 
 interface SettingsRowProps {
   icon: React.ComponentType<LucideProps>;
@@ -63,51 +67,20 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const handleProfilePress = () => {
-    console.log('[Settings] Profile pressed');
-  };
-
-  const handleApiKeysPress = () => {
-    console.log('[Settings] API Keys pressed');
-  };
-
-  const handlePrivacyPress = () => {
-    console.log('[Settings] Privacy & Security pressed');
-  };
-
-  const handleHelpPress = () => {
-    console.log('[Settings] Help & Support pressed');
-  };
-
-  const handleNotificationsPress = () => {
-    console.log('[Settings] Notifications pressed — navigating to notification-preferences');
-    router.push('/notification-preferences');
-  };
-
   const handleSignOutPress = () => {
-    console.log('[Settings] Sign Out pressed');
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: () => console.log('[Settings] Sign out confirmed'),
-      },
+      { text: 'Sign Out', style: 'destructive', onPress: () => {} },
     ]);
   };
 
   const handleDeleteAccountPress = () => {
-    console.log('[Settings] Delete Account pressed');
     Alert.alert(
       'Delete Account',
       'This action is permanent and cannot be undone. All your data will be deleted.',
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => console.log('[Settings] Delete account confirmed'),
-        },
+        { text: 'Delete', style: 'destructive', onPress: () => {} },
       ]
     );
   };
@@ -120,7 +93,7 @@ export default function SettingsScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
-        <TouchableOpacity style={styles.profileCard} onPress={handleProfilePress} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.profileCard} activeOpacity={0.8}>
           <View style={styles.avatar}>
             <UserIcon size={28} color={COLORS.primary} />
           </View>
@@ -131,44 +104,68 @@ export default function SettingsScreen() {
           <ChevronRightIcon size={16} color={COLORS.textMuted} />
         </TouchableOpacity>
 
-        {/* Settings Rows */}
+        {/* Agent Configuration */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Account</Text>
+          <Text style={styles.sectionLabel}>Agent</Text>
           <View style={styles.card}>
             <SettingsRow
               icon={KeyIcon}
               iconColor='#cc88ff'
-              label="API Keys"
-              sublabel="Manage your API credentials"
-              onPress={handleApiKeysPress}
+              label="Model Providers"
+              sublabel="OpenAI, Anthropic, Google, custom"
+              onPress={() => router.push('/providers')}
             />
             <View style={styles.divider} />
             <SettingsRow
               icon={ShieldIcon}
               iconColor='#00ccff'
-              label="Privacy & Security"
-              onPress={handlePrivacyPress}
+              label="Tool Permissions"
+              sublabel="Control what tools the agent can use"
+              onPress={() => router.push('/permissions')}
             />
             <View style={styles.divider} />
             <SettingsRow
-              icon={HelpCircleIcon}
+              icon={ZapIcon}
               iconColor='#ffaa00'
-              label="Help & Support"
-              onPress={handleHelpPress}
+              label="Custom APIs"
+              sublabel="Add your own REST APIs as agent tools"
+              onPress={() => router.push('/custom-apis')}
             />
           </View>
         </View>
 
-        {/* Notifications Row */}
+        {/* Integrations */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Notifications</Text>
+          <Text style={styles.sectionLabel}>Integrations</Text>
           <View style={styles.card}>
+            <SettingsRow
+              icon={GitBranchIcon}
+              iconColor={COLORS.text}
+              label="GitHub"
+              sublabel="Connect your GitHub account"
+              onPress={() => router.push('/github')}
+            />
+          </View>
+        </View>
+
+        {/* Monitoring */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Monitoring</Text>
+          <View style={styles.card}>
+            <SettingsRow
+              icon={ActivityIcon}
+              iconColor={COLORS.primary}
+              label="Activity Logs"
+              sublabel="View agent execution history"
+              onPress={() => router.push('/logs')}
+            />
+            <View style={styles.divider} />
             <SettingsRow
               icon={BellIcon}
               iconColor={COLORS.primary}
               label="Notifications"
               sublabel="Manage push notification preferences"
-              onPress={handleNotificationsPress}
+              onPress={() => router.push('/notification-preferences')}
             />
           </View>
         </View>
@@ -250,9 +247,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     overflow: 'hidden',
   },
-  dangerCard: {
-    borderColor: COLORS.destructive + '33',
-  },
+  dangerCard: { borderColor: COLORS.destructive + '33' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

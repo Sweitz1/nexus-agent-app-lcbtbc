@@ -21,18 +21,10 @@ jobs:
           mkdir electron-build
           cd electron-build
           npm init -y
-          npm install electron electron-builder png-to-ico --save-dev --legacy-peer-deps
+          npm install electron electron-builder --save-dev --legacy-peer-deps
 
       - name: Convert PNG icon to ICO
-        run: |
-          node -e "
-          const pngToIco = require('./electron-build/node_modules/png-to-ico');
-          const fs = require('fs');
-          pngToIco('assets/icon.png').then(buf => {
-            fs.writeFileSync('assets/icon.ico', buf);
-            console.log('icon.ico created, size=' + buf.length);
-          }).catch(e => { console.error(e); process.exit(1); });
-          "
+        run: magick assets/icon.png -define icon:auto-resize=256,128,64,48,32,16 assets/icon.ico
 
       - name: Build Windows MSI
         run: node electron-build/node_modules/.bin/electron-builder --win msi --config electron-builder.json

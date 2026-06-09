@@ -5,7 +5,7 @@ node_modules/
 .turbo/
 .vercel/
 .cache/
-dist/
+dist-electron/
 build/
 web-build/
 .natively/

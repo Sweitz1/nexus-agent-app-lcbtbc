@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="color-scheme" content="dark"/>
+<title>Nexus Agent</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0a0c;--surface:#111116;--surface2:#16161e;--border:#1e1e2a;
+  --primary:#00ff9f;--primary-dim:rgba(0,255,159,0.12);--primary-dark:rgba(0,255,159,0.06);
+  --text:#e8e8f0;--muted:#6b6b80;--danger:#ff4d6d;--warn:#ffb347;
+  --radius:10px;--radius-sm:6px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.5}
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:220px;min-width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.logo{padding:18px 14px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.logo-mark{width:34px;height:34px;background:var(--primary);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#000;font-size:18px;flex-shrink:0}
+.logo-name{font-weight:700;font-size:15px;letter-spacing:-.3px}
+.logo-tag{font-size:10px;color:var(--muted);margin-top:1px}
+nav{flex:1;padding:10px 8px;overflow-y:auto}
+.nav-group{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:10px 8px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;color:var(--muted);transition:all .15s;margin-bottom:1px;user-select:none}
+.nav-item:hover{background:var(--border);color:var(--text)}
+.nav-item.active{background:var(--primary-dim);color:var(--primary)}
+.nav-item .ico{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.badge{margin-left:auto;background:var(--primary);color:#000;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;display:none}
+.badge.show{display:block}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{padding:12px 20px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-title{font-size:17px;font-weight:700}
+.page-content{flex:1;overflow-y:auto;padding:20px}
+
+/* BUTTONS */
+.btn{padding:8px 16px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:600;transition:opacity .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{opacity:.85}.btn:active{opacity:.7}
+.btn-primary{background:var(--primary);color:#000}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-warn{background:rgba(255,179,71,.15);color:var(--warn);border:1px solid rgba(255,179,71,.3)}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:7px}
+.btn-xs{padding:3px 9px;font-size:11px;border-radius:5px}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.card-title{font-weight:600;font-size:15px;margin-bottom:12px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+@media(min-width:600px){.stats-grid{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+.stat-label{color:var(--muted);font-size:11px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.stat-value{font-size:26px;font-weight:800}
+.stat-value.g{color:var(--primary)}.stat-value.y{color:var(--warn)}.stat-value.r{color:var(--danger)}
+
+/* PILLS */
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.pill.running{background:rgba(0,255,159,.15);color:var(--primary)}
+.pill.pending{background:rgba(107,107,128,.2);color:var(--muted)}
+.pill.waiting_for_approval{background:rgba(255,179,71,.15);color:var(--warn)}
+.pill.completed{background:rgba(0,255,159,.1);color:#00cc7a}
+.pill.failed{background:rgba(255,77,109,.15);color:var(--danger)}
+
+/* TASK LIST */
+.task-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity .15s}
+.task-row:last-child{border-bottom:none}
+.task-row:hover{opacity:.8}
+.task-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.task-dot.running{background:var(--primary);box-shadow:0 0 6px var(--primary);animation:pulse 1.5s infinite}
+.task-dot.completed{background:#00cc7a}
+.task-dot.failed{background:var(--danger)}
+.task-dot.waiting_for_approval{background:var(--warn)}
+.task-dot.pending{background:var(--muted)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.task-info{flex:1;min-width:0}
+.task-goal{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.task-meta{font-size:12px;color:var(--muted)}
+
+/* FORM */
+.form-group{margin-bottom:14px}
+.form-label{display:block;margin-bottom:5px;font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.4px}
+.form-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:14px;outline:none;transition:border-color .15s;font-family:inherit}
+.form-input:focus{border-color:var(--primary)}
+textarea.form-input{resize:vertical;min-height:90px}
+select.form-input{cursor:pointer}
+
+/* CHIPS */
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;transition:all .15s;user-select:none}
+.chip.on{border-color:var(--primary);background:var(--primary-dim);color:var(--primary)}
+.filter-chip{padding:5px 13px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;transition:all .15s;white-space:nowrap}
+.filter-chip.on{border-color:var(--primary);background:var(--primary-dim);color:var(--primary)}
+.filter-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}
+
+/* TOGGLE */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info .label{font-weight:500;margin-bottom:1px}
+.toggle-info .desc{font-size:12px;color:var(--muted)}
+.tog{position:relative;width:42px;height:23px;flex-shrink:0;cursor:pointer}
+.tog input{display:none}
+.tog-track{position:absolute;inset:0;background:var(--border);border-radius:12px;transition:background .2s}
+.tog input:checked~.tog-track{background:var(--primary)}
+.tog-thumb{position:absolute;top:3px;left:3px;width:17px;height:17px;background:#fff;border-radius:50%;transition:transform .2s;pointer-events:none}
+.tog input:checked~.tog-thumb{transform:translateX(19px)}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;padding:16px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:18px}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+
+/* STEPS / TIMELINE */
+.step-timeline{display:flex;flex-direction:column;gap:0}
+.step-item{display:flex;gap:10px;padding:6px 0}
+.step-line{display:flex;flex-direction:column;align-items:center;width:16px;flex-shrink:0}
+.step-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.step-connector{width:2px;flex:1;background:var(--border);margin:3px 0;min-height:12px}
+.step-body{flex:1;min-width:0;padding-bottom:4px}
+.step-type{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.step-content{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 11px;font-size:12px;word-break:break-word;max-height:200px;overflow-y:auto}
+.step-content.thought{border-color:rgba(0,255,159,.2);background:var(--primary-dark)}
+.step-content.error{border-color:rgba(255,77,109,.2);background:rgba(255,77,109,.04)}
+.step-content.result{border-color:rgba(0,204,122,.3);background:rgba(0,204,122,.05);font-weight:500}
+
+/* APPROVAL BANNER */
+.approval-banner{background:rgba(255,179,71,.08);border:1px solid rgba(255,179,71,.3);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+.approval-title{color:var(--warn);font-weight:600;margin-bottom:6px}
+.approval-code{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:8px;font-family:monospace;font-size:12px;margin:8px 0;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+
+/* LOG */
+.log-row{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-family:monospace;font-size:12px}
+.log-time{color:var(--muted);flex-shrink:0}
+.log-lvl{width:38px;flex-shrink:0;font-weight:700}
+.log-lvl.error{color:var(--danger)}.log-lvl.warn{color:var(--warn)}.log-lvl.info{color:var(--primary)}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:50px 0;color:var(--muted)}
+.empty-icon{font-size:36px;margin-bottom:10px}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* SPINNER */
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite;display:inline-block;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;max-width:300px}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">N</div>
+      <div><div class="logo-name">Nexus Agent</div><div class="logo-tag">AI Automation</div></div>
+    </div>
+    <nav>
+      <div class="nav-group">Main</div>
+      <div class="nav-item active" data-page="home"><span class="ico">⌂</span> Dashboard</div>
+      <div class="nav-item" data-page="tasks"><span class="ico">⚡</span> Tasks <span class="badge" id="badge-running">0</span></div>
+      <div class="nav-item" data-page="new-task"><span class="ico">＋</span> New Task</div>
+      <div class="nav-item" data-page="memory"><span class="ico">◈</span> Memory</div>
+      <div class="nav-group">Config</div>
+      <div class="nav-item" data-page="providers"><span class="ico">◎</span> Providers</div>
+      <div class="nav-item" data-page="permissions"><span class="ico">🛡</span> Permissions</div>
+      <div class="nav-item" data-page="logs"><span class="ico">☰</span> Logs</div>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left"><div class="topbar-title" id="page-title">Dashboard</div></div>
+      <div id="topbar-action"></div>
+    </div>
+    <div class="page-content" id="content"></div>
+  </main>
+</div>
+
+<!-- TASK DETAIL MODAL -->
+<div class="overlay" id="task-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Task</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+'use strict';
+// ────────────────────────────────────────────────────────────────────────────
+// STATE — all persisted in localStorage
+// ────────────────────────────────────────────────────────────────────────────
+const LS = {
+  get: (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+const DB = {
+  tasks: () => LS.get('nx_tasks', []),
+  saveTasks: (t) => LS.set('nx_tasks', t),
+  task: (id) => DB.tasks().find(t => t.id === id),
+  createTask: (t) => {
+    const tasks = DB.tasks();
+    tasks.unshift(t);
+    DB.saveTasks(tasks.slice(0, 200));
+    return t;
+  },
+  updateTask: (id, patch) => {
+    const tasks = DB.tasks();
+    const i = tasks.findIndex(t => t.id === id);
+    if (i !== -1) { tasks[i] = { ...tasks[i], ...patch }; DB.saveTasks(tasks); return tasks[i]; }
+    return null;
+  },
+  addStep: (taskId, step) => {
+    const tasks = DB.tasks();
+    const i = tasks.findIndex(t => t.id === taskId);
+    if (i !== -1) {
+      tasks[i].steps = tasks[i].steps || [];
+      tasks[i].steps.push({ ...step, id: uid(), ts: Date.now() });
+      DB.saveTasks(tasks);
+    }
+  },
+  memory: () => LS.get('nx_memory', []),
+  addMemory: (entry) => {
+    const mem = DB.memory();
+    mem.unshift(entry);
+    LS.set('nx_memory', mem.slice(0, 500));
+  },
+  delMemory: (id) => LS.set('nx_memory', DB.memory().filter(m => m.id !== id)),
+  settings: () => LS.get('nx_settings', {}),
+  saveSettings: (s) => LS.set('nx_settings', s),
+  logs: () => LS.get('nx_logs', []),
+  addLog: (level, msg) => {
+    const logs = DB.logs();
+    logs.unshift({ id: uid(), level, message: msg, ts: Date.now() });
+    LS.set('nx_logs', logs.slice(0, 300));
+  },
+  perms: () => LS.get('nx_perms', {
+    allow_web_access: true, allow_file_read: false, allow_github_read: true,
+    allow_github_write: false, allow_memory_write: true, require_approval: true
+  }),
+  savePerms: (p) => LS.set('nx_perms', p),
+};
+
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+const timeAgo = (ts) => {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return `${Math.floor(s/86400)}d ago`;
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// TOAST
+// ────────────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, color = 'var(--primary)') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = color;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// LLM ROUTER
+// ────────────────────────────────────────────────────────────────────────────
+async function callLLM(messages, expectJson = true) {
+  const s = DB.settings();
+  const provider = s.defaultProvider || 'openai';
+
+  if (provider === 'openai') {
+    if (!s.openaiKey) throw new Error('No OpenAI key. Add it in Providers.');
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${s.openaiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: s.openaiModel || 'gpt-4o',
+        messages,
+        ...(expectJson ? { response_format: { type: 'json_object' } } : {})
+      })
+    });
+    if (!r.ok) throw new Error(`OpenAI ${r.status}: ${await r.text()}`);
+    const d = await r.json();
+    const text = d.choices[0].message.content;
+    return expectJson ? JSON.parse(text) : text;
+  }
+
+  if (provider === 'anthropic') {
+    if (!s.anthropicKey) throw new Error('No Anthropic key. Add it in Providers.');
+    const sys = messages.find(m => m.role === 'system');
+    const msgs = messages.filter(m => m.role !== 'system');
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': s.anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: s.anthropicModel || 'claude-opus-4-8',
+        max_tokens: 4096,
+        ...(sys ? { system: sys.content } : {}),
+        messages: msgs
+      })
+    });
+    if (!r.ok) throw new Error(`Anthropic ${r.status}: ${await r.text()}`);
+    const d = await r.json();
+    const text = d.content[0].text;
+    if (!expectJson) return text;
+    const m = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/(\{[\s\S]*\})/);
+    return JSON.parse(m ? m[1] : text);
+  }
+
+  if (provider === 'google') {
+    if (!s.googleKey) throw new Error('No Google API key. Add it in Providers.');
+    const model = s.googleModel || 'gemini-1.5-pro';
+    const sys = messages.find(m => m.role === 'system');
+    const msgs = messages.filter(m => m.role !== 'system');
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${s.googleKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...(sys ? { system_instruction: { parts: [{ text: sys.content }] } } : {}),
+        contents: msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+        generationConfig: expectJson ? { responseMimeType: 'application/json' } : {}
+      })
+    });
+    if (!r.ok) throw new Error(`Google ${r.status}: ${await r.text()}`);
+    const d = await r.json();
+    const text = d.candidates[0].content.parts[0].text;
+    return expectJson ? JSON.parse(text) : text;
+  }
+
+  throw new Error(`Unknown provider: ${provider}`);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// TOOLS
+// ────────────────────────────────────────────────────────────────────────────
+const TOOLS = {
+  web_fetch: {
+    desc: 'Fetch content from a URL',
+    risky: false,
+    async run({ url }) {
+      try {
+        const r = await fetch(url);
+        const text = await r.text();
+        const clean = text.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+        return { success: true, content: clean.slice(0, 6000), url, status: r.status };
+      } catch(e) { return { success: false, error: e.message, url }; }
+    }
+  },
+  github_read: {
+    desc: 'Read a file from a GitHub repository',
+    risky: false,
+    async run({ owner, repo, path }) {
+      const s = DB.settings();
+      if (!s.githubToken) throw new Error('No GitHub token. Add it in Providers.');
+      const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`, {
+        headers: { 'Authorization': `token ${s.githubToken}`, 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (!r.ok) throw new Error(`GitHub ${r.status}: ${(await r.json()).message}`);
+      const d = await r.json();
+      return { content: atob(d.content.replace(/\n/g,'')), sha: d.sha, path };
+    }
+  },
+  github_list: {
+    desc: 'List files in a GitHub repo directory',
+    risky: false,
+    async run({ owner, repo, path = '' }) {
+      const s = DB.settings();
+      if (!s.githubToken) throw new Error('No GitHub token. Add it in Providers.');
+      const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+        headers: { 'Authorization': `token ${s.githubToken}`, 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (!r.ok) throw new Error(`GitHub ${r.status}`);
+      const d = await r.json();
+      return { files: (Array.isArray(d) ? d : [d]).map(f => ({ name: f.name, path: f.path, type: f.type, size: f.size })) };
+    }
+  },
+  github_write: {
+    desc: 'Create or update a file in a GitHub repository',
+    risky: true,
+    async run({ owner, repo, path, content, message }) {
+      const s = DB.settings();
+      if (!s.githubToken) throw new Error('No GitHub token. Add it in Providers.');
+      let sha;
+      try { const ex = await TOOLS.github_read.run({ owner, repo, path }); sha = ex.sha; } catch {}
+      const body = { message: message || `Update ${path}`, content: btoa(unescape(encodeURIComponent(content))) };
+      if (sha) body.sha = sha;
+      const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `token ${s.githubToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) throw new Error(`GitHub write ${r.status}: ${(await r.json()).message}`);
+      return { success: true, path, message };
+    }
+  },
+  memory_search: {
+    desc: 'Search stored memory for relevant information',
+    risky: false,
+    async run({ query }) {
+      const mem = DB.memory();
+      const q = query.toLowerCase();
+      const results = mem.filter(m => m.content.toLowerCase().includes(q));
+      return { results: results.slice(0, 5), total: mem.length };
+    }
+  },
+  memory_write: {
+    desc: 'Store information in long-term memory',
+    risky: false,
+    async run({ content, type = 'long_term' }) {
+      const entry = { id: uid(), content, memoryType: type, createdAt: Date.now() };
+      DB.addMemory(entry);
+      return { success: true, id: entry.id };
+    }
+  }
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// AGENT LOOP
+// ────────────────────────────────────────────────────────────────────────────
+const SYSTEM = `You are Nexus Agent, an AI agent that uses tools to complete tasks.
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "status": "continue" | "done",
+  "thought": "brief reasoning about what to do next",
+  "action": "tool_name or null if done",
+  "args": {} or null,
+  "summary": "final answer/result if status is done"
+}
+
+Be efficient — use tools purposefully and complete tasks in 5-8 steps maximum.`;
+
+const activeTasks = {};
+
+async function runAgent(taskId) {
+  if (activeTasks[taskId]) return;
+  activeTasks[taskId] = true;
+
+  const task = DB.task(taskId);
+  if (!task) { delete activeTasks[taskId]; return; }
+
+  DB.updateTask(taskId, { status: 'running', startedAt: Date.now() });
+  DB.addLog('info', `Task started: ${task.goal}`);
+
+  const allowedTools = (task.allowedTools || ['web_fetch', 'memory_search', 'memory_write'])
+    .filter(t => TOOLS[t]);
+
+  const toolList = allowedTools.map(t => `- ${t}: ${TOOLS[t].desc}`).join('\n');
+
+  const messages = [
+    { role: 'system', content: SYSTEM },
+    { role: 'user', content: `Task: ${task.goal}\n\nAvailable tools:\n${toolList}\n\nBegin.` }
+  ];
+
+  DB.addStep(taskId, { stepType: 'start', content: task.goal });
+
+  let steps = 0;
+  const MAX = 12;
+
+  try {
+    while (steps < MAX && activeTasks[taskId]) {
+      steps++;
+
+      let resp;
+      try {
+        resp = await callLLM(messages);
+      } catch(e) {
+        DB.addLog('error', `LLM error: ${e.message}`);
+        DB.addStep(taskId, { stepType: 'error', content: `LLM error: ${e.message}` });
+        DB.updateTask(taskId, { status: 'failed', error: e.message });
+        delete activeTasks[taskId];
+        return;
+      }
+
+      if (resp.thought) {
+        DB.addStep(taskId, { stepType: 'thought', content: resp.thought });
+      }
+
+      if (resp.status === 'done' || !resp.action) {
+        DB.addStep(taskId, { stepType: 'result', content: resp.summary || 'Task completed.' });
+        DB.updateTask(taskId, { status: 'completed', completedAt: Date.now() });
+        DB.addLog('info', `Task completed: ${task.goal}`);
+        delete activeTasks[taskId];
+        refreshBadge();
+        return;
+      }
+
+      const toolName = resp.action;
+      const toolArgs = resp.args || {};
+
+      if (!TOOLS[toolName] || !allowedTools.includes(toolName)) {
+        messages.push({ role: 'assistant', content: JSON.stringify(resp) });
+        messages.push({ role: 'user', content: JSON.stringify({ error: `Tool "${toolName}" not available. Use: ${allowedTools.join(', ')}` }) });
+        continue;
+      }
+
+      // Approval check
+      if (task.requireApproval && TOOLS[toolName].risky) {
+        DB.updateTask(taskId, {
+          status: 'waiting_for_approval',
+          pendingApproval: { toolName, toolArgs, stepIdx: steps }
+        });
+        DB.addStep(taskId, { stepType: 'approval_request', content: `${toolName}(${JSON.stringify(toolArgs)})` });
+        DB.addLog('warn', `Approval needed: ${toolName}`);
+        delete activeTasks[taskId];
+        refreshBadge();
+
+        // Wait for approval in a new promise
+        await new Promise(resolve => {
+          const timer = setInterval(() => {
+            const t = DB.task(taskId);
+            if (!t || t.status !== 'waiting_for_approval') {
+              clearInterval(timer);
+              resolve();
+            }
+          }, 800);
+        });
+
+        const updated = DB.task(taskId);
+        if (!updated || updated.approvalResult === false || updated.status === 'failed') {
+          if (updated?.approvalResult === false) {
+            DB.addStep(taskId, { stepType: 'rejected', content: `Rejected: ${toolName}` });
+            DB.updateTask(taskId, { status: 'failed', error: 'Action rejected by user' });
+          }
+          delete activeTasks[taskId];
+          return;
+        }
+
+        activeTasks[taskId] = true;
+        DB.updateTask(taskId, { status: 'running', pendingApproval: null, approvalResult: null });
+      }
+
+      // Execute tool
+      DB.addStep(taskId, { stepType: 'tool_call', content: `${toolName}(${JSON.stringify(toolArgs)})` });
+      DB.addLog('info', `Tool: ${toolName}`);
+
+      let result;
+      try {
+        result = await TOOLS[toolName].run(toolArgs);
+      } catch(e) {
+        result = { error: e.message };
+        DB.addLog('error', `Tool error ${toolName}: ${e.message}`);
+      }
+
+      const resultStr = JSON.stringify(result);
+      DB.addStep(taskId, { stepType: 'tool_result', content: resultStr.slice(0, 2000) });
+
+      messages.push({ role: 'assistant', content: JSON.stringify(resp) });
+      messages.push({ role: 'user', content: `Result of ${toolName}: ${resultStr.slice(0, 3000)}\n\nContinue. Use the same JSON format.` });
+    }
+
+    // Max steps
+    DB.addStep(taskId, { stepType: 'result', content: 'Reached step limit. Task marked complete.' });
+    DB.updateTask(taskId, { status: 'completed', completedAt: Date.now() });
+  } catch(e) {
+    DB.addLog('error', `Agent error: ${e.message}`);
+    DB.updateTask(taskId, { status: 'failed', error: e.message });
+  }
+
+  delete activeTasks[taskId];
+  refreshBadge();
+}
+
+function resumeTask(taskId, approved) {
+  DB.updateTask(taskId, { approvalResult: approved, status: approved ? 'running' : 'failed' });
+  if (approved) runAgent(taskId);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// NAVIGATION
+// ────────────────────────────────────────────────────────────────────────────
+const PAGE_TITLES = {
+  home: 'Dashboard', tasks: 'Tasks', 'new-task': 'New Task',
+  memory: 'Memory', providers: 'Providers', permissions: 'Permissions', logs: 'Logs'
+};
+
+let currentPage = 'home';
+let pollTimer = null;
+
+function navigate(page) {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  document.getElementById('page-title').textContent = PAGE_TITLES[page] || page;
+  document.getElementById('topbar-action').innerHTML = '';
+  document.getElementById('content').innerHTML = '';
+  PAGES[page]?.();
+}
+
+document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+  el.addEventListener('click', () => navigate(el.dataset.page));
+});
+
+function refreshBadge() {
+  const running = DB.tasks().filter(t => t.status === 'running' || t.status === 'waiting_for_approval').length;
+  const badge = document.getElementById('badge-running');
+  badge.textContent = running;
+  badge.classList.toggle('show', running > 0);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// SHARED UI
+// ────────────────────────────────────────────────────────────────────────────
+function pill(status) {
+  return `<span class="pill ${status}">${status.replace(/_/g,' ')}</span>`;
+}
+function taskDot(status) {
+  return `<div class="task-dot ${status}"></div>`;
+}
+function filterChips(items, active, onSelect) {
+  return `<div class="filter-row">${items.map(i =>
+    `<div class="filter-chip ${i===active?'on':''}" onclick="(${onSelect})('${i}')">${i.replace(/_/g,' ')}</div>`
+  ).join('')}</div>`;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// PAGES
+// ────────────────────────────────────────────────────────────────────────────
+const PAGES = {
+
+  home() {
+    const c = document.getElementById('content');
+    const tasks = DB.tasks();
+    const running = tasks.filter(t => t.status === 'running').length;
+    const waiting = tasks.filter(t => t.status === 'waiting_for_approval').length;
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    const failed = tasks.filter(t => t.status === 'failed').length;
+
+    c.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat"><div class="stat-label">Running</div><div class="stat-value g">${running}</div></div>
+        <div class="stat"><div class="stat-label">Awaiting</div><div class="stat-value y">${waiting}</div></div>
+        <div class="stat"><div class="stat-label">Completed</div><div class="stat-value">${completed}</div></div>
+        <div class="stat"><div class="stat-label">Failed</div><div class="stat-value r">${failed}</div></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0">Recent Tasks</div>
+          <button class="btn btn-primary btn-sm" onclick="navigate('new-task')">+ New Task</button>
+        </div>
+        ${tasks.slice(0,6).map(t => `
+          <div class="task-row" onclick="openTask('${t.id}')">
+            ${taskDot(t.status)}
+            <div class="task-info">
+              <div class="task-goal">${t.goal}</div>
+              <div class="task-meta">${timeAgo(t.createdAt)} · ${(t.steps||[]).length} steps</div>
+            </div>
+            ${pill(t.status)}
+          </div>`).join('') || '<div class="empty"><div class="empty-icon">⚡</div><div>No tasks yet</div></div>'}
+      </div>
+      ${waiting > 0 ? `<div class="card" style="border-color:rgba(255,179,71,.3);background:rgba(255,179,71,.05)">
+        <div class="card-title" style="color:var(--warn)">⚠ ${waiting} task${waiting>1?'s':''} awaiting approval</div>
+        <button class="btn btn-warn btn-sm" onclick="navigate('tasks')">Review now</button>
+      </div>` : ''}`;
+
+    refreshBadge();
+    pollTimer = setInterval(() => { if (currentPage === 'home') PAGES.home(); }, 8000);
+  },
+
+  tasks() {
+    const c = document.getElementById('content');
+    document.getElementById('topbar-action').innerHTML = '<button class="btn btn-primary btn-sm" onclick="navigate(\'new-task\')">+ New Task</button>';
+    const statuses = ['all','running','waiting_for_approval','pending','completed','failed'];
+    let filter = 'all';
+
+    const render = () => {
+      const tasks = DB.tasks();
+      const list = filter === 'all' ? tasks : tasks.filter(t => t.status === filter);
+      document.getElementById('task-list').innerHTML = list.length === 0
+        ? '<div class="empty"><div class="empty-icon">⚡</div><div>No tasks</div></div>'
+        : list.map(t => `
+          <div class="task-row" onclick="openTask('${t.id}')">
+            ${taskDot(t.status)}
+            <div class="task-info">
+              <div class="task-goal">${t.goal}</div>
+              <div class="task-meta">${timeAgo(t.createdAt)} · ${(t.steps||[]).length} steps</div>
+            </div>
+            ${pill(t.status)}
+          </div>`).join('');
+      document.querySelectorAll('.filter-chip').forEach(el => el.classList.toggle('on', el.dataset.f === filter));
+    };
+
+    c.innerHTML = `
+      <div class="filter-row">${statuses.map(s =>
+        `<div class="filter-chip ${s==='all'?'on':''}" data-f="${s}" onclick="window._taskFilter('${s}')">${s.replace(/_/g,' ')}</div>`
+      ).join('')}</div>
+      <div class="card" style="padding:0 16px" id="task-list"></div>`;
+
+    window._taskFilter = (f) => { filter = f; render(); };
+    render();
+    refreshBadge();
+    pollTimer = setInterval(() => { if (currentPage === 'tasks') render(); }, 4000);
+  },
+
+  'new-task'() {
+    const c = document.getElementById('content');
+    const TOOL_NAMES = ['web_fetch','github_read','github_list','github_write','memory_search','memory_write'];
+    let selected = new Set(['web_fetch','memory_search','memory_write']);
+
+    const s = DB.settings();
+    const providers = [
+      { id:'openai', label:'OpenAI GPT', model: s.openaiModel||'gpt-4o', hasKey: !!s.openaiKey },
+      { id:'anthropic', label:'Anthropic Claude', model: s.anthropicModel||'claude-opus-4-8', hasKey: !!s.anthropicKey },
+      { id:'google', label:'Google Gemini', model: s.googleModel||'gemini-1.5-pro', hasKey: !!s.googleKey },
+    ].filter(p => p.hasKey);
+
+    c.innerHTML = `
+      <div class="card" style="max-width:600px">
+        <div class="card-title">New Agent Task</div>
+        <div class="form-group">
+          <label class="form-label">Goal</label>
+          <textarea class="form-input" id="ni-goal" placeholder="What should the agent accomplish?" rows="4"></textarea>
+        </div>
+        ${providers.length > 0 ? `
+        <div class="form-group">
+          <label class="form-label">Provider</label>
+          <select class="form-input" id="ni-provider">
+            ${providers.map(p => `<option value="${p.id}" ${(s.defaultProvider||'openai')===p.id?'selected':''}>${p.label} (${p.model})</option>`).join('')}
+          </select>
+        </div>` : `<div class="card" style="border-color:rgba(255,179,71,.3);background:rgba(255,179,71,.05);margin-bottom:14px">
+          <div style="color:var(--warn);font-weight:600;margin-bottom:4px">No providers configured</div>
+          <div style="font-size:13px;color:var(--muted)">Add an API key in <a href="#" onclick="navigate('providers')" style="color:var(--primary)">Providers</a> to run tasks.</div>
+        </div>`}
+        <div class="form-group">
+          <label class="form-label">Allowed Tools</label>
+          <div class="chips" id="ni-tools">
+            ${TOOL_NAMES.map(t => `<div class="chip ${selected.has(t)?'on':''}" onclick="window._toggleTool('${t}')" id="chip-${t}">${t}</div>`).join('')}
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="toggle-row" style="border:1px solid var(--border);border-radius:7px;padding:10px 12px">
+            <div class="toggle-info"><div class="label">Require Approval</div><div class="desc">Pause before risky actions (write/delete)</div></div>
+            <label class="tog"><input type="checkbox" id="ni-approval" checked><div class="tog-track"></div><div class="tog-thumb"></div></label>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="ni-submit" onclick="window._createTask()" style="width:100%" ${providers.length===0?'disabled':''}>
+          Launch Agent
+        </button>
+      </div>`;
+
+    window._toggleTool = (t) => {
+      selected.has(t) ? selected.delete(t) : selected.add(t);
+      document.getElementById(`chip-${t}`).classList.toggle('on', selected.has(t));
+    };
+
+    window._createTask = () => {
+      const goal = document.getElementById('ni-goal').value.trim();
+      if (!goal) { toast('Enter a goal first.', 'var(--warn)'); return; }
+      const provSel = document.getElementById('ni-provider');
+      const task = {
+        id: uid(), goal, status: 'pending',
+        allowedTools: [...selected],
+        requireApproval: document.getElementById('ni-approval').checked,
+        createdAt: Date.now(), steps: []
+      };
+      const s = DB.settings();
+      if (provSel) {
+        const prov = provSel.value;
+        DB.saveSettings({ ...s, defaultProvider: prov });
+      }
+      DB.createTask(task);
+      DB.addLog('info', `Task created: ${goal}`);
+      toast('Task created — agent starting…');
+      navigate('tasks');
+      setTimeout(() => runAgent(task.id), 100);
+    };
+  },
+
+  memory() {
+    const c = document.getElementById('content');
+    document.getElementById('topbar-action').innerHTML = '<button class="btn btn-ghost btn-sm" onclick="window._clearMemory()">Clear All</button>';
+    let filter = 'all';
+    const types = ['all','short_term','long_term','task','project'];
+    const typeColor = { short_term:'var(--muted)', long_term:'var(--primary)', task:'var(--warn)', project:'#7c6ff7' };
+
+    const render = () => {
+      const mem = DB.memory();
+      const search = document.getElementById('mem-search')?.value?.toLowerCase() || '';
+      const list = mem.filter(m =>
+        (filter === 'all' || m.memoryType === filter) &&
+        (!search || m.content.toLowerCase().includes(search))
+      );
+      document.getElementById('mem-list').innerHTML = list.length === 0
+        ? '<div class="empty"><div class="empty-icon">◈</div><div>No memory entries</div></div>'
+        : list.map(m => `
+          <div class="card" style="margin-bottom:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span class="pill" style="background:${typeColor[m.memoryType]||'#888'}22;color:${typeColor[m.memoryType]||'#888'}">${m.memoryType||'memory'}</span>
+              <span style="font-size:11px;color:var(--muted);margin-right:8px">${timeAgo(m.createdAt)}</span>
+              <button class="btn btn-ghost btn-xs" onclick="window._delMem('${m.id}')">✕</button>
+            </div>
+            <div style="font-size:13px">${m.content}</div>
+          </div>`).join('');
+    };
+
+    c.innerHTML = `
+      <input class="form-input" id="mem-search" placeholder="Search memory…" oninput="window._memRender()" style="margin-bottom:12px"/>
+      <div class="filter-row">${types.map(t=>`<div class="filter-chip ${t==='all'?'on':''}" onclick="window._memFilter('${t}')">${t.replace(/_/g,' ')}</div>`).join('')}</div>
+      <div id="mem-list"></div>`;
+
+    window._memFilter = (f) => { filter = f; document.querySelectorAll('.filter-chip').forEach(el=>el.classList.toggle('on',el.textContent.replace(/ /g,'_')===f||el.textContent===f)); render(); };
+    window._memRender = render;
+    window._delMem = (id) => { DB.delMemory(id); render(); };
+    window._clearMemory = () => { if (confirm('Clear all memory?')) { LS.set('nx_memory',[]); render(); } };
+    render();
+  },
+
+  providers() {
+    const c = document.getElementById('content');
+    const s = DB.settings();
+    const active = s.defaultProvider || 'openai';
+
+    c.innerHTML = `
+      <div class="card" style="max-width:560px">
+        <div class="card-title">Model Providers</div>
+        ${[
+          { id:'openai', label:'OpenAI', keyField:'openaiKey', keyHint:'sk-…', modelField:'openaiModel', modelHint:'gpt-4o', models:['gpt-4o','gpt-4o-mini','gpt-4-turbo','gpt-3.5-turbo'] },
+          { id:'anthropic', label:'Anthropic', keyField:'anthropicKey', keyHint:'sk-ant-…', modelField:'anthropicModel', modelHint:'claude-opus-4-8', models:['claude-opus-4-8','claude-sonnet-4-6','claude-haiku-4-5-20251001'] },
+          { id:'google', label:'Google Gemini', keyField:'googleKey', keyHint:'AIza…', modelField:'googleModel', modelHint:'gemini-1.5-pro', models:['gemini-2.0-flash','gemini-1.5-pro','gemini-1.5-flash'] },
+        ].map(p => `
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="label">${p.label}</div>
+              <div class="desc">${s[p.keyField] ? '✓ Key configured' : 'No key'} · ${s[p.modelField] || p.modelHint}</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="window._editProv('${p.id}')">Edit</button>
+          </div>`).join('')}
+        <div class="form-group" style="margin-top:16px">
+          <label class="form-label">GitHub Personal Access Token</label>
+          <input class="form-input" id="gh-token" type="password" placeholder="ghp_…" value="${s.githubToken||''}"/>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Required for github_read / github_write tools</div>
+        </div>
+        <button class="btn btn-primary" onclick="window._saveGhToken()" style="margin-bottom:8px">Save GitHub Token</button>
+      </div>
+      <div id="prov-edit-area"></div>`;
+
+    window._saveGhToken = () => {
+      const token = document.getElementById('gh-token').value.trim();
+      DB.saveSettings({ ...DB.settings(), githubToken: token });
+      toast('GitHub token saved.');
+    };
+
+    window._editProv = (id) => {
+      const provs = {
+        openai: { label:'OpenAI', keyField:'openaiKey', keyHint:'sk-…', modelField:'openaiModel', models:['gpt-4o','gpt-4o-mini','gpt-4-turbo','gpt-3.5-turbo'] },
+        anthropic: { label:'Anthropic', keyField:'anthropicKey', keyHint:'sk-ant-…', modelField:'anthropicModel', models:['claude-opus-4-8','claude-sonnet-4-6','claude-haiku-4-5-20251001'] },
+        google: { label:'Google Gemini', keyField:'googleKey', keyHint:'AIza…', modelField:'googleModel', models:['gemini-2.0-flash','gemini-1.5-pro','gemini-1.5-flash'] },
+      };
+      const p = provs[id];
+      const s = DB.settings();
+      document.getElementById('prov-edit-area').innerHTML = `
+        <div class="card" style="max-width:560px;border-color:var(--primary)">
+          <div class="card-title">${p.label}</div>
+          <div class="form-group">
+            <label class="form-label">API Key</label>
+            <input class="form-input" id="pe-key" type="password" placeholder="${p.keyHint}" value="${s[p.keyField]||''}"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Model</label>
+            <select class="form-input" id="pe-model">
+              ${p.models.map(m=>`<option ${(s[p.modelField]||p.models[0])===m?'selected':''}>${m}</option>`).join('')}
+            </select>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" onclick="window._saveProv('${id}','${p.keyField}','${p.modelField}')">Save</button>
+            <button class="btn btn-primary btn-sm" onclick="window._setDefault('${id}')">Set as Default</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('prov-edit-area').innerHTML=''">Cancel</button>
+          </div>
+        </div>`;
+    };
+
+    window._saveProv = (id, keyField, modelField) => {
+      const key = document.getElementById('pe-key').value.trim();
+      const model = document.getElementById('pe-model').value;
+      DB.saveSettings({ ...DB.settings(), [keyField]: key, [modelField]: model });
+      toast(`${id} provider saved.`);
+      PAGES.providers();
+    };
+
+    window._setDefault = (id) => {
+      DB.saveSettings({ ...DB.settings(), defaultProvider: id });
+      toast(`${id} set as default provider.`);
+      PAGES.providers();
+    };
+  },
+
+  permissions() {
+    const c = document.getElementById('content');
+    const p = DB.perms();
+    const items = [
+      { key:'allow_web_access', label:'Web Fetch', desc:'Allow fetching URLs', risky:false },
+      { key:'allow_github_read', label:'GitHub Read', desc:'Read files from GitHub repos', risky:false },
+      { key:'allow_github_write', label:'GitHub Write', desc:'Commit files to GitHub repos', risky:true },
+      { key:'allow_memory_write', label:'Memory Write', desc:'Store entries in memory', risky:false },
+      { key:'require_approval', label:'Require Approval', desc:'Pause before risky tool calls', risky:false },
+    ];
+    c.innerHTML = `
+      <div class="card" style="max-width:540px">
+        <div class="card-title">Tool Permissions</div>
+        ${items.map(i => `
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="label">${i.label} ${i.risky?'<span class="pill failed" style="font-size:10px;padding:1px 6px">risky</span>':''}</div>
+              <div class="desc">${i.desc}</div>
+            </div>
+            <label class="tog"><input type="checkbox" id="perm-${i.key}" ${p[i.key]?'checked':''}><div class="tog-track"></div><div class="tog-thumb"></div></label>
+          </div>`).join('')}
+        <button class="btn btn-primary" style="width:100%;margin-top:14px" onclick="window._savePerms()">Save</button>
+      </div>`;
+    window._savePerms = () => {
+      const updated = {};
+      items.forEach(i => updated[i.key] = document.getElementById(`perm-${i.key}`).checked);
+      DB.savePerms(updated);
+      toast('Permissions saved.');
+    };
+  },
+
+  logs() {
+    const c = document.getElementById('content');
+    document.getElementById('topbar-action').innerHTML = '<button class="btn btn-ghost btn-sm" onclick="window._clearLogs()">Clear</button>';
+    let filter = 'all';
+    const levels = ['all','info','warn','error'];
+    const lc = { info:'var(--primary)', warn:'var(--warn)', error:'var(--danger)' };
+
+    const render = () => {
+      const logs = DB.logs();
+      const list = filter === 'all' ? logs : logs.filter(l => l.level === filter);
+      document.getElementById('log-list').innerHTML = list.length === 0
+        ? '<div class="empty"><div class="empty-icon">☰</div><div>No logs</div></div>'
+        : list.map(l => `
+          <div class="log-row">
+            <span class="log-time">${new Date(l.ts).toLocaleTimeString()}</span>
+            <span class="log-lvl ${l.level}" style="color:${lc[l.level]||'#888'}">${l.level.toUpperCase()}</span>
+            <span style="flex:1;word-break:break-word">${l.message}</span>
+          </div>`).join('');
+      document.querySelectorAll('.filter-chip').forEach(el => el.classList.toggle('on', el.dataset.f === filter));
+    };
+
+    c.innerHTML = `
+      <div class="filter-row">${levels.map(l=>`<div class="filter-chip ${l==='all'?'on':''}" data-f="${l}" onclick="window._logFilter('${l}')">${l}</div>`).join('')}</div>
+      <div id="log-list" class="card" style="padding:0 0 0 0"></div>`;
+
+    window._logFilter = (f) => { filter = f; render(); };
+    window._clearLogs = () => { LS.set('nx_logs',[]); render(); };
+    render();
+    pollTimer = setInterval(() => { if (currentPage === 'logs') render(); }, 5000);
+  }
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// TASK DETAIL MODAL
+// ────────────────────────────────────────────────────────────────────────────
+function openTask(id) {
+  const task = DB.task(id);
+  if (!task) return;
+  document.getElementById('modal-title').textContent = task.goal;
+  renderModal(task);
+  document.getElementById('task-overlay').classList.add('open');
+  // Auto-refresh for active tasks
+  if (task.status === 'running' || task.status === 'waiting_for_approval') {
+    const t = setInterval(() => {
+      const updated = DB.task(id);
+      if (!updated) { clearInterval(t); return; }
+      renderModal(updated);
+      if (updated.status !== 'running' && updated.status !== 'waiting_for_approval') clearInterval(t);
+    }, 1500);
+    document.getElementById('task-overlay').dataset.refreshTimer = t;
+  }
+}
+
+function renderModal(task) {
+  const steps = task.steps || [];
+  const stepColors = {
+    start:'var(--muted)', thought:'var(--primary)', tool_call:'var(--warn)',
+    tool_result:'var(--text)', result:'#00cc7a', error:'var(--danger)',
+    approval_request:'var(--warn)', rejected:'var(--danger)'
+  };
+
+  document.getElementById('modal-body').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      ${pill(task.status)}
+      <span style="color:var(--muted);font-size:12px">${timeAgo(task.createdAt)}</span>
+      ${task.status === 'running' ? '<div class="spinner"></div>' : ''}
+    </div>
+
+    ${task.status === 'waiting_for_approval' && task.pendingApproval ? `
+      <div class="approval-banner">
+        <div class="approval-title">⚠ Approval Required</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px">The agent wants to call a risky tool:</div>
+        <div class="approval-code">${task.pendingApproval.toolName}(${JSON.stringify(task.pendingApproval.toolArgs, null, 2)})</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="resumeTask('${task.id}',true);closeModal()">✓ Approve</button>
+          <button class="btn btn-danger btn-sm" onclick="resumeTask('${task.id}',false);closeModal()">✕ Reject</button>
+        </div>
+      </div>` : ''}
+
+    <div class="step-timeline">
+      ${steps.map((s, i) => `
+        <div class="step-item">
+          <div class="step-line">
+            <div class="step-dot" style="background:${stepColors[s.stepType]||'var(--muted)'}"></div>
+            ${i < steps.length-1 ? '<div class="step-connector"></div>' : ''}
+          </div>
+          <div class="step-body">
+            <div class="step-type">${s.stepType.replace(/_/g,' ')}</div>
+            <div class="step-content ${s.stepType}">${s.content}</div>
+          </div>
+        </div>`).join('')}
+      ${steps.length === 0 ? '<div style="color:var(--muted);font-size:13px;padding:10px 0">No steps yet…</div>' : ''}
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      ${(task.status === 'running' || task.status === 'pending') ? `<button class="btn btn-danger btn-sm" onclick="DB.updateTask('${task.id}',{status:'failed',error:'Cancelled'});delete activeTasks['${task.id}'];closeModal()">Cancel</button>` : ''}
+      ${task.status === 'failed' && !activeTasks[task.id] ? `<button class="btn btn-ghost btn-sm" onclick="DB.updateTask('${task.id}',{status:'pending',error:null});runAgent('${task.id}');closeModal()">Retry</button>` : ''}
+      <button class="btn btn-ghost btn-sm" onclick="if(confirm('Delete task?')){DB.saveTasks(DB.tasks().filter(t=>t.id!=='${task.id}'));closeModal()}">Delete</button>
+    </div>`;
+}
+
+function closeModal() {
+  const overlay = document.getElementById('task-overlay');
+  const t = overlay.dataset.refreshTimer;
+  if (t) { clearInterval(Number(t)); delete overlay.dataset.refreshTimer; }
+  overlay.classList.remove('open');
+}
+
+document.getElementById('task-overlay').addEventListener('click', e => {
+  if (e.target.id === 'task-overlay') closeModal();
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// BOOT
+// ────────────────────────────────────────────────────────────────────────────
+
+// Resume any running tasks from before app restart
+DB.tasks().filter(t => t.status === 'running').forEach(t => {
+  DB.updateTask(t.id, { status: 'pending' }); // mark as pending; user can retry
+});
+
+// Check for any waiting_for_approval tasks that need to be surfaced
+const pendingApprovals = DB.tasks().filter(t => t.status === 'waiting_for_approval');
+if (pendingApprovals.length > 0) {
+  setTimeout(() => toast(`${pendingApprovals.length} task(s) need approval`, 'var(--warn)'), 500);
+}
+
+navigate('home');
+</script>
+</body>
+</html>
