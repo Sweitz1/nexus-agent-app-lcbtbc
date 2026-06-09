@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "onesignal-expo-plugin": "^2.6.0",
+    "react-native-onesignal": "^5.4.7"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Nexus Agent",
+    "slug": "nexus-agent",
+    "scheme": "nexusagent",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0c"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nexusagent.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a0c"
+      },
+      "package": "com.nexusagent.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "development"
+        }
+      ]
+    ],
+    "extra": {
+      "oneSignalAppId": "cbaa89c2-c5e5-4020-8d20-c3af0075e5b1"
+    }
+  }
+}
