@@ -1,17 +1,11 @@
 import { Pressable, Animated, PressableProps, ViewStyle, StyleProp } from 'react-native';
 import { useRef, useCallback, forwardRef } from 'react';
+import { stripDevProps } from '@/utils/stripDevProps';
 
 interface AnimatedPressableProps extends PressableProps {
   scaleValue?: number;
   style?: StyleProp<ViewStyle>;
   [key: string]: unknown;
-}
-
-/** Strip React dev-mode / editor metadata props before they reach the DOM on web. */
-function stripDevProps<T extends Record<string, unknown>>(props: T): T {
-  return Object.fromEntries(
-    Object.entries(props).filter(([key]) => !key.startsWith('__'))
-  ) as T;
 }
 
 /**
