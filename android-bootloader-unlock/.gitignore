@@ -1,0 +1,20 @@
+# Gradle build cache and daemon files
+.gradle/
+build/
+app/build/
+
+# Local properties (SDK path, signing keys)
+local.properties
+
+# Android Studio IDE files
+*.iml
+.idea/
+*.iws
+*.ipr
+
+# Captured output
+captures/
+
+# Generated APKs (uploaded as CI artifacts)
+*.apk
+*.aab
