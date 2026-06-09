@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +23,7 @@ import {
   ChevronRight as RawChevronRight,
   LogOut as RawLogOut,
   User as RawUser,
+  Trash2 as RawTrash2,
 } from 'lucide-react-native';
 import Constants from 'expo-constants';
 
@@ -35,6 +37,7 @@ const FileText = withStrippedProps(RawFileText);
 const ChevronRight = withStrippedProps(RawChevronRight);
 const LogOut = withStrippedProps(RawLogOut);
 const User = withStrippedProps(RawUser);
+const Trash2 = withStrippedProps(RawTrash2);
 
 const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
 
@@ -99,7 +102,7 @@ const SETTINGS_LINKS: SettingsLink[] = [
 ];
 
 export default function SettingsScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, deleteAccount } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -107,6 +110,28 @@ export default function SettingsScreen() {
     console.log('[Settings] Sign out pressed');
     await signOut();
     router.replace('/auth-screen');
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all associated data including tasks, memory, API keys, and logs. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+              router.replace('/auth-screen');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete account. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const userEmail = user?.email || '';
@@ -171,6 +196,17 @@ export default function SettingsScreen() {
         <Text style={styles.versionText}>Nexus Agent</Text>
         <Text style={styles.versionNum}>v{APP_VERSION}</Text>
       </View>
+
+      {/* Account deletion */}
+      <Text style={styles.sectionLabel}>Danger Zone</Text>
+      <AnimatedPressable style={styles.deleteAccountBtn} onPress={handleDeleteAccount}>
+        <Trash2 size={16} color={COLORS.danger} />
+        <View style={styles.deleteAccountText}>
+          <Text style={styles.deleteAccountTitle}>Delete Account</Text>
+          <Text style={styles.deleteAccountDesc}>Permanently remove your account and all data</Text>
+        </View>
+        <ChevronRight size={16} color={COLORS.danger} />
+      </AnimatedPressable>
     </ScrollView>
   );
 }
@@ -265,4 +301,18 @@ const styles = StyleSheet.create({
   },
   versionText: { fontSize: 13, color: COLORS.textTertiary },
   versionNum: { fontSize: 13, color: COLORS.textTertiary },
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.dangerMuted,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,68,102,0.25)',
+    padding: 14,
+    marginBottom: 32,
+  },
+  deleteAccountText: { flex: 1 },
+  deleteAccountTitle: { fontSize: 14, fontWeight: '700', color: COLORS.danger },
+  deleteAccountDesc: { fontSize: 12, color: COLORS.danger, opacity: 0.7, marginTop: 2 },
 });

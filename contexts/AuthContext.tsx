@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Platform } from "react-native";
 import * as Linking from "expo-linking";
 import { authClient, setBearerToken, clearAuthTokens } from "@/lib/auth";
+import { apiDelete } from "@/utils/api";
 
 interface User {
   id: string;
@@ -19,6 +20,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   fetchUser: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -141,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       const { error } = await authClient.signIn.social({
         provider,
-        callbackURL: "/auth-callback",
+        callbackURL: "nexusagent://auth-callback",
       });
       if (error) {
         throw new Error(error.message || "Social sign in failed");
@@ -190,6 +192,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const deleteAccount = async () => {
+    try {
+      await apiDelete("/api/account");
+    } catch (error) {
+      console.error("Delete account API call failed:", error);
+      // Continue with local cleanup even if the API call fails
+    } finally {
+      try {
+        await authClient.signOut();
+      } catch (_) {}
+      setUser(null);
+      await clearAuthTokens();
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -201,6 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithGoogle,
         signOut,
         fetchUser,
+        deleteAccount,
       }}
     >
       {children}
