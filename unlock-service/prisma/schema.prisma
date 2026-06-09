@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String?
+  role          UserRole @default(CONSUMER)
+  businessName  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subscription  Subscription?
+  orders        UnlockOrder[]
+  transactions  Transaction[]
+
+  @@map("users")
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier                 SubscriptionTier   @default(PAY_AS_YOU_GO)
+  status               SubscriptionStatus @default(ACTIVE)
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  credits              Int                @default(0)
+  renewsAt             DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@map("subscriptions")
+}
+
+model UnlockOrder {
+  id               String      @id @default(cuid())
+  userId           String
+  user             User        @relation(fields: [userId], references: [id])
+  imei             String
+  carrier          String
+  deviceBrand      String?
+  deviceModel      String?
+  unlockType       UnlockType  @default(CARRIER)
+  status           OrderStatus @default(PENDING)
+  unlockCode       String?
+  providerOrderId  String?
+  providerName     String?
+  notes            String?
+  creditsCharged   Int         @default(0)
+  priceUsd         Float       @default(0)
+  completedAt      DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  transaction      Transaction?
+
+  @@map("unlock_orders")
+}
+
+model Transaction {
+  id                    String            @id @default(cuid())
+  userId                String
+  user                  User              @relation(fields: [userId], references: [id])
+  orderId               String?           @unique
+  order                 UnlockOrder?      @relation(fields: [orderId], references: [id])
+  type                  TransactionType
+  amountUsd             Float
+  creditsAdded          Int               @default(0)
+  stripePaymentIntentId String?
+  stripeSessionId       String?
+  status                TransactionStatus @default(PENDING)
+  createdAt             DateTime          @default(now())
+
+  @@map("transactions")
+}
+
+model UnlockProvider {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  apiUrl    String
+  apiKey    String
+  priority  Int      @default(1)
+  isActive  Boolean  @default(true)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("unlock_providers")
+}
+
+enum UserRole {
+  CONSUMER
+  SHOP
+  ADMIN
+}
+
+enum SubscriptionTier {
+  PAY_AS_YOU_GO
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  TRIALING
+}
+
+enum UnlockType {
+  CARRIER
+  BOOTLOADER_INFO
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum TransactionType {
+  CREDIT_PURCHASE
+  SUBSCRIPTION
+  UNLOCK_CHARGE
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
