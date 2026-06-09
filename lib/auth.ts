@@ -4,7 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-const API_URL = "https://6jbu8yb8cmjuschgf2kkvjb59huwp3cd.app.specular.dev";
+const API_URL = "https://jv92wzaergdt8sg6jzpngwpxjs6fas4e.app.specular.dev";
 
 export const BEARER_TOKEN_KEY = "nexusagent_bearer_token";
 
