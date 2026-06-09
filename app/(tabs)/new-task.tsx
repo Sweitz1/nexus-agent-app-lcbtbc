@@ -17,7 +17,12 @@ import { apiGet, apiPost } from '@/utils/api';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { EmptyState } from '@/components/EmptyState';
-import { Key, ChevronDown, Check } from 'lucide-react-native';
+import { Key as RawKey, ChevronDown as RawChevronDown, Check as RawCheck } from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const Key = withStrippedProps(RawKey);
+const ChevronDown = withStrippedProps(RawChevronDown);
+const Check = withStrippedProps(RawCheck);
 
 interface Provider {
   id: string;

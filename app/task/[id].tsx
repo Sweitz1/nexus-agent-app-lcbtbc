@@ -14,7 +14,11 @@ import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { StepRow, TaskStep } from '@/components/StepRow';
-import { XCircle, RefreshCw } from 'lucide-react-native';
+import { XCircle as RawXCircle, RefreshCw as RawRefreshCw } from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const XCircle = withStrippedProps(RawXCircle);
+const RefreshCw = withStrippedProps(RawRefreshCw);
 
 interface Task {
   id: string;

@@ -13,7 +13,10 @@ import { apiGet } from '@/utils/api';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { EmptyState } from '@/components/EmptyState';
-import { FileText } from 'lucide-react-native';
+import { FileText as RawFileText } from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const FileText = withStrippedProps(RawFileText);
 
 interface LogEntry {
   id: string;

@@ -14,7 +14,24 @@ import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
 import { COLORS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { EmptyState } from '@/components/EmptyState';
-import { Key, Plus, Trash2, Edit, CheckCircle, XCircle, ChevronDown } from 'lucide-react-native';
+import {
+  Key as RawKey,
+  Plus as RawPlus,
+  Trash2 as RawTrash2,
+  Edit as RawEdit,
+  CheckCircle as RawCheckCircle,
+  XCircle as RawXCircle,
+  ChevronDown as RawChevronDown,
+} from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const Key = withStrippedProps(RawKey);
+const Plus = withStrippedProps(RawPlus);
+const Trash2 = withStrippedProps(RawTrash2);
+const Edit = withStrippedProps(RawEdit);
+const CheckCircle = withStrippedProps(RawCheckCircle);
+const XCircle = withStrippedProps(RawXCircle);
+const ChevronDown = withStrippedProps(RawChevronDown);
 
 interface Provider {
   id: string;

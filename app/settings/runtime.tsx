@@ -10,7 +10,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet } from '@/utils/api';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-import { CheckCircle, XCircle, RefreshCw, Cpu } from 'lucide-react-native';
+import {
+  CheckCircle as RawCheckCircle,
+  XCircle as RawXCircle,
+  RefreshCw as RawRefreshCw,
+  Cpu as RawCpu,
+} from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const CheckCircle = withStrippedProps(RawCheckCircle);
+const XCircle = withStrippedProps(RawXCircle);
+const RefreshCw = withStrippedProps(RawRefreshCw);
+const Cpu = withStrippedProps(RawCpu);
 
 interface RuntimeStatus {
   version: string;

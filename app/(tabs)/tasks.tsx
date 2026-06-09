@@ -15,7 +15,12 @@ import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { EmptyState } from '@/components/EmptyState';
-import { ListTodo, ChevronRight, Clock } from 'lucide-react-native';
+import { ListTodo as RawListTodo, ChevronRight as RawChevronRight, Clock as RawClock } from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const ListTodo = withStrippedProps(RawListTodo);
+const ChevronRight = withStrippedProps(RawChevronRight);
+const Clock = withStrippedProps(RawClock);
 
 interface Task {
   id: string;

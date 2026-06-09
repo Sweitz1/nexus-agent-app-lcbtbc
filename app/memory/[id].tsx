@@ -13,7 +13,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet, apiPost, apiDelete } from '@/utils/api';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-import { Trash2, Tag, Clock } from 'lucide-react-native';
+import { Trash2 as RawTrash2, Tag as RawTag, Clock as RawClock } from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const Trash2 = withStrippedProps(RawTrash2);
+const Tag = withStrippedProps(RawTag);
+const Clock = withStrippedProps(RawClock);
 
 interface MemoryItem {
   id: string;

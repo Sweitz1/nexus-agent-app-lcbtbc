@@ -10,7 +10,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet, apiPut } from '@/utils/api';
 import { COLORS, RADIUS } from '@/constants/theme';
 import { PermissionToggle } from '@/components/PermissionToggle';
-import { Shield, AlertTriangle } from 'lucide-react-native';
+import { Shield as RawShield, AlertTriangle as RawAlertTriangle } from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const Shield = withStrippedProps(RawShield);
+const AlertTriangle = withStrippedProps(RawAlertTriangle);
 
 const ALWAYS_CONFIRM_RULES = [
   { icon: '🗑️', label: 'Delete files', desc: 'Any file deletion requires your approval' },

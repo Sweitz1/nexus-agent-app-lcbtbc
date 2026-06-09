@@ -10,19 +10,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { COLORS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
+import { withStrippedProps } from '@/utils/stripDevProps';
 import {
-  Key,
-  Globe,
-  Github,
-  Shield,
-  AlertTriangle,
-  Activity,
-  FileText,
-  ChevronRight,
-  LogOut,
-  User,
+  Key as RawKey,
+  Globe as RawGlobe,
+  Github as RawGithub,
+  Shield as RawShield,
+  AlertTriangle as RawAlertTriangle,
+  Activity as RawActivity,
+  FileText as RawFileText,
+  ChevronRight as RawChevronRight,
+  LogOut as RawLogOut,
+  User as RawUser,
 } from 'lucide-react-native';
 import Constants from 'expo-constants';
+
+const Key = withStrippedProps(RawKey);
+const Globe = withStrippedProps(RawGlobe);
+const Github = withStrippedProps(RawGithub);
+const Shield = withStrippedProps(RawShield);
+const AlertTriangle = withStrippedProps(RawAlertTriangle);
+const Activity = withStrippedProps(RawActivity);
+const FileText = withStrippedProps(RawFileText);
+const ChevronRight = withStrippedProps(RawChevronRight);
+const LogOut = withStrippedProps(RawLogOut);
+const User = withStrippedProps(RawUser);
 
 const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
 

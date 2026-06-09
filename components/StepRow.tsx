@@ -1,8 +1,27 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { COLORS, FONTS } from '@/constants/theme';
-import { ChevronDown, ChevronRight, Terminal, Brain, Wrench, CheckCircle, Lightbulb, Flag, AlertTriangle } from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+import {
+  ChevronDown as RawChevronDown,
+  ChevronRight as RawChevronRight,
+  Terminal as RawTerminal,
+  Brain as RawBrain,
+  CheckCircle as RawCheckCircle,
+  Lightbulb as RawLightbulb,
+  Flag as RawFlag,
+  AlertTriangle as RawAlertTriangle,
+} from 'lucide-react-native';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
+
+const ChevronDown = withStrippedProps(RawChevronDown);
+const ChevronRight = withStrippedProps(RawChevronRight);
+const Terminal = withStrippedProps(RawTerminal);
+const Brain = withStrippedProps(RawBrain);
+const CheckCircle = withStrippedProps(RawCheckCircle);
+const Lightbulb = withStrippedProps(RawLightbulb);
+const Flag = withStrippedProps(RawFlag);
+const AlertTriangle = withStrippedProps(RawAlertTriangle);
 
 export interface TaskStep {
   id: string;

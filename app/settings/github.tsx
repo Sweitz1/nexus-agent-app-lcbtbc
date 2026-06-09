@@ -11,7 +11,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet, apiPost, apiDelete } from '@/utils/api';
 import { COLORS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-import { Github, CheckCircle, XCircle } from 'lucide-react-native';
+import { Github as RawGithub, CheckCircle as RawCheckCircle, XCircle as RawXCircle } from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const Github = withStrippedProps(RawGithub);
+const CheckCircle = withStrippedProps(RawCheckCircle);
+const XCircle = withStrippedProps(RawXCircle);
 
 interface GitHubStatus {
   connected: boolean;

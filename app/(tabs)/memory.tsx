@@ -14,7 +14,20 @@ import { apiGet, apiPost } from '@/utils/api';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { EmptyState } from '@/components/EmptyState';
-import { Brain, Search, Plus, ChevronRight, Tag } from 'lucide-react-native';
+import {
+  Brain as RawBrain,
+  Search as RawSearch,
+  Plus as RawPlus,
+  ChevronRight as RawChevronRight,
+  Tag as RawTag,
+} from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const Brain = withStrippedProps(RawBrain);
+const Search = withStrippedProps(RawSearch);
+const Plus = withStrippedProps(RawPlus);
+const ChevronRight = withStrippedProps(RawChevronRight);
+const Tag = withStrippedProps(RawTag);
 
 interface MemoryItem {
   id: string;

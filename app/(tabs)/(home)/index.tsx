@@ -16,16 +16,27 @@ import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { StatusBadge } from '@/components/StatusBadge';
 import {
-  Zap,
-  Database,
-  Cpu,
-  Plus,
-  Key,
-  Shield,
-  Activity,
-  ChevronRight,
-  Clock,
+  Zap as RawZap,
+  Database as RawDatabase,
+  Cpu as RawCpu,
+  Plus as RawPlus,
+  Key as RawKey,
+  Shield as RawShield,
+  Activity as RawActivity,
+  ChevronRight as RawChevronRight,
+  Clock as RawClock,
 } from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const Zap = withStrippedProps(RawZap);
+const Database = withStrippedProps(RawDatabase);
+const Cpu = withStrippedProps(RawCpu);
+const Plus = withStrippedProps(RawPlus);
+const Key = withStrippedProps(RawKey);
+const Shield = withStrippedProps(RawShield);
+const Activity = withStrippedProps(RawActivity);
+const ChevronRight = withStrippedProps(RawChevronRight);
+const Clock = withStrippedProps(RawClock);
 
 interface Task {
   id: string;

@@ -12,7 +12,18 @@ import { apiGet, apiPost, apiDelete } from '@/utils/api';
 import { COLORS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { EmptyState } from '@/components/EmptyState';
-import { Globe, Plus, Trash2, ChevronRight } from 'lucide-react-native';
+import {
+  Globe as RawGlobe,
+  Plus as RawPlus,
+  Trash2 as RawTrash2,
+  ChevronRight as RawChevronRight,
+} from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const Globe = withStrippedProps(RawGlobe);
+const Plus = withStrippedProps(RawPlus);
+const Trash2 = withStrippedProps(RawTrash2);
+const ChevronRight = withStrippedProps(RawChevronRight);
 
 interface CustomApi {
   id: string;

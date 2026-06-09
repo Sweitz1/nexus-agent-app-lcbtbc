@@ -14,7 +14,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiGet, apiPatch, apiPost, apiDelete } from '@/utils/api';
 import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-import { Plus, Trash2, Edit, ChevronDown } from 'lucide-react-native';
+import {
+  Plus as RawPlus,
+  Trash2 as RawTrash2,
+  Edit as RawEdit,
+  ChevronDown as RawChevronDown,
+} from 'lucide-react-native';
+import { withStrippedProps } from '@/utils/stripDevProps';
+
+const Plus = withStrippedProps(RawPlus);
+const Trash2 = withStrippedProps(RawTrash2);
+const Edit = withStrippedProps(RawEdit);
+const ChevronDown = withStrippedProps(RawChevronDown);
 
 interface Endpoint {
   id: string;
