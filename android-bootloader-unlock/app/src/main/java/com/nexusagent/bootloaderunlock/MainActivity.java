@@ -19,6 +19,7 @@ import android.widget.TextView;
 import com.nexusagent.bootloaderunlock.device.DeviceDetector;
 import com.nexusagent.bootloaderunlock.device.DeviceInfo;
 
+import java.lang.reflect.Method;
 import java.util.List;
 
 public class MainActivity extends Activity {
@@ -103,7 +104,7 @@ public class MainActivity extends Activity {
         filter.addAction(ACTION_USB_PERMISSION);
         filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-        registerReceiver(usbReceiver, filter);
+        registerReceiverCompat(usbReceiver, filter);
         receiverRegistered = true;
 
         handleIntent(getIntent());
@@ -126,6 +127,24 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         if (receiverRegistered) unregisterReceiver(usbReceiver);
+    }
+
+    /**
+     * Android 13+ (API 33) requires RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED flag.
+     * Android 14 enforces this for all apps regardless of targetSdkVersion.
+     * We use reflection to pass RECEIVER_NOT_EXPORTED (=4) on API 33+ without
+     * needing to compile against a newer android.jar.
+     */
+    private void registerReceiverCompat(BroadcastReceiver receiver, IntentFilter filter) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            try {
+                Method m = Context.class.getMethod(
+                        "registerReceiver", BroadcastReceiver.class, IntentFilter.class, int.class);
+                m.invoke(this, receiver, filter, 4); // 4 = RECEIVER_NOT_EXPORTED
+                return;
+            } catch (Exception ignored) {}
+        }
+        registerReceiver(receiver, filter);
     }
 
     private void handleIntent(Intent intent) {

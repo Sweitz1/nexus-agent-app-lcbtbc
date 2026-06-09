@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.nexusagent.bootloaderunlock">
 
+    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="28" />
+
     <uses-feature android:name="android.hardware.usb.host" android:required="true" />
     <uses-permission android:name="android.permission.USB_PERMISSION" />
 
