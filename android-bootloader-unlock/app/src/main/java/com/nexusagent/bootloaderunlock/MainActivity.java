@@ -36,6 +36,7 @@ public class MainActivity extends Activity {
     private Button btnStartWizard;
 
     private UsbDevice pendingDevice;
+    private boolean receiverRegistered = false;
 
     private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context ctx, Intent intent) {
@@ -62,9 +63,6 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        usbManager = (UsbManager) getSystemService(USB_SERVICE);
-        detector   = new DeviceDetector(usbManager);
-
         tvDeviceStatus  = (TextView) findViewById(R.id.tvDeviceStatus);
         tvDeviceDetails = (TextView) findViewById(R.id.tvDeviceDetails);
         tvDeviceMode    = (TextView) findViewById(R.id.tvDeviceMode);
@@ -77,6 +75,14 @@ public class MainActivity extends Activity {
                 startActivity(UnlockWizardActivity.buildIntent(MainActivity.this, null));
             }
         });
+
+        usbManager = (UsbManager) getSystemService(USB_SERVICE);
+        if (usbManager == null) {
+            btnStartWizard.setEnabled(false);
+            tvDeviceStatus.setText(getString(R.string.error_no_usb_host));
+            return;
+        }
+        detector = new DeviceDetector(usbManager);
 
         btnStartWizard.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
@@ -98,6 +104,7 @@ public class MainActivity extends Activity {
         filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
         registerReceiver(usbReceiver, filter);
+        receiverRegistered = true;
 
         handleIntent(getIntent());
         refreshDeviceStatus();
@@ -118,10 +125,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(usbReceiver);
+        if (receiverRegistered) unregisterReceiver(usbReceiver);
     }
 
     private void handleIntent(Intent intent) {
+        if (detector == null || intent == null) return;
         if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(intent.getAction())) {
             UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
             if (device != null) updateDeviceStatus(device);
@@ -129,6 +137,7 @@ public class MainActivity extends Activity {
     }
 
     private void refreshDeviceStatus() {
+        if (detector == null) return;
         List<DeviceInfo> devices = detector.detectDevices();
         if (!devices.isEmpty()) {
             updateDeviceStatus(devices.get(0).usbDevice);
