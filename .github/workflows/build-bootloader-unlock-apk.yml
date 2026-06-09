@@ -25,40 +25,10 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Diagnose pre-installed Android SDK
-        run: |
-          echo "=== Environment ==="
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          echo ""
-          echo "=== SDK root contents ==="
-          ls -1 "${ANDROID_HOME:-/usr/local/lib/android/sdk}" 2>/dev/null || echo "SDK root empty or not found"
-          echo ""
-          echo "=== Installed platforms ==="
-          ls -1 "${ANDROID_HOME:-/usr/local/lib/android/sdk}/platforms" 2>/dev/null || echo "No platforms"
-          echo ""
-          echo "=== Installed build-tools ==="
-          ls -1 "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" 2>/dev/null || echo "No build-tools"
-          echo ""
-          echo "=== sdkmanager location ==="
-          which sdkmanager 2>/dev/null || find "${ANDROID_HOME:-/usr/local/lib/android/sdk}" -name sdkmanager 2>/dev/null || echo "sdkmanager not found"
-          echo ""
-          echo "=== sdkmanager --list_installed ==="
-          sdkmanager --list_installed 2>/dev/null || \
-            "${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager" --list_installed 2>/dev/null || \
-            echo "Could not run sdkmanager"
-
+      # Sets ANDROID_HOME, accepts licenses, and makes sdkmanager available.
+      # The runner already ships with SDK platform + build-tools installed.
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Check SDK after setup
-        run: |
-          echo "=== Post-setup platforms ==="
-          ls -1 "$ANDROID_HOME/platforms" 2>/dev/null || echo "none"
-          echo "=== Post-setup build-tools ==="
-          ls -1 "$ANDROID_HOME/build-tools" 2>/dev/null || echo "none"
-          echo "=== sdkmanager available? ==="
-          which sdkmanager && sdkmanager --list_installed 2>&1 | head -20 || echo "No sdkmanager"
 
       - name: Cache Gradle wrapper
         uses: actions/cache@v4
@@ -78,12 +48,11 @@ jobs:
 
       - name: Build debug APK
         working-directory: android-bootloader-unlock
-        run: ./gradlew assembleDebug --no-daemon --info 2>&1 | tail -60
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK artifact
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nexus-bootloader-unlock-debug
           path: android-bootloader-unlock/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: warn
+          if-no-files-found: error
