@@ -16,22 +16,26 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Electron build tools
-        run: npm install --save-dev electron electron-builder png-to-ico
+      - name: Install Electron build tools (isolated)
+        run: |
+          mkdir electron-build
+          cd electron-build
+          npm init -y
+          npm install electron electron-builder png-to-ico --save-dev --legacy-peer-deps
 
       - name: Convert PNG icon to ICO
         run: |
           node -e "
-          const pngToIco = require('png-to-ico');
+          const pngToIco = require('./electron-build/node_modules/png-to-ico');
           const fs = require('fs');
           pngToIco('assets/icon.png').then(buf => {
             fs.writeFileSync('assets/icon.ico', buf);
-            console.log('icon.ico created');
+            console.log('icon.ico created, size=' + buf.length);
           }).catch(e => { console.error(e); process.exit(1); });
           "
 
       - name: Build Windows MSI
-        run: npx electron-builder --win msi --config electron-builder.json
+        run: node electron-build/node_modules/.bin/electron-builder --win msi --config electron-builder.json
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
