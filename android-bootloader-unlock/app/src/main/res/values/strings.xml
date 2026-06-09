@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nexus Bootloader Unlock</string>
+    <string name="title_main">Bootloader Unlock</string>
+    <string name="subtitle_main">Unlock your Android device bootloader via USB</string>
+    <string name="btn_start_wizard">Start Unlock Wizard</string>
+    <string name="btn_connect">Connect Device</string>
+    <string name="btn_next">Next</string>
+    <string name="btn_retry">Retry</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_confirm_unlock">Confirm &amp; Unlock</string>
+    <string name="label_device_status">Device Status</string>
+    <string name="label_no_device">No device connected</string>
+    <string name="label_device_connected">Device connected</string>
+    <string name="label_fastboot_mode">Fastboot mode detected</string>
+    <string name="label_adb_mode">ADB mode detected</string>
+    <string name="step_1_title">Connect Device</string>
+    <string name="step_1_desc">Connect the target Android phone to this device using a USB-C cable. Enable USB Debugging and OEM Unlocking in Developer Options on the target phone first.</string>
+    <string name="step_2_title">Detect &amp; Verify</string>
+    <string name="step_2_desc">Detecting connected device and verifying ADB/Fastboot communication.</string>
+    <string name="step_3_title">Reboot to Fastboot</string>
+    <string name="step_3_desc">Rebooting target device into Fastboot mode.</string>
+    <string name="step_4_title">Check Unlock Ability</string>
+    <string name="step_4_desc">Checking if the bootloader can be unlocked on this device.</string>
+    <string name="step_5_title">Unlock Bootloader</string>
+    <string name="step_5_desc">Sending unlock command. You must confirm on the target device screen.</string>
+    <string name="step_6_title">Complete</string>
+    <string name="step_6_desc">Bootloader unlock process finished.</string>
+    <string name="warning_data_wipe">WARNING: Unlocking the bootloader will wipe all data on the target device. Make sure you have backed up everything important.</string>
+    <string name="warning_oem_unlock">OEM Unlocking must be enabled in Developer Options on the target device before proceeding.</string>
+    <string name="error_no_usb_host">This device does not support USB Host (OTG) mode.</string>
+    <string name="error_permission_denied">USB permission denied. Please reconnect the device.</string>
+    <string name="error_unlock_not_allowed">This device has unlock_ability=0. The manufacturer has disabled bootloader unlocking.</string>
+    <string name="label_logs">Operation Log</string>
+    <string name="disclaimer_title">Important Notice</string>
+    <string name="disclaimer_body">Unlocking the bootloader voids your warranty, wipes all user data, and may affect device security. Only proceed if you understand the consequences and own the target device.</string>
+    <string name="btn_i_understand">I Understand, Continue</string>
+</resources>

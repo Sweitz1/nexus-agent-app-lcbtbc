@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NexusBootloaderUnlock" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorPrimaryDark</item>
+        <item name="colorOnPrimary">@color/colorOnBackground</item>
+        <item name="colorSecondary">@color/colorAccent</item>
+        <item name="colorOnSecondary">@color/colorBackground</item>
+        <item name="android:colorBackground">@color/colorBackground</item>
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="android:statusBarColor">@color/colorBackground</item>
+        <item name="android:navigationBarColor">@color/colorBackground</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Widget.NexusBootloaderUnlock.Button" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/colorPrimary</item>
+        <item name="android:textColor">@color/colorOnBackground</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="android:paddingTop">14dp</item>
+        <item name="android:paddingBottom">14dp</item>
+    </style>
+
+    <style name="Widget.NexusBootloaderUnlock.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="strokeColor">@color/colorPrimary</item>
+        <item name="android:textColor">@color/colorPrimary</item>
+        <item name="cornerRadius">12dp</item>
+    </style>
+
+    <style name="TextAppearance.NexusBootloaderUnlock.Title" parent="TextAppearance.MaterialComponents.Headline5">
+        <item name="android:textColor">@color/colorOnBackground</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.NexusBootloaderUnlock.Body" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textColor">@color/colorTextSecondary</item>
+    </style>
+</resources>

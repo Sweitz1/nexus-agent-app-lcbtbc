@@ -1,0 +1,58 @@
+name: Build Bootloader Unlock APK
+
+on:
+  push:
+    branches: [claude/android-bootloader-unlock-usb-d25oa3, prod]
+    paths:
+      - 'android-bootloader-unlock/**'
+  pull_request:
+    paths:
+      - 'android-bootloader-unlock/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-bootloader-${{ hashFiles('android-bootloader-unlock/**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-bootloader-
+
+      - name: Make gradlew executable
+        run: chmod +x android-bootloader-unlock/gradlew
+        continue-on-error: true
+
+      - name: Build debug APK
+        working-directory: android-bootloader-unlock
+        run: |
+          if [ -f gradlew ]; then
+            ./gradlew assembleDebug --no-daemon
+          else
+            gradle assembleDebug --no-daemon
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-bootloader-unlock-debug
+          path: android-bootloader-unlock/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

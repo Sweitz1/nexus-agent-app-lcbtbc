@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Matches Android devices in both ADB mode (class 0xFF, subclass 0x42, protocol 0x01)
+    and Fastboot mode (class 0xFF, subclass 0x42, protocol 0x03).
+    Also matches Google's USB vendor ID as a broad catch-all.
+-->
+<resources>
+    <!-- ADB interface -->
+    <usb-device class="255" subclass="66" protocol="1" />
+    <!-- Fastboot interface -->
+    <usb-device class="255" subclass="66" protocol="3" />
+    <!-- Google / Android vendor ID -->
+    <usb-device vendor-id="0x18D1" />
+</resources>
