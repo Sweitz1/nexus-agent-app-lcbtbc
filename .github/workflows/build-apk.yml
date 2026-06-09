@@ -23,6 +23,9 @@ jobs:
       - name: Install Android SDK 35
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Install ImageMagick
+        run: sudo apt-get install -y imagemagick
+
       - name: Copy web assets into Android project
         run: |
           mkdir -p android-webview/app/src/main/assets
@@ -38,7 +41,7 @@ jobs:
           done
 
       - name: Setup Gradle
-        uses: gradle/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.7'
 
