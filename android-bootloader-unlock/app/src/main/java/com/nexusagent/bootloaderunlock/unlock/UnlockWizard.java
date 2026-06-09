@@ -48,9 +48,11 @@ public class UnlockWizard {
     }
 
     /** Starts the full unlock sequence asynchronously. */
-    public void start(UsbDevice targetDevice) {
+    public void start(final UsbDevice targetDevice) {
         cancelled = false;
-        executor.submit(() -> runSequence(targetDevice));
+        executor.submit(new Runnable() {
+            @Override public void run() { runSequence(targetDevice); }
+        });
     }
 
     public void cancel() {
@@ -156,7 +158,7 @@ public class UnlockWizard {
     }
 
     /** If device is in ADB mode, reboot to bootloader. Waits for Fastboot to appear. */
-    private DeviceInfo ensureFastbootMode(UsbDevice originalTarget) throws IOException {
+    private DeviceInfo ensureFastbootMode(UsbDevice originalTarget) throws IOException, CancelException, InterruptedException {
         if (currentDevice.mode == DeviceInfo.ConnectionMode.FASTBOOT) {
             logger.info(TAG, "Already in Fastboot mode");
             return currentDevice;
@@ -246,28 +248,32 @@ public class UnlockWizard {
     }
 
     /** Called by the UI after the user retrieves and enters an OEM unlock code. */
-    public void applyOemUnlockCode(String code) {
-        executor.submit(() -> {
-            FastbootTransport fb = new FastbootTransport(usbManager, logger);
-            try {
-                fb.connect(currentDevice.usbDevice);
-                OemModule oem = OemModule.forDevice(currentDevice, logger);
-                if (oem instanceof MotorolaModule) {
-                    ((MotorolaModule) oem).applyUnlockCode(fb, code);
-                } else if (oem instanceof SonyModule) {
-                    ((SonyModule) oem).applyUnlockCode(fb, code);
-                } else {
-                    fb.command("oem unlock " + code);
+    public void applyOemUnlockCode(final String code) {
+        executor.submit(new Runnable() {
+            @Override public void run() {
+                FastbootTransport fb = new FastbootTransport(usbManager, logger);
+                try {
+                    fb.connect(currentDevice.usbDevice);
+                    OemModule oem = OemModule.forDevice(currentDevice, logger);
+                    if (oem instanceof MotorolaModule) {
+                        ((MotorolaModule) oem).applyUnlockCode(fb, code);
+                    } else if (oem instanceof SonyModule) {
+                        ((SonyModule) oem).applyUnlockCode(fb, code);
+                    } else {
+                        fb.command("oem unlock " + code);
+                    }
+                    complete(UnlockStep.EXECUTE_UNLOCK);
+                    step(UnlockStep.COMPLETE);
+                    complete(UnlockStep.COMPLETE);
+                    callback.onUnlockSuccess();
+                } catch (IOException e) {
+                    callback.onStepFailed(UnlockStep.EXECUTE_UNLOCK, e.getMessage());
+                    callback.onUnlockFailed(e.getMessage());
+                } catch (CancelException e) {
+                    logger.warn(TAG, "Cancelled during OEM unlock");
+                } finally {
+                    fb.close();
                 }
-                complete(UnlockStep.EXECUTE_UNLOCK);
-                step(UnlockStep.COMPLETE);
-                complete(UnlockStep.COMPLETE);
-                callback.onUnlockSuccess();
-            } catch (IOException e) {
-                callback.onStepFailed(UnlockStep.EXECUTE_UNLOCK, e.getMessage());
-                callback.onUnlockFailed(e.getMessage());
-            } finally {
-                fb.close();
             }
         });
     }

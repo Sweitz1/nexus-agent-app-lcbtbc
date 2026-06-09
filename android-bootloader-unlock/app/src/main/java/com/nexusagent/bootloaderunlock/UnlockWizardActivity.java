@@ -1,23 +1,21 @@
 package com.nexusagent.bootloaderunlock;
 
+import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.nexusagent.bootloaderunlock.device.DeviceInfo;
 import com.nexusagent.bootloaderunlock.logging.LogEntry;
 import com.nexusagent.bootloaderunlock.logging.UnlockLogger;
@@ -26,7 +24,7 @@ import com.nexusagent.bootloaderunlock.unlock.UnlockCallback;
 import com.nexusagent.bootloaderunlock.unlock.UnlockStep;
 import com.nexusagent.bootloaderunlock.unlock.UnlockWizard;
 
-public class UnlockWizardActivity extends AppCompatActivity implements UnlockCallback {
+public class UnlockWizardActivity extends Activity implements UnlockCallback {
 
     private static final String EXTRA_USB_DEVICE = "usb_device";
 
@@ -39,14 +37,15 @@ public class UnlockWizardActivity extends AppCompatActivity implements UnlockCal
     private TextView tvStepTitle;
     private TextView tvStepDescription;
     private TextView tvStepStatus;
-    private LinearProgressIndicator progressStep;
+    private ProgressBar progressStep;
     private TextView tvDeviceName;
     private TextView tvDeviceSerial;
     private TextView tvDeviceMode;
     private View cardDeviceInfo;
-    private MaterialButton btnNext;
-    private MaterialButton btnCancel;
+    private Button btnNext;
+    private Button btnCancel;
     private LinearLayout layoutStepIndicators;
+    private ListView rvLogs;
 
     private UnlockStep currentStep = UnlockStep.CONNECT_DEVICE;
     private boolean wizardRunning = false;
@@ -62,51 +61,47 @@ public class UnlockWizardActivity extends AppCompatActivity implements UnlockCal
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_unlock_wizard);
 
-        // Toolbar
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        if (getSupportActionBar() != null) getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        toolbar.setNavigationOnClickListener(v -> onBackPressed());
+        setTitle("Unlock Wizard");
 
-        // Views
-        tvStepTitle       = findViewById(R.id.tvStepTitle);
-        tvStepDescription = findViewById(R.id.tvStepDescription);
-        tvStepStatus      = findViewById(R.id.tvStepStatus);
-        progressStep      = findViewById(R.id.progressStep);
-        tvDeviceName      = findViewById(R.id.tvDeviceName);
-        tvDeviceSerial    = findViewById(R.id.tvDeviceSerial);
-        tvDeviceMode      = findViewById(R.id.tvDeviceMode);
+        tvStepTitle       = (TextView)    findViewById(R.id.tvStepTitle);
+        tvStepDescription = (TextView)    findViewById(R.id.tvStepDescription);
+        tvStepStatus      = (TextView)    findViewById(R.id.tvStepStatus);
+        progressStep      = (ProgressBar) findViewById(R.id.progressStep);
+        tvDeviceName      = (TextView)    findViewById(R.id.tvDeviceName);
+        tvDeviceSerial    = (TextView)    findViewById(R.id.tvDeviceSerial);
+        tvDeviceMode      = (TextView)    findViewById(R.id.tvDeviceMode);
         cardDeviceInfo    = findViewById(R.id.cardDeviceInfo);
-        btnNext           = findViewById(R.id.btnNext);
-        btnCancel         = findViewById(R.id.btnCancel);
-        layoutStepIndicators = findViewById(R.id.layoutStepIndicators);
+        btnNext           = (Button)      findViewById(R.id.btnNext);
+        btnCancel         = (Button)      findViewById(R.id.btnCancel);
+        layoutStepIndicators = (LinearLayout) findViewById(R.id.layoutStepIndicators);
 
-        // Log RecyclerView
-        RecyclerView rvLogs = findViewById(R.id.rvLogs);
-        logAdapter = new LogAdapter();
-        rvLogs.setLayoutManager(new LinearLayoutManager(this));
+        rvLogs = (ListView) findViewById(R.id.rvLogs);
+        logAdapter = new LogAdapter(this);
         rvLogs.setAdapter(logAdapter);
 
-        // Logger
         logger = new UnlockLogger();
-        logger.addListener(entry -> runOnUiThread(() -> {
-            logAdapter.addEntry(entry);
-            rvLogs.scrollToPosition(logAdapter.getItemCount() - 1);
-        }));
+        logger.addListener(new UnlockLogger.LogListener() {
+            @Override public void onLogAdded(LogEntry entry) {
+                runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        logAdapter.addEntry(entry);
+                        rvLogs.setSelection(logAdapter.getCount() - 1);
+                    }
+                });
+            }
+        });
 
-        // Wizard
         wizard = new UnlockWizard(this, logger, this);
-
-        // Build step indicators
         buildStepIndicators();
 
-        // Buttons
-        btnNext.setOnClickListener(v -> startWizard());
-        btnCancel.setOnClickListener(v -> {
-            if (wizardRunning) {
-                wizard.cancel();
+        btnNext.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { startWizard(); }
+        });
+        btnCancel.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                if (wizardRunning) wizard.cancel();
+                finish();
             }
-            finish();
         });
 
         showStep(UnlockStep.CONNECT_DEVICE, false);
@@ -115,11 +110,9 @@ public class UnlockWizardActivity extends AppCompatActivity implements UnlockCal
     private void startWizard() {
         wizardRunning = true;
         btnNext.setEnabled(false);
-        UsbDevice device = getIntent().getParcelableExtra(EXTRA_USB_DEVICE);
+        UsbDevice device = (UsbDevice) getIntent().getParcelableExtra(EXTRA_USB_DEVICE);
         wizard.start(device);
     }
-
-    // ----- Step UI -----
 
     private void showStep(UnlockStep step, boolean inProgress) {
         currentStep = step;
@@ -133,10 +126,10 @@ public class UnlockWizardActivity extends AppCompatActivity implements UnlockCal
     private void markStepDone(UnlockStep step, boolean success) {
         tvStepStatus.setVisibility(View.VISIBLE);
         if (success) {
-            tvStepStatus.setText("✓ " + step.label + " complete");
+            tvStepStatus.setText("OK " + step.label + " complete");
             tvStepStatus.setTextColor(getColor(R.color.colorSuccess));
         } else {
-            tvStepStatus.setText("✗ " + step.label + " failed");
+            tvStepStatus.setText("FAIL " + step.label + " failed");
             tvStepStatus.setTextColor(getColor(R.color.colorError));
         }
         progressStep.setVisibility(View.GONE);
@@ -176,90 +169,104 @@ public class UnlockWizardActivity extends AppCompatActivity implements UnlockCal
         }
     }
 
-    // ----- UnlockCallback -----
-
-    @Override public void onStepStarted(UnlockStep step) {
-        mainHandler.post(() -> showStep(step, true));
-    }
-
-    @Override public void onStepCompleted(UnlockStep step) {
-        mainHandler.post(() -> markStepDone(step, true));
-    }
-
-    @Override public void onStepFailed(UnlockStep step, String reason) {
-        mainHandler.post(() -> {
-            markStepDone(step, false);
-            btnNext.setEnabled(true);
-            btnNext.setText(getString(R.string.btn_retry));
-            wizardRunning = false;
+    @Override public void onStepStarted(final UnlockStep step) {
+        mainHandler.post(new Runnable() {
+            @Override public void run() { showStep(step, true); }
         });
     }
 
-    @Override public void onDeviceDetected(DeviceInfo info) {
-        mainHandler.post(() -> {
-            cardDeviceInfo.setVisibility(View.VISIBLE);
-            tvDeviceName.setText(info.displayName());
-            tvDeviceSerial.setText("Serial: " + (info.serial.isEmpty() ? "unknown" : info.serial));
-            tvDeviceMode.setText("Mode: " + info.mode.name());
+    @Override public void onStepCompleted(final UnlockStep step) {
+        mainHandler.post(new Runnable() {
+            @Override public void run() { markStepDone(step, true); }
         });
     }
 
-    @Override public void onAwaitingUserConfirmation(String message) {
-        mainHandler.post(() -> new AlertDialog.Builder(this)
-                .setTitle("Confirm on Target Device")
-                .setMessage(message)
-                .setPositiveButton("OK", null)
-                .show());
+    @Override public void onStepFailed(final UnlockStep step, final String reason) {
+        mainHandler.post(new Runnable() {
+            @Override public void run() {
+                markStepDone(step, false);
+                btnNext.setEnabled(true);
+                btnNext.setText(getString(R.string.btn_retry));
+                wizardRunning = false;
+            }
+        });
+    }
+
+    @Override public void onDeviceDetected(final DeviceInfo info) {
+        mainHandler.post(new Runnable() {
+            @Override public void run() {
+                cardDeviceInfo.setVisibility(View.VISIBLE);
+                tvDeviceName.setText(info.displayName());
+                tvDeviceSerial.setText("Serial: " + (info.serial.isEmpty() ? "unknown" : info.serial));
+                tvDeviceMode.setText("Mode: " + info.mode.name());
+            }
+        });
+    }
+
+    @Override public void onAwaitingUserConfirmation(final String message) {
+        mainHandler.post(new Runnable() {
+            @Override public void run() {
+                new AlertDialog.Builder(UnlockWizardActivity.this)
+                        .setTitle("Confirm on Target Device")
+                        .setMessage(message)
+                        .setPositiveButton("OK", null)
+                        .show();
+            }
+        });
     }
 
     @Override public void onUnlockSuccess() {
-        mainHandler.post(() -> {
-            wizardRunning = false;
-            new AlertDialog.Builder(this)
-                    .setTitle("Bootloader Unlocked!")
-                    .setMessage("The bootloader has been successfully unlocked. "
-                            + "The device will wipe and reboot.")
-                    .setPositiveButton("Done", (d, w) -> finish())
-                    .setCancelable(false)
-                    .show();
+        mainHandler.post(new Runnable() {
+            @Override public void run() {
+                wizardRunning = false;
+                new AlertDialog.Builder(UnlockWizardActivity.this)
+                        .setTitle("Bootloader Unlocked!")
+                        .setMessage("The bootloader has been successfully unlocked. The device will wipe and reboot.")
+                        .setPositiveButton("Done", new DialogInterface.OnClickListener() {
+                            @Override public void onClick(DialogInterface d, int w) { finish(); }
+                        })
+                        .setCancelable(false)
+                        .show();
+            }
         });
     }
 
-    @Override public void onUnlockFailed(String reason) {
-        mainHandler.post(() -> {
-            wizardRunning = false;
-            btnNext.setEnabled(true);
-            btnNext.setText(getString(R.string.btn_retry));
-            new AlertDialog.Builder(this)
-                    .setTitle("Unlock Failed")
-                    .setMessage(reason)
-                    .setPositiveButton("OK", null)
-                    .show();
+    @Override public void onUnlockFailed(final String reason) {
+        mainHandler.post(new Runnable() {
+            @Override public void run() {
+                wizardRunning = false;
+                btnNext.setEnabled(true);
+                btnNext.setText(getString(R.string.btn_retry));
+                new AlertDialog.Builder(UnlockWizardActivity.this)
+                        .setTitle("Unlock Failed")
+                        .setMessage(reason)
+                        .setPositiveButton("OK", null)
+                        .show();
+            }
         });
     }
 
-    @Override public void onOemTokenRequired(String oemName, String portalUrl, String deviceData) {
-        mainHandler.post(() -> {
-            View inputView = getLayoutInflater().inflate(android.R.layout.simple_list_item_1, null);
-            EditText et = new EditText(this);
-            et.setHint("Paste unlock code here");
+    @Override public void onOemTokenRequired(final String oemName, final String portalUrl, final String deviceData) {
+        mainHandler.post(new Runnable() {
+            @Override public void run() {
+                final EditText et = new EditText(UnlockWizardActivity.this);
+                et.setHint("Paste unlock code here");
 
-            new AlertDialog.Builder(this)
-                    .setTitle(oemName + " Unlock Code Required")
-                    .setMessage("This device requires an unlock code from:\n" + portalUrl
-                            + "\n\nDevice data:\n" + deviceData
-                            + "\n\nPaste your unlock code below:")
-                    .setView(et)
-                    .setPositiveButton("Apply Code", (d, w) -> {
-                        String code = et.getText().toString().trim();
-                        if (!code.isEmpty()) wizard.applyOemUnlockCode(code);
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .show();
+                new AlertDialog.Builder(UnlockWizardActivity.this)
+                        .setTitle(oemName + " Unlock Code Required")
+                        .setMessage("Unlock code from:\n" + portalUrl + "\n\nDevice data:\n" + deviceData)
+                        .setView(et)
+                        .setPositiveButton("Apply Code", new DialogInterface.OnClickListener() {
+                            @Override public void onClick(DialogInterface d, int w) {
+                                String code = et.getText().toString().trim();
+                                if (!code.isEmpty()) wizard.applyOemUnlockCode(code);
+                            }
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            }
         });
     }
-
-    // ----- Helpers -----
 
     private int dpToPx(int dp) {
         return (int) (dp * getResources().getDisplayMetrics().density);
@@ -267,25 +274,25 @@ public class UnlockWizardActivity extends AppCompatActivity implements UnlockCal
 
     private String stepTitle(UnlockStep s) {
         switch (s) {
-            case CONNECT_DEVICE:      return getString(R.string.step_1_title);
-            case DETECT_AND_VERIFY:   return getString(R.string.step_2_title);
-            case REBOOT_FASTBOOT:     return getString(R.string.step_3_title);
-            case CHECK_UNLOCK_ABILITY:return getString(R.string.step_4_title);
-            case EXECUTE_UNLOCK:      return getString(R.string.step_5_title);
-            case COMPLETE:            return getString(R.string.step_6_title);
-            default:                  return s.label;
+            case CONNECT_DEVICE:       return getString(R.string.step_1_title);
+            case DETECT_AND_VERIFY:    return getString(R.string.step_2_title);
+            case REBOOT_FASTBOOT:      return getString(R.string.step_3_title);
+            case CHECK_UNLOCK_ABILITY: return getString(R.string.step_4_title);
+            case EXECUTE_UNLOCK:       return getString(R.string.step_5_title);
+            case COMPLETE:             return getString(R.string.step_6_title);
+            default:                   return s.label;
         }
     }
 
     private String stepDesc(UnlockStep s) {
         switch (s) {
-            case CONNECT_DEVICE:      return getString(R.string.step_1_desc);
-            case DETECT_AND_VERIFY:   return getString(R.string.step_2_desc);
-            case REBOOT_FASTBOOT:     return getString(R.string.step_3_desc);
-            case CHECK_UNLOCK_ABILITY:return getString(R.string.step_4_desc);
-            case EXECUTE_UNLOCK:      return getString(R.string.step_5_desc);
-            case COMPLETE:            return getString(R.string.step_6_desc);
-            default:                  return "";
+            case CONNECT_DEVICE:       return getString(R.string.step_1_desc);
+            case DETECT_AND_VERIFY:    return getString(R.string.step_2_desc);
+            case REBOOT_FASTBOOT:      return getString(R.string.step_3_desc);
+            case CHECK_UNLOCK_ABILITY: return getString(R.string.step_4_desc);
+            case EXECUTE_UNLOCK:       return getString(R.string.step_5_desc);
+            case COMPLETE:             return getString(R.string.step_6_desc);
+            default:                   return "";
         }
     }
 }

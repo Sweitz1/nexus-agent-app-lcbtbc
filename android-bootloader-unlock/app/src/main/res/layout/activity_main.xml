@@ -1,254 +1,191 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/colorBackground">
+    android:background="@color/colorBackground"
+    android:fillViewport="true">
 
-    <ScrollView
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:gravity="center"
+            android:paddingTop="48dp"
+            android:paddingBottom="32dp">
 
-            <!-- Logo + Title -->
-            <LinearLayout
-                android:layout_width="match_parent"
+            <ImageView
+                android:id="@+id/ivLogo"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:src="@drawable/ic_launcher_foreground"
+                android:contentDescription="@string/app_name"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
+                android:text="@string/title_main"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:textColor="@color/colorOnBackground"
+                android:layout_marginTop="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/subtitle_main"
+                android:textSize="14sp"
+                android:textColor="@color/colorTextSecondary"
                 android:gravity="center"
-                android:paddingTop="48dp"
-                android:paddingBottom="32dp">
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
 
-                <ImageView
-                    android:id="@+id/ivLogo"
-                    android:layout_width="96dp"
-                    android:layout_height="96dp"
-                    android:src="@drawable/ic_launcher_foreground"
-                    android:contentDescription="@string/app_name"
-                    android:scaleType="fitCenter" />
+        <LinearLayout
+            android:id="@+id/cardDeviceStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/colorSurface"
+            android:orientation="horizontal"
+            android:padding="20dp"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <View
+                android:id="@+id/viewDeviceIndicator"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="@drawable/bg_step_indicator"
+                android:layout_marginEnd="16dp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/title_main"
-                    android:textSize="28sp"
-                    android:textStyle="bold"
+                    android:text="@string/label_device_status"
+                    android:textSize="12sp"
+                    android:textColor="@color/colorTextSecondary" />
+
+                <TextView
+                    android:id="@+id/tvDeviceStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_no_device"
+                    android:textSize="16sp"
                     android:textColor="@color/colorOnBackground"
-                    android:layout_marginTop="16dp" />
+                    android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tvDeviceDetails"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/subtitle_main"
-                    android:textSize="14sp"
+                    android:textSize="12sp"
                     android:textColor="@color/colorTextSecondary"
-                    android:gravity="center"
-                    android:layout_marginTop="8dp" />
+                    android:visibility="gone" />
             </LinearLayout>
 
-            <!-- Device Status Card -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/cardDeviceStatus"
-                android:layout_width="match_parent"
+            <TextView
+                android:id="@+id/tvDeviceMode"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/colorSurface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                android:layout_marginBottom="16dp">
+                android:textSize="11sp"
+                android:textColor="@color/colorPrimaryLight"
+                android:background="@color/colorSurfaceVariant"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:visibility="gone" />
+        </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="20dp"
-                    android:gravity="center_vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/colorSurface"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:layout_marginBottom="16dp">
 
-                    <View
-                        android:id="@+id/viewDeviceIndicator"
-                        android:layout_width="12dp"
-                        android:layout_height="12dp"
-                        android:background="@drawable/bg_step_indicator"
-                        android:layout_marginEnd="16dp" />
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/label_device_status"
-                            android:textSize="12sp"
-                            android:textColor="@color/colorTextSecondary" />
-
-                        <TextView
-                            android:id="@+id/tvDeviceStatus"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/label_no_device"
-                            android:textSize="16sp"
-                            android:textColor="@color/colorOnBackground"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvDeviceDetails"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textSize="12sp"
-                            android:textColor="@color/colorTextSecondary"
-                            android:visibility="gone" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvDeviceMode"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="11sp"
-                        android:textColor="@color/colorPrimaryLight"
-                        android:background="@color/colorSurfaceVariant"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp"
-                        android:paddingTop="4dp"
-                        android:paddingBottom="4dp"
-                        android:visibility="gone" />
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Requirements Card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/colorSurface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                android:layout_marginBottom="16dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Requirements"
-                        android:textSize="14sp"
-                        android:textColor="@color/colorOnBackground"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="12dp" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="8dp">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                            android:text="•  " android:textColor="@color/colorPrimary" android:textSize="14sp" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                            android:text="USB-C to USB-C cable"
-                            android:textColor="@color/colorTextSecondary" android:textSize="14sp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="8dp">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                            android:text="•  " android:textColor="@color/colorPrimary" android:textSize="14sp" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                            android:text="OEM Unlocking enabled on target"
-                            android:textColor="@color/colorTextSecondary" android:textSize="14sp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="8dp">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                            android:text="•  " android:textColor="@color/colorPrimary" android:textSize="14sp" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                            android:text="USB Debugging enabled on target"
-                            android:textColor="@color/colorTextSecondary" android:textSize="14sp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                            android:text="•  " android:textColor="@color/colorPrimary" android:textSize="14sp" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                            android:text="OTG/USB Host support on this device"
-                            android:textColor="@color/colorTextSecondary" android:textSize="14sp" />
-                    </LinearLayout>
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Warning Card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="#1AFF4455"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                android:layout_marginBottom="24dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="⚠ Data Wipe Warning"
-                        android:textSize="14sp"
-                        android:textColor="@color/colorWarning"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="8dp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/warning_data_wipe"
-                        android:textSize="13sp"
-                        android:textColor="@color/colorTextSecondary" />
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Start Button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnStartWizard"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/btn_start_wizard"
-                android:textSize="16sp"
+                android:text="Requirements"
+                android:textSize="14sp"
+                android:textColor="@color/colorOnBackground"
                 android:textStyle="bold"
-                style="@style/Widget.NexusBootloaderUnlock.Button"
                 android:layout_marginBottom="12dp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnViewLogs"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="View Logs"
-                style="@style/Widget.NexusBootloaderUnlock.Button.Outlined"
-                android:layout_marginBottom="48dp" />
-
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="  USB-C to USB-C cable"
+                android:textColor="@color/colorTextSecondary" android:textSize="14sp"
+                android:layout_marginBottom="6dp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="  OEM Unlocking enabled on target"
+                android:textColor="@color/colorTextSecondary" android:textSize="14sp"
+                android:layout_marginBottom="6dp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="  USB Debugging enabled on target"
+                android:textColor="@color/colorTextSecondary" android:textSize="14sp"
+                android:layout_marginBottom="6dp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="  OTG/USB Host support on this device"
+                android:textColor="@color/colorTextSecondary" android:textSize="14sp" />
         </LinearLayout>
-    </ScrollView>
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#1AFF4455"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Data Wipe Warning"
+                android:textSize="14sp"
+                android:textColor="@color/colorWarning"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/warning_data_wipe"
+                android:textSize="13sp"
+                android:textColor="@color/colorTextSecondary" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnStartWizard"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/btn_start_wizard"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:background="@color/colorPrimary"
+            android:textColor="@color/colorOnBackground"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnViewLogs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="View Logs"
+            android:background="@color/colorSurface"
+            android:textColor="@color/colorPrimary"
+            android:layout_marginBottom="48dp" />
+
+    </LinearLayout>
+</ScrollView>
