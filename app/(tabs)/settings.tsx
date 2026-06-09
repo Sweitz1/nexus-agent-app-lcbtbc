@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { COLORS, SPACING, RADIUS } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { withStrippedProps } from '@/utils/stripDevProps';
 import {
   User,
@@ -66,11 +67,19 @@ function SettingsRow({ icon: Icon, iconColor, label, sublabel, onPress, destruct
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { signOut, deleteAccount } = useAuth();
 
   const handleSignOutPress = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => {} },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          await signOut();
+          router.replace('/');
+        },
+      },
     ]);
   };
 
@@ -80,7 +89,18 @@ export default function SettingsScreen() {
       'This action is permanent and cannot be undone. All your data will be deleted.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => {} },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+              router.replace('/');
+            } catch (e: any) {
+              Alert.alert('Error', e?.message ?? 'Failed to delete account. Please try again.');
+            }
+          },
+        },
       ]
     );
   };
