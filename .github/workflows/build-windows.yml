@@ -16,14 +16,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install app dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Build Expo web export
-        run: npx expo export --platform web
-        env:
-          EXPO_NO_TELEMETRY: 1
-
       - name: Install Electron build tools
         run: npm install --save-dev electron electron-builder png-to-ico
 
@@ -35,10 +27,7 @@ jobs:
           pngToIco('assets/icon.png').then(buf => {
             fs.writeFileSync('assets/icon.ico', buf);
             console.log('icon.ico created');
-          }).catch(e => {
-            console.error(e);
-            process.exit(1);
-          });
+          }).catch(e => { console.error(e); process.exit(1); });
           "
 
       - name: Build Windows MSI

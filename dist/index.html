@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexus Agent</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0c; --surface: #111116; --border: #1e1e2a;
+    --primary: #00ff9f; --primary-dim: rgba(0,255,159,0.12);
+    --text: #e8e8f0; --muted: #6b6b80; --danger: #ff4d6d;
+    --warn: #ffb347; --radius: 10px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; display: flex; height: 100vh; overflow: hidden; }
+  /* SIDEBAR */
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  .logo { padding: 20px 16px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+  .logo-icon { width: 32px; height: 32px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #000; font-size: 16px; }
+  .logo-text { font-weight: 700; font-size: 16px; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 10px; color: var(--muted); }
+  nav { flex: 1; padding: 12px 8px; overflow-y: auto; }
+  .nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 8px 8px 4px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 7px; cursor: pointer; color: var(--muted); transition: all 0.15s; margin-bottom: 2px; }
+  .nav-item:hover { background: var(--border); color: var(--text); }
+  .nav-item.active { background: var(--primary-dim); color: var(--primary); }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .badge { margin-left: auto; background: var(--primary); color: #000; border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
+  .badge.warn { background: var(--warn); }
+  /* MAIN */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface); }
+  .topbar-title { font-size: 18px; font-weight: 700; }
+  .btn { padding: 8px 16px; border-radius: var(--radius); border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--primary); color: #000; }
+  .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+  /* CARDS */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 12px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .card-title { font-weight: 600; font-size: 15px; }
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .stat-label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 800; }
+  .stat-value.green { color: var(--primary); }
+  .stat-value.yellow { color: var(--warn); }
+  .stat-value.red { color: var(--danger); }
+  /* STATUS PILL */
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .pill.running { background: rgba(0,255,159,0.15); color: var(--primary); }
+  .pill.pending { background: rgba(107,107,128,0.2); color: var(--muted); }
+  .pill.waiting { background: rgba(255,179,71,0.15); color: var(--warn); }
+  .pill.completed { background: rgba(0,255,159,0.1); color: #00cc7a; }
+  .pill.failed { background: rgba(255,77,109,0.15); color: var(--danger); }
+  /* TASK LIST */
+  .task-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .task-row:last-child { border-bottom: none; }
+  .task-row:hover .task-goal { color: var(--primary); }
+  .task-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .task-dot.running { background: var(--primary); box-shadow: 0 0 6px var(--primary); }
+  .task-dot.completed { background: #00cc7a; }
+  .task-dot.failed { background: var(--danger); }
+  .task-dot.waiting { background: var(--warn); }
+  .task-dot.pending { background: var(--muted); }
+  .task-info { flex: 1; }
+  .task-goal { font-weight: 500; margin-bottom: 3px; }
+  .task-meta { font-size: 12px; color: var(--muted); }
+  /* FORM */
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--muted); font-weight: 500; }
+  .form-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; color: var(--text); font-size: 14px; outline: none; transition: border-color 0.15s; }
+  .form-input:focus { border-color: var(--primary); }
+  textarea.form-input { resize: vertical; min-height: 100px; }
+  .tool-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; transition: all 0.15s; }
+  .chip.active { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+  /* TOGGLE */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-info .label { font-weight: 500; margin-bottom: 2px; }
+  .toggle-info .desc { font-size: 12px; color: var(--muted); }
+  .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle input { display: none; }
+  .toggle-track { width: 44px; height: 24px; background: var(--border); border-radius: 12px; cursor: pointer; transition: background 0.2s; }
+  .toggle input:checked + .toggle-track { background: var(--primary); }
+  .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: transform 0.2s; pointer-events: none; }
+  .toggle input:checked ~ .toggle-thumb { transform: translateX(20px); }
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; width: 560px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  /* STEP TIMELINE */
+  .step-item { display: flex; gap: 12px; padding: 10px 0; }
+  .step-line { display: flex; flex-direction: column; align-items: center; }
+  .step-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+  .step-connector { width: 2px; flex: 1; background: var(--border); margin-top: 4px; }
+  .step-body { flex: 1; }
+  .step-type { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+  .step-content { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 13px; }
+  /* EMPTY */
+  .empty { text-align: center; padding: 60px 0; color: var(--muted); }
+  .empty .icon { font-size: 40px; margin-bottom: 12px; }
+  /* LOG */
+  .log-row { font-family: monospace; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); display: flex; gap: 12px; }
+  .log-time { color: var(--muted); flex-shrink: 0; }
+  .log-level { width: 36px; flex-shrink: 0; font-weight: 700; }
+  .log-level.error { color: var(--danger); }
+  .log-level.warn { color: var(--warn); }
+  .log-level.info { color: var(--primary); }
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  /* FILTER CHIPS */
+  .filter-chips { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-chip { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; }
+  .filter-chip.active { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+  /* APPROVAL BANNER */
+  .approval-banner { background: rgba(255,179,71,0.1); border: 1px solid rgba(255,179,71,0.3); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+  .approval-banner h4 { color: var(--warn); margin-bottom: 8px; }
+  .approval-actions { display: flex; gap: 8px; margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">N</div>
+    <div>
+      <div class="logo-text">Nexus Agent</div>
+      <div class="logo-sub">AI Task Automation</div>
+    </div>
+  </div>
+  <nav>
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" onclick="navigate('home')"><span class="icon">⌂</span> Dashboard</div>
+    <div class="nav-item" onclick="navigate('tasks')"><span class="icon">⚡</span> Tasks <span class="badge" id="badge-running">0</span></div>
+    <div class="nav-item" onclick="navigate('new-task')"><span class="icon">＋</span> New Task</div>
+    <div class="nav-item" onclick="navigate('memory')"><span class="icon">◈</span> Memory</div>
+    <div class="nav-section">Config</div>
+    <div class="nav-item" onclick="navigate('providers')"><span class="icon">◎</span> Providers</div>
+    <div class="nav-item" onclick="navigate('permissions')"><span class="icon">🛡</span> Permissions</div>
+    <div class="nav-item" onclick="navigate('logs')"><span class="icon">☰</span> Logs</div>
+    <div class="nav-item" onclick="navigate('settings')"><span class="icon">⚙</span> Settings</div>
+  </nav>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">Dashboard</div>
+    <div id="topbar-action"></div>
+  </div>
+  <div class="content" id="content"></div>
+</main>
+
+<!-- NEW TASK MODAL (task detail) -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="modal-title" id="modal-task-title">Task Detail</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕ Close</button>
+    </div>
+    <div id="modal-task-content"></div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+const BASE = 'http://localhost:3000';
+let currentPage = 'home';
+let tasks = [], memory = [], providers = [], logs = [];
+let pollTimer = null;
+
+// ── SAMPLE DATA (shown when backend not connected) ─────────────────────────
+const sampleTasks = [
+  { id: '1', goal: 'Research competitors for Q3 strategy report', status: 'completed', createdAt: Date.now() - 86400000, steps: 12 },
+  { id: '2', goal: 'Summarize top 5 AI papers from last week', status: 'running', createdAt: Date.now() - 3600000, steps: 4 },
+  { id: '3', goal: 'Write Python script to parse CSV sales data', status: 'waiting_for_approval', createdAt: Date.now() - 1800000, steps: 3 },
+  { id: '4', goal: 'Find and fix memory leak in the auth service', status: 'failed', createdAt: Date.now() - 7200000, steps: 7 },
+  { id: '5', goal: 'Draft email response to enterprise client inquiry', status: 'pending', createdAt: Date.now() - 600000, steps: 0 },
+];
+
+// ── API ────────────────────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  try {
+    const r = await fetch(BASE + path, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts });
+    if (!r.ok) throw new Error(r.statusText);
+    return r.json();
+  } catch { return null; }
+}
+
+// ── NAVIGATION ─────────────────────────────────────────────────────────────
+const titles = { home: 'Dashboard', tasks: 'Tasks', 'new-task': 'New Task', memory: 'Memory', providers: 'Providers', permissions: 'Permissions', logs: 'Activity Logs', settings: 'Settings' };
+
+function navigate(page) {
+  clearInterval(pollTimer);
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => { if (el.textContent.trim().toLowerCase().startsWith(titles[page]?.toLowerCase().split(' ')[0] || '')) el.classList.add('active'); });
+  document.getElementById('page-title').textContent = titles[page] || page;
+  document.getElementById('topbar-action').innerHTML = '';
+  pages[page]?.();
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function timeAgo(ts) {
+  const d = Date.now() - ts, s = Math.floor(d / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return `${Math.floor(s/86400)}d ago`;
+}
+
+function statusPill(s) { return `<span class="pill ${s}">${s.replace('_',' ')}</span>`; }
+
+function taskDot(s) { return `<div class="task-dot ${s}"></div>`; }
+
+function el(html) { const d = document.createElement('div'); d.innerHTML = html; return d.firstElementChild; }
+
+// ── PAGES ──────────────────────────────────────────────────────────────────
+const pages = {
+
+  home: async () => {
+    const c = document.getElementById('content');
+    const data = await apiFetch('/api/tasks') || { tasks: sampleTasks };
+    const list = data.tasks || sampleTasks;
+    const running = list.filter(t => t.status === 'running').length;
+    const completed = list.filter(t => t.status === 'completed').length;
+    const waiting = list.filter(t => t.status === 'waiting_for_approval').length;
+    document.getElementById('badge-running').textContent = running;
+    c.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Active Tasks</div><div class="stat-value green">${running}</div></div>
+        <div class="stat-card"><div class="stat-label">Awaiting Approval</div><div class="stat-value yellow">${waiting}</div></div>
+        <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value">${completed}</div></div>
+        <div class="stat-card"><div class="stat-label">Total Tasks</div><div class="stat-value">${list.length}</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Recent Tasks</div><button class="btn btn-primary btn-sm" onclick="navigate('new-task')">+ New Task</button></div>
+        ${list.slice(0,5).map(t => `
+          <div class="task-row" onclick="showTask('${t.id}')">
+            ${taskDot(t.status)}
+            <div class="task-info">
+              <div class="task-goal">${t.goal}</div>
+              <div class="task-meta">${timeAgo(t.createdAt)} · ${t.steps || 0} steps</div>
+            </div>
+            ${statusPill(t.status)}
+          </div>`).join('')}
+      </div>`;
+    pollTimer = setInterval(() => pages.home(), 10000);
+  },
+
+  tasks: async () => {
+    const c = document.getElementById('content');
+    document.getElementById('topbar-action').innerHTML = '<button class="btn btn-primary btn-sm" onclick="navigate(\'new-task\')">+ New Task</button>';
+    const data = await apiFetch('/api/tasks') || { tasks: sampleTasks };
+    const list = data.tasks || sampleTasks;
+    const statuses = ['all', 'running', 'pending', 'waiting_for_approval', 'completed', 'failed'];
+    let active = 'all';
+    const render = (filter) => {
+      const filtered = filter === 'all' ? list : list.filter(t => t.status === filter);
+      c.innerHTML = `
+        <div class="filter-chips">
+          ${statuses.map(s => `<div class="filter-chip ${s === filter ? 'active' : ''}" onclick="filterTasks('${s}')">${s.replace('_',' ')}</div>`).join('')}
+        </div>
+        <div class="card" style="padding:0 18px">
+          ${filtered.length === 0 ? '<div class="empty"><div class="icon">⚡</div><div>No tasks found</div></div>' :
+            filtered.map(t => `
+              <div class="task-row" onclick="showTask('${t.id}')">
+                ${taskDot(t.status)}
+                <div class="task-info">
+                  <div class="task-goal">${t.goal}</div>
+                  <div class="task-meta">${timeAgo(t.createdAt)}</div>
+                </div>
+                ${statusPill(t.status)}
+              </div>`).join('')}
+        </div>`;
+    };
+    window.filterTasks = (f) => render(f);
+    render('all');
+    pollTimer = setInterval(() => pages.tasks(), 5000);
+  },
+
+  'new-task': () => {
+    const c = document.getElementById('content');
+    const tools = ['web_fetch','file_read','file_write','github_read','github_write','memory_search','memory_write','custom_api_call','shell','file_delete'];
+    let selectedTools = ['web_fetch','memory_search'];
+    const renderChips = () => {
+      document.querySelectorAll('.tool-chip').forEach(ch => {
+        ch.classList.toggle('active', selectedTools.includes(ch.dataset.tool));
+      });
+    };
+    c.innerHTML = `
+      <div class="card" style="max-width:640px">
+        <div class="card-title" style="margin-bottom:20px">Create New Agent Task</div>
+        <div class="form-group">
+          <label class="form-label">Goal / Objective</label>
+          <textarea class="form-input" id="goal-input" placeholder="Describe what you want the agent to accomplish…"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Allowed Tools</label>
+          <div class="tool-chips">
+            ${tools.map(t => `<div class="chip tool-chip ${selectedTools.includes(t) ? 'active' : ''}" data-tool="${t}" onclick="toggleTool('${t}')">${t}</div>`).join('')}
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select class="form-input" id="priority-input">
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:7px;padding:12px">
+          <div>
+            <div style="font-weight:500">Require Approval</div>
+            <div style="font-size:12px;color:var(--muted)">Pause before risky actions</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="approval-toggle" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <button class="btn btn-primary" onclick="submitTask()" style="width:100%">Launch Agent Task</button>
+      </div>`;
+    window.toggleTool = (t) => {
+      selectedTools.includes(t) ? selectedTools.splice(selectedTools.indexOf(t),1) : selectedTools.push(t);
+      renderChips();
+    };
+    window.submitTask = async () => {
+      const goal = document.getElementById('goal-input').value.trim();
+      if (!goal) { alert('Please enter a goal.'); return; }
+      const res = await apiFetch('/api/tasks', { method: 'POST', body: JSON.stringify({ goal, allowedTools: selectedTools, priority: document.getElementById('priority-input').value, requireApproval: document.getElementById('approval-toggle').checked }) });
+      navigate('tasks');
+    };
+  },
+
+  memory: async () => {
+    const c = document.getElementById('content');
+    const data = await apiFetch('/api/memory') || { memory: [] };
+    const items = data.memory || [];
+    const types = ['all','short_term','long_term','task','project'];
+    const colors = { short_term:'#6b6b80', long_term:'var(--primary)', task:'var(--warn)', project:'#7c6ff7' };
+    const render = (filter, search='') => {
+      const filtered = items.filter(m => (filter==='all'||m.memoryType===filter) && (!search||m.content.toLowerCase().includes(search.toLowerCase())));
+      document.getElementById('mem-list').innerHTML = filtered.length === 0
+        ? '<div class="empty"><div class="icon">◈</div><div>No memory entries</div></div>'
+        : filtered.map(m => `
+          <div class="card" style="margin-bottom:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span class="pill" style="background:${colors[m.memoryType]||'#888'}22;color:${colors[m.memoryType]||'#888'}">${m.memoryType}</span>
+              <button class="btn btn-ghost btn-sm" onclick="deleteMemory('${m.id}')">Delete</button>
+            </div>
+            <div style="font-size:13px">${m.content}</div>
+          </div>`).join('');
+    };
+    c.innerHTML = `
+      <div style="display:flex;gap:12px;margin-bottom:16px">
+        <input class="form-input" id="mem-search" placeholder="Search memory…" oninput="memFilter()" style="flex:1"/>
+      </div>
+      <div class="filter-chips">${types.map(t=>`<div class="filter-chip ${t==='all'?'active':''}" onclick="memType('${t}')">${t}</div>`).join('')}</div>
+      <div id="mem-list"></div>`;
+    let activeType='all';
+    window.memType=(t)=>{activeType=t;document.querySelectorAll('.filter-chip').forEach(c=>c.classList.toggle('active',c.textContent===t));render(t,document.getElementById('mem-search').value);};
+    window.memFilter=()=>render(activeType,document.getElementById('mem-search').value);
+    window.deleteMemory=async(id)=>{if(!confirm('Delete this memory?'))return;await apiFetch('/api/memory/'+id,{method:'DELETE'});pages.memory();};
+    render('all');
+  },
+
+  providers: async () => {
+    const c = document.getElementById('content');
+    document.getElementById('topbar-action').innerHTML = '<button class="btn btn-primary btn-sm" onclick="showAddProvider()">+ Add Provider</button>';
+    const data = await apiFetch('/api/providers') || { providers: [] };
+    const list = data.providers || [];
+    c.innerHTML = list.length === 0
+      ? '<div class="empty"><div class="icon">◎</div><div>No providers configured</div><div style="margin-top:12px"><button class="btn btn-primary" onclick="showAddProvider()">Add your first provider</button></div></div>'
+      : list.map(p => `
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">${p.name}</div>
+              <div style="font-size:12px;color:var(--muted)">${p.providerType} · ${p.model}</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="deleteProvider('${p.id}')">Delete</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted)">API Key: ••••••••${(p.apiKey||'').slice(-4)}</div>
+        </div>`).join('');
+    window.showAddProvider = () => {
+      document.getElementById('task-modal').classList.add('open');
+      document.getElementById('modal-task-title').textContent = 'Add Model Provider';
+      document.getElementById('modal-task-content').innerHTML = `
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="prov-name" placeholder="My OpenAI"/></div>
+        <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="prov-type"><option>openai</option><option>anthropic</option><option>google</option><option>openai_compatible</option></select></div>
+        <div class="form-group"><label class="form-label">API Key</label><input class="form-input" id="prov-key" type="password" placeholder="sk-…"/></div>
+        <div class="form-group"><label class="form-label">Model</label><input class="form-input" id="prov-model" placeholder="gpt-4o"/></div>
+        <button class="btn btn-primary" style="width:100%" onclick="saveProvider()">Save Provider</button>`;
+    };
+    window.saveProvider = async () => {
+      await apiFetch('/api/providers', { method: 'POST', body: JSON.stringify({ name: document.getElementById('prov-name').value, providerType: document.getElementById('prov-type').value, apiKey: document.getElementById('prov-key').value, model: document.getElementById('prov-model').value }) });
+      closeModal(); pages.providers();
+    };
+    window.deleteProvider = async (id) => { if(!confirm('Delete provider?'))return; await apiFetch('/api/providers/'+id,{method:'DELETE'}); pages.providers(); };
+  },
+
+  permissions: async () => {
+    const c = document.getElementById('content');
+    const data = await apiFetch('/api/permissions') || { permissions: { allow_web_access:true, allow_file_read:true, allow_file_write:false, allow_file_delete:false, allow_github_read:false, allow_github_write:false, allow_custom_apis:false, allow_shell:false, require_confirmation_for_risky:true } };
+    const perms = data.permissions || data;
+    const toggles = [
+      { key:'allow_web_access', label:'Web Access', desc:'Fetch URLs and search the web' },
+      { key:'allow_file_read', label:'File Read', desc:'Read files from the sandbox' },
+      { key:'allow_file_write', label:'File Write', desc:'Create and modify files', risky:true },
+      { key:'allow_file_delete', label:'File Delete', desc:'Delete files permanently', risky:true },
+      { key:'allow_github_read', label:'GitHub Read', desc:'Read GitHub repositories' },
+      { key:'allow_github_write', label:'GitHub Write', desc:'Commit and push to GitHub', risky:true },
+      { key:'allow_custom_apis', label:'Custom APIs', desc:'Call user-defined API endpoints' },
+      { key:'allow_shell', label:'Shell Commands', desc:'Execute shell commands', risky:true },
+      { key:'require_confirmation_for_risky', label:'Require Approval', desc:'Pause before risky actions' },
+    ];
+    c.innerHTML = `
+      <div class="card" style="max-width:600px">
+        ${toggles.map(t => `
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="label">${t.label} ${t.risky ? '<span class="pill failed" style="font-size:10px;padding:1px 6px">risky</span>' : ''}</div>
+              <div class="desc">${t.desc}</div>
+            </div>
+            <label class="toggle" title="${t.key}">
+              <input type="checkbox" id="perm-${t.key}" ${perms[t.key]?'checked':''}>
+              <div class="toggle-track"></div><div class="toggle-thumb"></div>
+            </label>
+          </div>`).join('')}
+        <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="savePerms()">Save Permissions</button>
+      </div>`;
+    window.savePerms = async () => {
+      const body = {};
+      toggles.forEach(t => body[t.key] = document.getElementById('perm-'+t.key).checked);
+      await apiFetch('/api/permissions', { method: 'PUT', body: JSON.stringify(body) });
+      alert('Permissions saved.');
+    };
+  },
+
+  logs: async () => {
+    const c = document.getElementById('content');
+    const data = await apiFetch('/api/logs?limit=200') || { logs: [
+      { id:'1', level:'info', message:'Agent task started', createdAt: Date.now()-60000 },
+      { id:'2', level:'info', message:'Tool executed: web_fetch → https://example.com', createdAt: Date.now()-55000 },
+      { id:'3', level:'warn', message:'Rate limit approaching for provider google', createdAt: Date.now()-40000 },
+      { id:'4', level:'error', message:'Task failed: timeout after 60s', createdAt: Date.now()-30000 },
+      { id:'5', level:'info', message:'Memory written: research results stored', createdAt: Date.now()-10000 },
+    ]};
+    const list = data.logs || [];
+    const levels = ['all','info','warn','error'];
+    const levelColor = { info:'var(--primary)', warn:'var(--warn)', error:'var(--danger)' };
+    const render = (filter) => {
+      const filtered = filter==='all' ? list : list.filter(l=>l.level===filter);
+      document.getElementById('log-list').innerHTML = `<div style="font-family:monospace;font-size:12px">
+        ${filtered.map(l=>`<div class="log-row">
+          <span class="log-time">${new Date(l.createdAt).toLocaleTimeString()}</span>
+          <span class="log-level ${l.level}" style="color:${levelColor[l.level]||'#888'}">${l.level.toUpperCase()}</span>
+          <span>${l.message}</span>
+        </div>`).join('')}
+      </div>`;
+    };
+    c.innerHTML = `<div class="filter-chips">${levels.map(l=>`<div class="filter-chip ${l==='all'?'active':''}" onclick="logFilter('${l}')">${l}</div>`).join('')}</div><div id="log-list"></div>`;
+    window.logFilter=(f)=>{document.querySelectorAll('.filter-chip').forEach(c=>c.classList.toggle('active',c.textContent===f));render(f);};
+    render('all');
+    pollTimer = setInterval(() => pages.logs(), 8000);
+  },
+
+  settings: () => {
+    const c = document.getElementById('content');
+    c.innerHTML = `
+      <div class="card" style="max-width:520px">
+        <div class="card-title" style="margin-bottom:16px">App Settings</div>
+        <div class="form-group"><label class="form-label">App Name</label><input class="form-input" value="Nexus Agent"/></div>
+        <div class="form-group"><label class="form-label">Backend URL</label><input class="form-input" id="backend-url" value="${BASE}"/></div>
+        <div class="form-group"><label class="form-label">Default Model</label><input class="form-input" placeholder="e.g. gemini-1.5-pro"/></div>
+        <button class="btn btn-primary" style="margin-right:8px" onclick="alert('Settings saved.')">Save</button>
+        <button class="btn btn-ghost">Reset Defaults</button>
+      </div>
+      <div class="card" style="max-width:520px;margin-top:12px">
+        <div class="card-title" style="margin-bottom:12px">Quick Links</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-ghost" onclick="navigate('providers')" style="text-align:left">◎ Model Providers</button>
+          <button class="btn btn-ghost" onclick="navigate('permissions')" style="text-align:left">🛡 Tool Permissions</button>
+          <button class="btn btn-ghost" onclick="navigate('logs')" style="text-align:left">☰ Activity Logs</button>
+        </div>
+      </div>`;
+  }
+};
+
+// ── TASK DETAIL MODAL ──────────────────────────────────────────────────────
+async function showTask(id) {
+  const data = await apiFetch('/api/tasks/'+id);
+  const task = data?.task || sampleTasks.find(t=>t.id===id);
+  if (!task) return;
+  document.getElementById('task-modal').classList.add('open');
+  document.getElementById('modal-task-title').textContent = task.goal;
+  const steps = task.steps || [];
+  document.getElementById('modal-task-content').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      ${statusPill(task.status)}
+      <span style="color:var(--muted);font-size:12px">${timeAgo(task.createdAt)}</span>
+    </div>
+    ${task.status==='waiting_for_approval' ? `
+      <div class="approval-banner">
+        <h4>⚠ Approval Required</h4>
+        <div style="font-size:13px;color:var(--muted)">The agent wants to perform a potentially risky action.</div>
+        <div class="approval-actions">
+          <button class="btn btn-primary btn-sm" onclick="approveTask('${id}')">Approve</button>
+          <button class="btn btn-danger btn-sm" onclick="rejectTask('${id}')">Reject</button>
+        </div>
+      </div>` : ''}
+    ${typeof steps === 'number' || steps.length===0
+      ? `<div class="empty" style="padding:30px 0"><div>No step details available</div></div>`
+      : steps.map((s,i) => `
+        <div class="step-item">
+          <div class="step-line"><div class="step-dot" style="background:${s.status==='success'?'var(--primary)':s.status==='error'?'var(--danger)':'var(--muted)'}"></div>${i<steps.length-1?'<div class="step-connector"></div>':''}</div>
+          <div class="step-body">
+            <div class="step-type">${s.stepType||'step'}</div>
+            <div class="step-content">${s.content||s.toolOutput||'(no output)'}</div>
+          </div>
+        </div>`).join('')}
+    ${task.status==='running'||task.status==='pending' ? `<button class="btn btn-danger btn-sm" style="margin-top:12px" onclick="cancelTask('${id}')">Cancel Task</button>` : ''}`;
+}
+
+async function approveTask(id) { await apiFetch('/api/tasks/'+id+'/approve',{method:'POST',body:'{}'}); closeModal(); }
+async function rejectTask(id) { await apiFetch('/api/tasks/'+id+'/approve',{method:'POST',body:JSON.stringify({approved:false})}); closeModal(); }
+async function cancelTask(id) { await apiFetch('/api/tasks/'+id+'/cancel',{method:'POST'}); closeModal(); navigate('tasks'); }
+
+function closeModal() { document.getElementById('task-modal').classList.remove('open'); }
+document.getElementById('task-modal').addEventListener('click', e => { if(e.target.id==='task-modal') closeModal(); });
+
+// ── BOOT ───────────────────────────────────────────────────────────────────
+navigate('home');
+</script>
+</body>
+</html>
