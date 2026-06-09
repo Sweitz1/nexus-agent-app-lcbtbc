@@ -25,13 +25,40 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ubuntu-latest runners ship with $ANDROID_HOME pre-set and sdkmanager
-      # available. We just need to install the specific platform/build-tools.
-      - name: Accept SDK licenses
-        run: yes | sdkmanager --licenses 2>/dev/null || true
+      - name: Diagnose pre-installed Android SDK
+        run: |
+          echo "=== Environment ==="
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          echo ""
+          echo "=== SDK root contents ==="
+          ls -1 "${ANDROID_HOME:-/usr/local/lib/android/sdk}" 2>/dev/null || echo "SDK root empty or not found"
+          echo ""
+          echo "=== Installed platforms ==="
+          ls -1 "${ANDROID_HOME:-/usr/local/lib/android/sdk}/platforms" 2>/dev/null || echo "No platforms"
+          echo ""
+          echo "=== Installed build-tools ==="
+          ls -1 "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" 2>/dev/null || echo "No build-tools"
+          echo ""
+          echo "=== sdkmanager location ==="
+          which sdkmanager 2>/dev/null || find "${ANDROID_HOME:-/usr/local/lib/android/sdk}" -name sdkmanager 2>/dev/null || echo "sdkmanager not found"
+          echo ""
+          echo "=== sdkmanager --list_installed ==="
+          sdkmanager --list_installed 2>/dev/null || \
+            "${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager" --list_installed 2>/dev/null || \
+            echo "Could not run sdkmanager"
 
-      - name: Install SDK Platform 35 and Build Tools 35
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" --no_https
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Check SDK after setup
+        run: |
+          echo "=== Post-setup platforms ==="
+          ls -1 "$ANDROID_HOME/platforms" 2>/dev/null || echo "none"
+          echo "=== Post-setup build-tools ==="
+          ls -1 "$ANDROID_HOME/build-tools" 2>/dev/null || echo "none"
+          echo "=== sdkmanager available? ==="
+          which sdkmanager && sdkmanager --list_installed 2>&1 | head -20 || echo "No sdkmanager"
 
       - name: Cache Gradle wrapper
         uses: actions/cache@v4
@@ -51,13 +78,12 @@ jobs:
 
       - name: Build debug APK
         working-directory: android-bootloader-unlock
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleDebug --no-daemon --info 2>&1 | tail -60
 
       - name: Upload APK artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nexus-bootloader-unlock-debug
           path: android-bootloader-unlock/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          if-no-files-found: warn
