@@ -1,15 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  RefreshControl,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { withStrippedProps } from '@/utils/stripDevProps';
 import { NotificationBell } from '@/components/NotificationBell';
 import { COLORS, SPACING, RADIUS } from '@/constants/theme';
+import { tasks, memory, type Task, type Memory } from '@/utils/api';
 import {
   Activity,
   CheckCircle2,
@@ -18,6 +21,7 @@ import {
   ArrowRight,
   Brain,
   ListTodo,
+  AlertCircle,
 } from 'lucide-react-native';
 
 const ActivityIcon = withStrippedProps(Activity);
@@ -27,43 +31,80 @@ const ZapIcon = withStrippedProps(Zap);
 const ArrowRightIcon = withStrippedProps(ArrowRight);
 const BrainIcon = withStrippedProps(Brain);
 const ListTodoIcon = withStrippedProps(ListTodo);
-
-const STAT_CARDS = [
-  { label: 'Active Tasks', value: '12', icon: ActivityIcon, color: COLORS.primary },
-  { label: 'Completed', value: '47', icon: CheckCircle2Icon, color: '#00ccff' },
-  { label: 'Pending', value: '5', icon: ClockIcon, color: '#ffaa00' },
-  { label: 'Agent Runs', value: '128', icon: ZapIcon, color: '#cc88ff' },
-];
-
-const RECENT_TASKS = [
-  { id: '1', title: 'Analyze market data', status: 'running', time: '2m ago' },
-  { id: '2', title: 'Generate weekly report', status: 'completed', time: '1h ago' },
-  { id: '3', title: 'Review pull requests', status: 'pending', time: '3h ago' },
-];
+const AlertCircleIcon = withStrippedProps(AlertCircle);
 
 const STATUS_COLORS: Record<string, string> = {
   running: COLORS.primary,
+  planning: COLORS.primary,
   completed: '#00ccff',
   pending: '#ffaa00',
+  waiting_for_approval: '#cc88ff',
+  failed: COLORS.error,
+  cancelled: COLORS.textMuted,
 };
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [taskList, setTaskList] = useState<Task[]>([]);
+  const [memoryList, setMemoryList] = useState<Memory[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleQuickLinkPress = (label: string) => {
-    console.log('[Dashboard] Quick link pressed:', label);
-  };
+  const load = useCallback(async (silent = false) => {
+    try {
+      const [taskResult, memResult] = await Promise.all([
+        tasks.list(),
+        memory.list({ type: 'task' }),
+      ]);
+      setTaskList(taskResult.tasks);
+      setMemoryList(memResult);
+    } catch {}
+    setRefreshing(false);
+  }, []);
 
-  const handleTaskPress = (taskId: string, taskTitle: string) => {
-    console.log('[Dashboard] Task pressed:', taskId, taskTitle);
-  };
+  useEffect(() => {
+    load();
+    const interval = setInterval(() => load(true), 10000);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  const onRefresh = () => { setRefreshing(true); load(true); };
+
+  const activeCount = taskList.filter((t) => ['running', 'planning', 'pending'].includes(t.status)).length;
+  const completedCount = taskList.filter((t) => t.status === 'completed').length;
+  const pendingApproval = taskList.filter((t) => t.status === 'waiting_for_approval').length;
+  const totalRuns = taskList.length;
+  const recentTasks = taskList.slice(0, 5);
+
+  const statCards = [
+    { label: 'Active', value: String(activeCount), icon: ActivityIcon, color: COLORS.primary },
+    { label: 'Completed', value: String(completedCount), icon: CheckCircle2Icon, color: '#00ccff' },
+    { label: 'Approval', value: String(pendingApproval), icon: AlertCircleIcon, color: '#cc88ff' },
+    { label: 'Total Runs', value: String(totalRuns), icon: ZapIcon, color: '#ffaa00' },
+  ];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>Good morning</Text>
+          <Text style={styles.greeting}>{getGreeting()}</Text>
           <Text style={styles.title}>Dashboard</Text>
         </View>
         <View style={styles.headerRight}>
@@ -75,10 +116,11 @@ export default function DashboardScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
         {/* Stat Cards */}
         <View style={styles.statsGrid}>
-          {STAT_CARDS.map((card) => {
+          {statCards.map((card) => {
             const Icon = card.icon;
             return (
               <View key={card.label} style={styles.statCard}>
@@ -96,35 +138,39 @@ export default function DashboardScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Tasks</Text>
-            <TouchableOpacity
-              onPress={() => handleQuickLinkPress('View All Tasks')}
-              style={styles.seeAllBtn}
-            >
+            <TouchableOpacity onPress={() => router.push('/(tabs)/tasks')} style={styles.seeAllBtn}>
               <Text style={styles.seeAllText}>See all</Text>
               <ArrowRightIcon size={14} color={COLORS.primary} />
             </TouchableOpacity>
           </View>
 
-          {RECENT_TASKS.map((task) => {
-            const statusColor = STATUS_COLORS[task.status] ?? COLORS.textSecondary;
-            return (
-              <TouchableOpacity
-                key={task.id}
-                style={styles.taskRow}
-                onPress={() => handleTaskPress(task.id, task.title)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.taskDot, { backgroundColor: statusColor }]} />
-                <View style={styles.taskInfo}>
-                  <Text style={styles.taskTitle}>{task.title}</Text>
-                  <Text style={styles.taskTime}>{task.time}</Text>
-                </View>
-                <Text style={[styles.taskStatus, { color: statusColor }]}>
-                  {task.status}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {recentTasks.length === 0 ? (
+            <View style={styles.emptyTasks}>
+              <ClockIcon size={24} color={COLORS.textMuted} />
+              <Text style={styles.emptyText}>No tasks yet — create one to get started</Text>
+            </View>
+          ) : (
+            recentTasks.map((task) => {
+              const statusColor = STATUS_COLORS[task.status] ?? COLORS.textSecondary;
+              return (
+                <TouchableOpacity
+                  key={task.id}
+                  style={styles.taskRow}
+                  onPress={() => router.push(`/task/${task.id}`)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.taskDot, { backgroundColor: statusColor }]} />
+                  <View style={styles.taskInfo}>
+                    <Text style={styles.taskTitle} numberOfLines={1}>{task.user_goal}</Text>
+                    <Text style={styles.taskTime}>{timeAgo(task.created_at)}</Text>
+                  </View>
+                  <Text style={[styles.taskStatus, { color: statusColor }]}>
+                    {task.status.replace(/_/g, ' ')}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })
+          )}
         </View>
 
         {/* Quick Links */}
@@ -133,15 +179,15 @@ export default function DashboardScreen() {
           <View style={styles.quickLinks}>
             <TouchableOpacity
               style={styles.quickLink}
-              onPress={() => handleQuickLinkPress('Memory')}
+              onPress={() => router.push('/(tabs)/memory')}
               activeOpacity={0.7}
             >
               <BrainIcon size={20} color={COLORS.primary} />
-              <Text style={styles.quickLinkText}>Memory</Text>
+              <Text style={styles.quickLinkText}>Memory ({memoryList.length})</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickLink}
-              onPress={() => handleQuickLinkPress('All Tasks')}
+              onPress={() => router.push('/(tabs)/tasks')}
               activeOpacity={0.7}
             >
               <ListTodoIcon size={20} color='#00ccff' />
@@ -155,10 +201,7 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -169,38 +212,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  headerLeft: {
-    flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  greeting: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginBottom: 2,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: COLORS.text,
-    letterSpacing: -0.5,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: SPACING.md,
-    gap: SPACING.lg,
-    paddingBottom: SPACING.xl,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-  },
+  headerLeft: { flex: 1 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  greeting: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 2 },
+  title: { fontSize: 26, fontWeight: '700', color: COLORS.text, letterSpacing: -0.5 },
+  scroll: { flex: 1 },
+  scrollContent: { padding: SPACING.md, gap: SPACING.lg, paddingBottom: SPACING.xl },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
   statCard: {
     flex: 1,
     minWidth: '45%',
@@ -219,37 +237,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.xs,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  section: {
+  statValue: { fontSize: 24, fontWeight: '700', color: COLORS.text },
+  statLabel: { fontSize: 12, color: COLORS.textSecondary },
+  section: { gap: SPACING.sm },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text },
+  seeAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  seeAllText: { fontSize: 13, color: COLORS.primary },
+  emptyTasks: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  seeAllBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  seeAllText: {
-    fontSize: 13,
-    color: COLORS.primary,
-  },
+  emptyText: { fontSize: 13, color: COLORS.textMuted, flex: 1 },
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -260,33 +265,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     gap: SPACING.sm,
   },
-  taskDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  taskInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  taskTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.text,
-  },
-  taskTime: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  taskStatus: {
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'capitalize',
-  },
-  quickLinks: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
+  taskDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  taskInfo: { flex: 1, gap: 2 },
+  taskTitle: { fontSize: 14, fontWeight: '500', color: COLORS.text },
+  taskTime: { fontSize: 12, color: COLORS.textSecondary },
+  taskStatus: { fontSize: 12, fontWeight: '500', textTransform: 'capitalize', flexShrink: 0 },
+  quickLinks: { flexDirection: 'row', gap: SPACING.sm },
   quickLink: {
     flex: 1,
     flexDirection: 'row',
@@ -299,9 +283,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  quickLinkText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.text,
-  },
+  quickLinkText: { fontSize: 14, fontWeight: '500', color: COLORS.text },
 });
