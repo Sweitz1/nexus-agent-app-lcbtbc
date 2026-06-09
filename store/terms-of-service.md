@@ -1,0 +1,171 @@
+# Terms of Service
+
+**Nexus Agent**
+Last updated: 2025-07-14
+
+---
+
+## 1. Acceptance of Terms
+
+By downloading, installing, or using the Nexus Agent mobile application (the "App"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the App.
+
+These Terms constitute a legally binding agreement between you and Nexus Agent ("we", "us", or "our"). We reserve the right to update these Terms at any time. Continued use of the App after changes are posted constitutes acceptance of the revised Terms.
+
+---
+
+## 2. Account Registration
+
+### 2.1 Eligibility
+
+You must be at least 13 years old to create an account. By creating an account you represent that you meet this requirement.
+
+### 2.2 Account Security
+
+You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately at legal@nexusagent.app if you suspect unauthorized access to your account. We are not liable for any loss resulting from unauthorized use of your account.
+
+### 2.3 Accurate Information
+
+You agree to provide accurate, current, and complete information when creating your account and to keep that information up to date.
+
+---
+
+## 3. Acceptable Use
+
+You agree to use the App only for lawful purposes and in accordance with these Terms. You agree **not** to:
+
+### 3.1 Malicious Activity
+
+- Use the App to create, distribute, or deploy malware, ransomware, spyware, or any other malicious software.
+- Use the App to conduct denial-of-service attacks, port scans, or any other form of network attack.
+- Use the App to exploit vulnerabilities in third-party systems without explicit written authorization from the system owner.
+
+### 3.2 Credential Theft and Unauthorized Access
+
+- Use the App to harvest, scrape, or steal credentials, API keys, tokens, or personal data belonging to others.
+- Use the App to gain unauthorized access to any computer system, network, database, or account.
+- Attempt to reverse-engineer, bypass, or circumvent the App's security controls, including the encrypted secret storage system.
+
+### 3.3 Unauthorized API Abuse
+
+- Use the App to send requests to third-party APIs in violation of those APIs' terms of service.
+- Use the App to circumvent rate limits, quotas, or access controls imposed by third-party services.
+- Register custom API endpoints in the App for the purpose of abusing or attacking those services.
+
+### 3.4 Illegal and Harmful Content
+
+- Use the App to generate, store, or transmit content that is illegal, defamatory, harassing, threatening, or that infringes any third-party intellectual property rights.
+- Use the App in any way that violates applicable local, national, or international law or regulation.
+
+### 3.5 Interference with the Service
+
+- Attempt to probe, scan, or test the vulnerability of the App's backend infrastructure.
+- Attempt to access data belonging to other users.
+- Use automated means to access the App's backend APIs other than through the App itself.
+
+---
+
+## 4. User-Supplied API Keys and Third-Party Services
+
+### 4.1 Your Responsibility for API Keys
+
+When you add an API key for a third-party AI provider (OpenAI, Anthropic, Google Gemini, or any other service), you are solely responsible for:
+
+- Complying with that provider's terms of service and acceptable use policies.
+- All costs, charges, and fees incurred through your use of that provider's API, including any usage the agent generates on your behalf.
+- Monitoring your usage and managing your rate limits and quotas with each provider.
+- Keeping your API keys secure and rotating them if you believe they have been compromised.
+
+### 4.2 No Liability for Third-Party Costs
+
+We are not responsible for any charges, overage fees, or account suspensions you incur with third-party API providers as a result of using Nexus Agent. The agent may make multiple API calls per task; you are responsible for understanding and accepting those costs before running tasks.
+
+### 4.3 Custom APIs
+
+When you register a custom REST API as an agent tool, you represent that you have the right to access that API and that using it through Nexus Agent does not violate any agreement you have with the API's owner.
+
+---
+
+## 5. Agent Autonomy and Approval Gates
+
+### 5.1 Autonomous Behavior
+
+Nexus Agent is designed to execute multi-step tasks autonomously. The agent may take actions — including calling external APIs, writing files, and making network requests — without prompting you for confirmation on every step, depending on your configuration.
+
+### 5.2 Your Responsibility to Review
+
+You are responsible for reviewing the agent's plan and approving or rejecting actions when the approval gate is triggered. By approving an action you authorize the agent to proceed. We are not liable for the consequences of actions you approve.
+
+### 5.3 No Guarantee of Accuracy
+
+The agent's outputs are generated by large language models and may contain errors, hallucinations, or outdated information. You should not rely on agent outputs for decisions that require professional expertise (legal, medical, financial, etc.) without independent verification.
+
+### 5.4 Irreversible Actions
+
+Some actions the agent may propose (deleting files, submitting forms, sending messages) are irreversible. You are solely responsible for reviewing and approving such actions before they execute.
+
+---
+
+## 6. Intellectual Property
+
+### 6.1 Our IP
+
+The App, including its design, code, and content, is owned by us and protected by applicable intellectual property laws. You are granted a limited, non-exclusive, non-transferable license to use the App for personal or internal business purposes in accordance with these Terms.
+
+### 6.2 Your Content
+
+You retain ownership of all content you create using the App (task goals, memory entries, custom API configurations). By using the App you grant us a limited license to store and process that content solely to provide the service to you.
+
+---
+
+## 7. Termination
+
+### 7.1 By You
+
+You may terminate your account at any time by using the Delete Account feature in Settings → Danger Zone. Deletion is immediate and permanent.
+
+### 7.2 By Us
+
+We reserve the right to suspend or terminate your account at any time, with or without notice, if we determine that you have violated these Terms or that your use of the App poses a risk to other users or to our infrastructure.
+
+### 7.3 Effect of Termination
+
+Upon termination, your right to use the App ceases immediately. Sections 3, 4, 5.3, 6, 8, 9, and 10 survive termination.
+
+---
+
+## 8. Disclaimers
+
+THE APP IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE APP WILL BE UNINTERRUPTED, ERROR-FREE, OR FREE OF HARMFUL COMPONENTS. WE DO NOT WARRANT THE ACCURACY, COMPLETENESS, OR USEFULNESS OF ANY OUTPUT GENERATED BY THE AGENT.
+
+---
+
+## 9. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL WE BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, GOODWILL, OR OTHER INTANGIBLE LOSSES, ARISING OUT OF OR IN CONNECTION WITH YOUR USE OF THE APP, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+OUR TOTAL LIABILITY TO YOU FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THESE TERMS OR THE APP SHALL NOT EXCEED THE GREATER OF (A) THE AMOUNT YOU PAID US IN THE TWELVE MONTHS PRECEDING THE CLAIM OR (B) USD $10.
+
+---
+
+## 10. Governing Law and Dispute Resolution
+
+These Terms are governed by and construed in accordance with the laws of **[YOUR JURISDICTION — replace before publishing]**, without regard to its conflict of law provisions.
+
+Any dispute arising out of or relating to these Terms or the App shall first be attempted to be resolved through good-faith negotiation. If negotiation fails, disputes shall be resolved by binding arbitration in **[YOUR JURISDICTION]**, except that either party may seek injunctive relief in a court of competent jurisdiction to prevent irreparable harm.
+
+---
+
+## 11. Miscellaneous
+
+- **Entire Agreement.** These Terms, together with the Privacy Policy, constitute the entire agreement between you and us regarding the App.
+- **Severability.** If any provision of these Terms is found to be unenforceable, the remaining provisions will continue in full force.
+- **No Waiver.** Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights.
+- **Assignment.** You may not assign your rights under these Terms without our prior written consent. We may assign our rights without restriction.
+
+---
+
+## 12. Contact
+
+For legal inquiries regarding these Terms:
+
+**Email:** legal@nexusagent.app
