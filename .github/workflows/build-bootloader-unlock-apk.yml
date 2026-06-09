@@ -1,0 +1,58 @@
+name: Build Bootloader Unlock APK
+
+on:
+  push:
+    branches: [claude/android-bootloader-unlock-usb-d25oa3, prod]
+    paths:
+      - 'android-bootloader-unlock/**'
+      - '.github/workflows/build-bootloader-unlock-apk.yml'
+  pull_request:
+    paths:
+      - 'android-bootloader-unlock/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # Sets ANDROID_HOME, accepts licenses, and makes sdkmanager available.
+      # The runner already ships with SDK platform + build-tools installed.
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle wrapper
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('android-bootloader-unlock/gradle/wrapper/gradle-wrapper.properties') }}
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android-bootloader-unlock/**/*.gradle*') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Make gradlew executable
+        run: chmod +x android-bootloader-unlock/gradlew
+
+      - name: Build debug APK
+        working-directory: android-bootloader-unlock
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-bootloader-unlock-debug
+          path: android-bootloader-unlock/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
