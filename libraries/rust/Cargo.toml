@@ -1,0 +1,40 @@
+[package]
+name = "libraries-rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Web
+axum = { version = "0.7", features = ["full"] }
+actix-web = "4"
+
+# Async
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# HTTP
+reqwest = { version = "0.11", features = ["json"] }
+hyper = { version = "1", features = ["full"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+ratatui = "0.26"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "postgres", "sqlite"] }
+
+# Concurrency
+rayon = "1"
+crossbeam = "0.8"
+
+# Utilities
+anyhow = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[dev-dependencies]
+tokio-test = "0.4"

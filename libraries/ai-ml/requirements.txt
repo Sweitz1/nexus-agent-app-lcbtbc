@@ -1,0 +1,72 @@
+# ── Core Deep Learning ───────────────────────────────────────────
+# Uncomment the framework you use:
+# torch torchvision torchaudio       # PyTorch (CPU)
+# torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121  # PyTorch CUDA 12.1
+# tensorflow                         # TensorFlow
+# jax[cuda12]                        # JAX with CUDA 12
+keras
+
+# ── HuggingFace Ecosystem ────────────────────────────────────────
+transformers
+datasets
+peft
+trl
+accelerate
+tokenizers
+huggingface_hub
+diffusers
+
+# ── LLM Application Frameworks ──────────────────────────────────
+langchain
+langchain-community
+langchain-core
+llama-index
+guidance
+dspy-ai
+
+# ── LLM Serving ─────────────────────────────────────────────────
+# vllm                               # uncomment — requires CUDA
+
+# ── Computer Vision ──────────────────────────────────────────────
+opencv-python
+pillow
+albumentations
+ultralytics
+
+# ── Classic ML ───────────────────────────────────────────────────
+scikit-learn
+xgboost
+lightgbm
+optuna
+
+# ── Vector Databases ─────────────────────────────────────────────
+faiss-cpu
+chromadb
+# qdrant-client                      # uncomment if using Qdrant
+
+# ── MLOps ────────────────────────────────────────────────────────
+mlflow
+wandb
+dvc
+
+# ── Distributed / Scaling ────────────────────────────────────────
+ray[all]
+dask
+
+# ── Audio ────────────────────────────────────────────────────────
+openai-whisper
+librosa
+TTS
+
+# ── RL ───────────────────────────────────────────────────────────
+gymnasium
+stable-baselines3
+
+# ── Utilities ────────────────────────────────────────────────────
+numpy
+pandas
+matplotlib
+tqdm
+einops
+bitsandbytes
+sentencepiece
