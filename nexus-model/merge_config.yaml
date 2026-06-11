@@ -1,0 +1,72 @@
+# NexusLLM Merge Recipe
+# Uses TIES + DARE — combines model weights without any training.
+# Swap model names or adjust weights to create your own variant.
+#
+# Merge methods:
+#   ties      — resolves weight conflicts via sign agreement
+#   dare_ties — drops redundant parameters before TIES (less interference)
+#   slerp     — spherical interpolation (good for 2-model blends)
+#   linear    — simple weighted average (fastest, less precise)
+
+models:
+  # ── Primary base: LLaMA 3.1 70B — reasoning, chat, instructions ──
+  - model: meta-llama/Llama-3.1-70B-Instruct
+    parameters:
+      weight: 0.4          # 40% influence — sets the core personality
+      density: 1.0         # keep all parameters from base
+
+  # ── Coding expert 1: DeepSeek-Coder-V2 ───────────────────────────
+  - model: deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct
+    parameters:
+      weight: 0.35         # 35% influence — deep code understanding
+      density: 0.7         # DARE: drop 30% of least-important deltas
+
+  # ── Coding expert 2: Qwen2.5-Coder ───────────────────────────────
+  - model: Qwen/Qwen2.5-Coder-32B-Instruct
+    parameters:
+      weight: 0.25         # 25% influence — code generation quality
+      density: 0.7         # DARE: drop 30% of least-important deltas
+
+merge_method: dare_ties
+
+# Output model name and save location
+base_model: meta-llama/Llama-3.1-70B-Instruct
+dtype: bfloat16
+
+# Tokenizer: use base model's tokenizer
+tokenizer_source: base
+
+# Where to save the merged model
+output_path: ./nexus-llm-merged
+
+# ── Layer-specific overrides (optional) ──────────────────────────
+# You can boost coding layers more heavily:
+# layer_range:
+#   - range: [0, 20]       # early layers: keep base (reasoning)
+#     weight: [0.5, 0.3, 0.2]
+#   - range: [20, 60]      # middle layers: boost coding
+#     weight: [0.3, 0.4, 0.3]
+#   - range: [60, 80]      # late layers: balanced
+#     weight: [0.4, 0.35, 0.25]
+
+---
+# ── Smaller variant: NexusLLM-7B (for low-VRAM machines) ─────────
+# Uncomment this block and comment out the 70B block above:
+#
+# models:
+#   - model: mistralai/Mistral-7B-Instruct-v0.3
+#     parameters:
+#       weight: 0.4
+#       density: 1.0
+#   - model: Qwen/Qwen2.5-Coder-7B-Instruct
+#     parameters:
+#       weight: 0.35
+#       density: 0.7
+#   - model: deepseek-ai/deepseek-coder-6.7b-instruct
+#     parameters:
+#       weight: 0.25
+#       density: 0.7
+#
+# merge_method: dare_ties
+# base_model: mistralai/Mistral-7B-Instruct-v0.3
+# output_path: ./nexus-llm-7b-merged
