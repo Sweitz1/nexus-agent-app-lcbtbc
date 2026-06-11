@@ -1,0 +1,60 @@
+# ── Web Frameworks ──────────────────────────────────────────────
+django
+fastapi
+uvicorn[standard]
+flask
+starlette
+
+# ── Data Science ─────────────────────────────────────────────────
+numpy
+pandas
+scipy
+matplotlib
+seaborn
+plotly
+polars
+
+# ── Machine Learning ─────────────────────────────────────────────
+scikit-learn
+xgboost
+lightgbm
+catboost
+optuna
+
+# ── Deep Learning ────────────────────────────────────────────────
+# torch torchvision torchaudio   # uncomment — large download
+# tensorflow                     # uncomment — large download
+# keras                          # uncomment
+# jax                            # uncomment
+
+# ── HTTP & Networking ────────────────────────────────────────────
+requests
+httpx
+aiohttp
+websockets
+
+# ── Database & ORM ───────────────────────────────────────────────
+sqlalchemy
+alembic
+pymongo
+redis
+tortoise-orm
+
+# ── CLI & Utilities ──────────────────────────────────────────────
+click
+rich
+typer
+pydantic
+celery
+python-dotenv
+
+# ── Testing ──────────────────────────────────────────────────────
+pytest
+pytest-asyncio
+hypothesis
+coverage
+
+# ── Security ─────────────────────────────────────────────────────
+cryptography
+bcrypt
+pyjwt

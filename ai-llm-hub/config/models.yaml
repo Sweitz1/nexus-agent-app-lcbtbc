@@ -1,0 +1,157 @@
+# Model configuration registry
+# Used by unified_client.py to resolve model names and settings
+
+models:
+  # ── Anthropic ──────────────────────────────────────────────────
+  claude-sonnet-4-6:
+    provider: anthropic
+    context_window: 200000
+    max_output: 8192
+    supports_vision: true
+    supports_tools: true
+    best_for: [coding, analysis, reasoning, long-context]
+
+  claude-opus-4-8:
+    provider: anthropic
+    context_window: 200000
+    max_output: 8192
+    supports_vision: true
+    supports_tools: true
+    best_for: [complex-tasks, deep-analysis, agentic]
+
+  claude-haiku-4-5-20251001:
+    provider: anthropic
+    context_window: 200000
+    max_output: 4096
+    supports_vision: true
+    supports_tools: true
+    best_for: [fast-chat, summarization, classification]
+
+  # ── OpenAI ─────────────────────────────────────────────────────
+  gpt-4o:
+    provider: openai
+    context_window: 128000
+    max_output: 16384
+    supports_vision: true
+    supports_tools: true
+    best_for: [general, multimodal, tool-use]
+
+  gpt-4o-mini:
+    provider: openai
+    context_window: 128000
+    max_output: 16384
+    supports_vision: true
+    supports_tools: true
+    best_for: [high-volume, cost-sensitive]
+
+  o3:
+    provider: openai
+    context_window: 200000
+    max_output: 100000
+    supports_vision: false
+    supports_tools: true
+    reasoning: true
+    best_for: [hard-coding, math, competitive-programming]
+
+  o3-mini:
+    provider: openai
+    context_window: 200000
+    max_output: 65536
+    supports_tools: true
+    reasoning: true
+    reasoning_effort: [low, medium, high]
+    best_for: [coding-reasoning, math, fast-reasoning]
+
+  # ── Mistral ────────────────────────────────────────────────────
+  mistral/mistral-large-latest:
+    provider: mistral
+    context_window: 128000
+    supports_tools: true
+    best_for: [coding, multilingual, tool-use]
+
+  mistral/codestral-latest:
+    provider: mistral
+    context_window: 256000
+    supports_tools: true
+    best_for: [code-completion, fim, coding]
+
+  # ── Google ─────────────────────────────────────────────────────
+  gemini/gemini-2.0-flash:
+    provider: google
+    context_window: 1000000
+    supports_vision: true
+    supports_tools: true
+    best_for: [fast-response, long-context]
+
+  gemini/gemini-1.5-pro:
+    provider: google
+    context_window: 2000000
+    supports_vision: true
+    supports_tools: true
+    best_for: [ultra-long-context, multimodal]
+
+  # ── DeepSeek ───────────────────────────────────────────────────
+  deepseek/deepseek-chat:
+    provider: deepseek
+    context_window: 128000
+    supports_tools: true
+    best_for: [general, coding]
+
+  deepseek/deepseek-reasoner:
+    provider: deepseek
+    context_window: 64000
+    supports_tools: false
+    reasoning: true
+    best_for: [math, hard-reasoning, coding]
+
+  # ── Local via Ollama ────────────────────────────────────────────
+  ollama/llama3.2:
+    provider: ollama
+    context_window: 128000
+    local: true
+    vram_gb: 6
+    best_for: [local-chat, privacy]
+
+  ollama/llama3.1:70b:
+    provider: ollama
+    context_window: 128000
+    local: true
+    vram_gb: 140
+    best_for: [local-quality, reasoning]
+
+  ollama/deepseek-coder-v2:
+    provider: ollama
+    context_window: 128000
+    local: true
+    vram_gb: 32
+    best_for: [local-coding, code-generation]
+
+  ollama/qwen2.5-coder:32b:
+    provider: ollama
+    context_window: 128000
+    local: true
+    vram_gb: 64
+    best_for: [local-coding, top-quality]
+
+  ollama/phi4:
+    provider: ollama
+    context_window: 16000
+    local: true
+    vram_gb: 28
+    best_for: [efficient-reasoning, small-gpu]
+
+  ollama/deepseek-r1:32b:
+    provider: ollama
+    context_window: 64000
+    local: true
+    vram_gb: 64
+    reasoning: true
+    best_for: [local-reasoning, math]
+
+# ── Routing rules ────────────────────────────────────────────────
+routing:
+  prefer_local: false        # Set true to prefer Ollama models
+  fallback_to_local: true    # Fall back to local if API key missing
+  local_coding_model: ollama/qwen2.5-coder:7b
+  local_chat_model: ollama/llama3.2
+  local_reasoning_model: ollama/deepseek-r1:7b

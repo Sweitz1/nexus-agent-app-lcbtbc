@@ -1,0 +1,100 @@
+# ── Linux ────────────────────────────────────────────────────────
+[submodule "submodules/linux"]
+    path = submodules/linux
+    url = https://github.com/torvalds/linux.git
+    shallow = true
+
+# ── AI / Deep Learning ───────────────────────────────────────────
+[submodule "submodules/pytorch"]
+    path = submodules/pytorch
+    url = https://github.com/pytorch/pytorch.git
+    shallow = true
+
+[submodule "submodules/tensorflow"]
+    path = submodules/tensorflow
+    url = https://github.com/tensorflow/tensorflow.git
+    shallow = true
+
+[submodule "submodules/transformers"]
+    path = submodules/transformers
+    url = https://github.com/huggingface/transformers.git
+    shallow = true
+
+[submodule "submodules/llama.cpp"]
+    path = submodules/llama.cpp
+    url = https://github.com/ggerganov/llama.cpp.git
+    shallow = true
+
+[submodule "submodules/langchain"]
+    path = submodules/langchain
+    url = https://github.com/langchain-ai/langchain.git
+    shallow = true
+
+[submodule "submodules/ollama"]
+    path = submodules/ollama
+    url = https://github.com/ollama/ollama.git
+    shallow = true
+
+[submodule "submodules/diffusers"]
+    path = submodules/diffusers
+    url = https://github.com/huggingface/diffusers.git
+    shallow = true
+
+[submodule "submodules/vllm"]
+    path = submodules/vllm
+    url = https://github.com/vllm-project/vllm.git
+    shallow = true
+
+[submodule "submodules/jax"]
+    path = submodules/jax
+    url = https://github.com/google/jax.git
+    shallow = true
+
+[submodule "submodules/stable-diffusion"]
+    path = submodules/stable-diffusion
+    url = https://github.com/CompVis/stable-diffusion.git
+    shallow = true
+
+[submodule "submodules/whisper"]
+    path = submodules/whisper
+    url = https://github.com/openai/whisper.git
+    shallow = true
+
+[submodule "submodules/gpt-neox"]
+    path = submodules/gpt-neox
+    url = https://github.com/EleutherAI/gpt-neox.git
+    shallow = true
+
+# ── Computer Vision ───────────────────────────────────────────────
+[submodule "submodules/opencv"]
+    path = submodules/opencv
+    url = https://github.com/opencv/opencv.git
+    shallow = true
+
+# ── Multimedia ───────────────────────────────────────────────────
+[submodule "submodules/ffmpeg"]
+    path = submodules/ffmpeg
+    url = https://github.com/FFmpeg/FFmpeg.git
+    shallow = true
+
+# ── Web / JS ─────────────────────────────────────────────────────
+[submodule "submodules/react"]
+    path = submodules/react
+    url = https://github.com/facebook/react.git
+    shallow = true
+
+[submodule "submodules/next.js"]
+    path = submodules/next.js
+    url = https://github.com/vercel/next.js.git
+    shallow = true
+
+# ── Systems / Infra ───────────────────────────────────────────────
+[submodule "submodules/kubernetes"]
+    path = submodules/kubernetes
+    url = https://github.com/kubernetes/kubernetes.git
+    shallow = true
+
+[submodule "submodules/containerd"]
+    path = submodules/containerd
+    url = https://github.com/containerd/containerd.git
+    shallow = true
