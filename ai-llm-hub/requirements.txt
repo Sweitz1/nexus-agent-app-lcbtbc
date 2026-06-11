@@ -1,0 +1,29 @@
+# ── Core LLM Interface ───────────────────────────────────────────
+litellm>=1.30.0           # Unified interface for all LLM providers
+anthropic>=0.40.0         # Anthropic Claude SDK
+openai>=1.40.0            # OpenAI SDK (also used by DeepSeek, Ollama, Together)
+mistralai>=1.0.0          # Mistral AI SDK
+google-generativeai>=0.8.0 # Google Gemini SDK
+ollama>=0.3.0             # Ollama local models
+
+# ── Configuration ────────────────────────────────────────────────
+python-dotenv>=1.0.0      # .env file loading
+pyyaml>=6.0               # YAML config parsing
+pydantic>=2.0.0           # Data validation and settings
+
+# ── RAG & Vector Search ──────────────────────────────────────────
+chromadb>=0.5.0           # Vector database
+faiss-cpu>=1.8.0          # Facebook similarity search (no GPU needed)
+tiktoken>=0.7.0           # Token counting (OpenAI tokenizer)
+
+# ── HuggingFace (local model loading) ────────────────────────────
+# Uncomment to run models directly via transformers:
+# transformers>=4.45.0
+# torch>=2.4.0
+# accelerate>=0.34.0
+# bitsandbytes>=0.44.0    # 4/8-bit quantization
+
+# ── Utilities ────────────────────────────────────────────────────
+rich>=13.0.0              # Beautiful terminal output
+tqdm>=4.66.0              # Progress bars
+tenacity>=8.0.0           # Retry logic for API calls
