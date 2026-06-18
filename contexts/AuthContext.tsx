@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { api } from '@/utils/api';
 
 interface User {
   id: string;
@@ -9,7 +10,8 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signOut: () => void;
+  signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,8 +20,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
 
+  async function signOut() {
+    try {
+      await api.post('/api/auth/sign-out');
+    } catch {}
+    setUser(null);
+  }
+
+  async function deleteAccount() {
+    await api.delete('/api/auth/delete-account');
+    setUser(null);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, signOut: () => setUser(null) }}>
+    <AuthContext.Provider value={{ user, loading, signOut, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );
