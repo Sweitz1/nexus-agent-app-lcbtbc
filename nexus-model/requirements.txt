@@ -1,0 +1,31 @@
+# ── Model Merging ─────────────────────────────────────────────────
+mergekit>=0.0.5               # TIES / DARE / SLERP model merging
+
+# ── HuggingFace Stack ─────────────────────────────────────────────
+transformers>=4.45.0          # Model loading and inference
+accelerate>=0.34.0            # Multi-GPU / device_map="auto"
+huggingface_hub>=0.24.0       # Upload/download from HF Hub
+safetensors>=0.4.0            # Efficient tensor storage
+tokenizers>=0.20.0            # Fast tokenization
+
+# ── Quantization (reduces VRAM) ───────────────────────────────────
+bitsandbytes>=0.44.0          # 4-bit and 8-bit quantization
+# auto-gptq>=0.7.0            # GPTQ quantization (optional)
+# autoawq>=0.2.0              # AWQ quantization (optional)
+
+# ── Fine-tuning ───────────────────────────────────────────────────
+peft>=0.12.0                  # LoRA / QLoRA
+trl>=0.11.0                   # SFTTrainer, RLHF, DPO
+datasets>=3.0.0               # HuggingFace datasets
+
+# ── Serving ───────────────────────────────────────────────────────
+fastapi>=0.115.0              # API framework
+uvicorn[standard]>=0.30.0     # ASGI server
+pydantic>=2.0.0               # Request validation
+
+# ── Utilities ─────────────────────────────────────────────────────
+torch>=2.4.0                  # PyTorch (install with CUDA separately)
+# Install PyTorch with CUDA:
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+python-dotenv>=1.0.0
+tqdm>=4.66.0

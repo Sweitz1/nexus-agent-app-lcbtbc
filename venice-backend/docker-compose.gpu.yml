@@ -1,0 +1,17 @@
+version: "3.9"
+# GPU variant — overlay with: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+# Requires: nvidia-container-toolkit installed on the host
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_HOST=0.0.0.0
+      - CUDA_VISIBLE_DEVICES=0   # change for multi-GPU (0,1,2...)

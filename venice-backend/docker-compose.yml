@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: venice_ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"          # expose locally only — API proxied through nginx
+    environment:
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - venice_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  api:
+    build: ./api
+    container_name: venice_api
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - API_KEY=${VENICE_API_KEY:-changeme-set-in-env}
+      - ALLOW_ORIGINS=${ALLOW_ORIGINS:-*}
+      - MAX_TOKENS=${MAX_TOKENS:-8192}
+    networks:
+      - venice_net
+    volumes:
+      - ./api:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    build: ./nginx
+    container_name: venice_nginx
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/certs:/etc/nginx/certs:ro   # mount your SSL certs here
+      - ./web:/var/www/html:ro              # web chat UI
+      - nginx_logs:/var/log/nginx
+    networks:
+      - venice_net
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+
+volumes:
+  ollama_data:
+  nginx_logs:
+
+networks:
+  venice_net:
+    driver: bridge
