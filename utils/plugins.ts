@@ -11,7 +11,8 @@ export type PluginCategory =
   | 'utilities'
   | 'experimental'
   | 'files'
-  | 'adult';
+  | 'adult'
+  | 'ebooks';
 
 export interface Plugin {
   id: string;
@@ -475,6 +476,129 @@ export const PLUGIN_REGISTRY: Plugin[] = [
     new: true,
   },
 
+  // ── Ebooks ────────────────────────────────────────────────────
+  {
+    id: 'epub-reader',
+    name: 'EPUB Reader',
+    author: 'Nexus Official',
+    version: '1.2.0',
+    description: 'Read EPUB ebooks in-app with AI chat about the content.',
+    longDescription:
+      'Open and read any EPUB file directly in the app. Full-featured reader with adjustable font size, night mode, bookmarks, highlights, and per-chapter notes. Ask the AI questions about what you\'re reading — plot summaries, character analysis, definitions — without ever leaving the page. Sideloaded books are stored locally.',
+    category: 'ebooks',
+    icon: '📚',
+    tags: ['epub', 'ebook', 'reader', 'books', 'reading'],
+    rating: 4.8,
+    downloads: 27600,
+    size: '38 KB',
+    permissions: ['storage'],
+    changelog: [
+      { version: '1.2.0', notes: 'AI in-page chat overlay, chapter Q&A' },
+      { version: '1.1.0', notes: 'Highlights and notes sync' },
+      { version: '1.0.0', notes: 'Initial release' },
+    ],
+    featured: true,
+    official: true,
+  },
+  {
+    id: 'kindle-sync',
+    name: 'Kindle Sync',
+    author: 'Nexus Official',
+    version: '1.0.2',
+    description: 'Import Kindle highlights, notes, and clippings — chat with them.',
+    longDescription:
+      'Connect your Amazon Kindle account or import a My Clippings.txt file. All your highlights and notes are indexed locally so you can ask the AI to find quotes, summarise a book\'s key ideas, or generate flashcards from your annotations. Nothing is sent to Amazon — sync pulls data to your device only.',
+    category: 'ebooks',
+    icon: '📖',
+    tags: ['kindle', 'amazon', 'highlights', 'clippings', 'notes'],
+    rating: 4.6,
+    downloads: 19100,
+    size: '20 KB',
+    permissions: ['network', 'storage'],
+    changelog: [
+      { version: '1.0.2', notes: 'My Clippings.txt manual import' },
+      { version: '1.0.0', notes: 'Initial Kindle account sync' },
+    ],
+    official: true,
+  },
+  {
+    id: 'ebook-converter',
+    name: 'Ebook Converter',
+    author: 'ReadTools',
+    version: '1.1.0',
+    description: 'Convert between EPUB, MOBI, AZW3, PDF, and plain text.',
+    longDescription:
+      'On-device ebook format conversion powered by Calibre-compatible libraries. Convert EPUB ↔ MOBI ↔ AZW3 ↔ PDF ↔ TXT ↔ HTML. Strip DRM from books you own (check your local laws). Batch convert entire libraries. Preserves cover images, chapter structure, and metadata.',
+    category: 'ebooks',
+    icon: '🔀',
+    tags: ['epub', 'mobi', 'azw3', 'convert', 'calibre'],
+    rating: 4.5,
+    downloads: 13400,
+    size: '42 KB',
+    permissions: ['storage'],
+    changelog: [
+      { version: '1.1.0', notes: 'AZW3 output support, batch mode' },
+      { version: '1.0.0', notes: 'Initial release' },
+    ],
+    new: true,
+  },
+  {
+    id: 'ebook-library',
+    name: 'Ebook Library',
+    author: 'ReadTools',
+    version: '1.0.0',
+    description: 'Organise your ebook collection with AI-generated metadata.',
+    longDescription:
+      'Scan a folder of EPUB, MOBI, PDF, or AZW3 files and build a searchable library. The AI fills in missing titles, authors, genres, and summaries by reading the actual content. Filter by genre, author, or series. Track reading progress across all your books in one place.',
+    category: 'ebooks',
+    icon: '🗂️',
+    tags: ['library', 'organize', 'epub', 'metadata', 'catalog'],
+    rating: 4.4,
+    downloads: 8700,
+    size: '24 KB',
+    permissions: ['storage'],
+    changelog: [{ version: '1.0.0', notes: 'Initial release' }],
+    new: true,
+  },
+  {
+    id: 'book-summarizer',
+    name: 'Book Summarizer',
+    author: 'AcademicAI',
+    version: '1.1.0',
+    description: 'Generate chapter summaries, flashcards, and study guides from ebooks.',
+    longDescription:
+      'Load any EPUB or PDF and generate a structured chapter-by-chapter summary, a set of Q&A flashcards, a vocabulary list, or a full study guide. Great for textbooks, non-fiction, or academic papers. Exports to Markdown, PDF, or Anki deck format.',
+    category: 'ebooks',
+    icon: '🧾',
+    tags: ['summary', 'flashcards', 'study', 'epub', 'anki'],
+    rating: 4.7,
+    downloads: 11200,
+    size: '16 KB',
+    permissions: ['storage'],
+    changelog: [
+      { version: '1.1.0', notes: 'Anki deck export, vocabulary lists' },
+      { version: '1.0.0', notes: 'Initial release' },
+    ],
+    official: true,
+  },
+  {
+    id: 'gutenberg-browser',
+    name: 'Project Gutenberg',
+    author: 'KnowledgeTools',
+    version: '1.0.0',
+    description: 'Browse and download 70,000+ free public domain books.',
+    longDescription:
+      'Search and download the entire Project Gutenberg library — over 70,000 free ebooks. Books open directly in the built-in EPUB reader. Includes offline access for downloaded titles and an AI-powered recommendation engine based on your reading history.',
+    category: 'ebooks',
+    icon: '🏛️',
+    tags: ['gutenberg', 'free', 'public-domain', 'classics', 'download'],
+    rating: 4.6,
+    downloads: 16800,
+    size: '12 KB',
+    permissions: ['network', 'storage'],
+    changelog: [{ version: '1.0.0', notes: 'Initial release' }],
+  },
+
   // ── Adult (NSFW) ──────────────────────────────────────────────
   {
     id: 'nsfw-content',
@@ -566,6 +690,7 @@ export const CATEGORIES: { id: PluginCategory | 'all'; label: string; icon: stri
   { id: 'utilities',     label: 'Utilities',    icon: '🔧' },
   { id: 'experimental',  label: 'Labs',         icon: '🧪' },
   { id: 'files',        label: 'Files',        icon: '📁' },
+  { id: 'ebooks',       label: 'Ebooks',       icon: '📚' },
   { id: 'adult',        label: 'Adult (18+)',  icon: '🔞' },
 ];
 
