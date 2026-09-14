@@ -9,7 +9,9 @@ export type PluginCategory =
   | 'data'
   | 'security'
   | 'utilities'
-  | 'experimental';
+  | 'experimental'
+  | 'files'
+  | 'adult';
 
 export interface Plugin {
   id: string;
@@ -349,6 +351,187 @@ export const PLUGIN_REGISTRY: Plugin[] = [
     changelog: [{ version: '1.1.0', notes: 'Pattern database update' }],
   },
 
+  // ── Files ─────────────────────────────────────────────────────
+  {
+    id: 'pdf-analyzer',
+    name: 'PDF Analyzer',
+    author: 'Nexus Official',
+    version: '1.3.0',
+    description: 'Extract text, tables, and metadata from any PDF.',
+    longDescription:
+      'Upload any PDF and ask questions about it. Extracts raw text, tables, embedded images, form fields, and document metadata. Handles scanned PDFs with on-device OCR. Works entirely offline — nothing leaves your device.',
+    category: 'files',
+    icon: '📑',
+    tags: ['pdf', 'ocr', 'extract', 'documents', 'tables'],
+    rating: 4.7,
+    downloads: 22400,
+    size: '34 KB',
+    permissions: ['storage'],
+    changelog: [
+      { version: '1.3.0', notes: 'Table extraction with markdown output' },
+      { version: '1.2.0', notes: 'Scanned PDF OCR support' },
+      { version: '1.0.0', notes: 'Initial release' },
+    ],
+    featured: true,
+    official: true,
+  },
+  {
+    id: 'csv-processor',
+    name: 'CSV & Spreadsheet',
+    author: 'DataTools',
+    version: '1.1.2',
+    description: 'Load CSV, XLSX, and TSV files — query and visualize data.',
+    longDescription:
+      'Import CSV, XLSX, TSV, or JSON files up to 50 MB. Ask the AI to filter rows, compute statistics, generate charts, write formulas, and export cleaned data. Supports multi-sheet Excel workbooks.',
+    category: 'files',
+    icon: '📊',
+    tags: ['csv', 'excel', 'spreadsheet', 'data', 'analysis'],
+    rating: 4.6,
+    downloads: 14900,
+    size: '26 KB',
+    permissions: ['storage'],
+    changelog: [
+      { version: '1.1.2', notes: 'Multi-sheet XLSX support' },
+      { version: '1.1.0', notes: 'Chart generation added' },
+    ],
+    official: true,
+  },
+  {
+    id: 'file-converter',
+    name: 'File Converter',
+    author: 'UtilityLabs',
+    version: '1.0.1',
+    description: 'Convert between PDF, DOCX, Markdown, HTML, and plain text.',
+    longDescription:
+      'On-device file conversion — no upload to third-party servers. Converts PDF ↔ DOCX ↔ Markdown ↔ HTML ↔ TXT. Preserves headings, lists, tables, and basic formatting. Batch convert multiple files at once.',
+    category: 'files',
+    icon: '🔄',
+    tags: ['convert', 'pdf', 'docx', 'markdown', 'html'],
+    rating: 4.3,
+    downloads: 9800,
+    size: '18 KB',
+    permissions: ['storage'],
+    changelog: [
+      { version: '1.0.1', notes: 'Batch conversion support' },
+      { version: '1.0.0', notes: 'Initial release' },
+    ],
+    new: true,
+  },
+  {
+    id: 'audio-transcriber',
+    name: 'Audio Transcriber',
+    author: 'Nexus Official',
+    version: '1.1.0',
+    description: 'Transcribe MP3, WAV, and M4A files with Whisper on-device.',
+    longDescription:
+      'Upload any audio file and get a full transcript with speaker labels and timestamps. Runs Whisper locally — no audio ever leaves your device. Supports 99 languages. Export as SRT, VTT, or plain text.',
+    category: 'files',
+    icon: '🎙️',
+    tags: ['audio', 'transcribe', 'whisper', 'speech', 'subtitles'],
+    rating: 4.8,
+    downloads: 18300,
+    size: '22 KB',
+    permissions: ['storage', 'microphone'],
+    changelog: [
+      { version: '1.1.0', notes: 'Speaker diarization, SRT/VTT export' },
+      { version: '1.0.0', notes: 'Initial release' },
+    ],
+    official: true,
+  },
+  {
+    id: 'image-batch',
+    name: 'Image Batch Processor',
+    author: 'MediaTools',
+    version: '0.9.0',
+    description: 'Resize, convert, tag, and describe batches of images with AI.',
+    longDescription:
+      'Process multiple images at once — resize, crop, convert format (PNG/JPEG/WebP), strip EXIF data, or run AI description/tagging on each. Useful for preparing datasets or organising a photo library. All processing is on-device.',
+    category: 'files',
+    icon: '🖼️',
+    tags: ['image', 'batch', 'resize', 'convert', 'tagging'],
+    rating: 4.2,
+    downloads: 6700,
+    size: '14 KB',
+    permissions: ['storage'],
+    changelog: [{ version: '0.9.0', notes: 'AI auto-tagging added' }],
+    new: true,
+  },
+  {
+    id: 'archive-explorer',
+    name: 'Archive Explorer',
+    author: 'UtilityLabs',
+    version: '1.0.0',
+    description: 'Browse, extract, and analyze ZIP, TAR, and 7z archives.',
+    longDescription:
+      'Open compressed archives without extracting everything first. Browse the file tree, preview text files inside, selectively extract, and ask the AI to summarize the contents. Supports ZIP, TAR.GZ, TAR.BZ2, and 7z.',
+    category: 'files',
+    icon: '🗜️',
+    tags: ['zip', 'archive', 'tar', 'extract', 'compress'],
+    rating: 4.4,
+    downloads: 5100,
+    size: '11 KB',
+    permissions: ['storage'],
+    changelog: [{ version: '1.0.0', notes: 'Initial release' }],
+    new: true,
+  },
+
+  // ── Adult (NSFW) ──────────────────────────────────────────────
+  {
+    id: 'nsfw-content',
+    name: 'Adult Content',
+    author: 'Nexus Labs',
+    version: '1.0.0',
+    description: 'Unlock adult / NSFW text and image generation. Requires Venice backend.',
+    longDescription:
+      'Removes content filters for text generation and enables NSFW image generation via Stable Diffusion. Requires a connected Venice private LLM backend running an uncensored model (e.g. dolphin-mistral, hermes3). All content is generated on your own server — nothing is sent to third-party APIs. You are responsible for complying with the laws of your jurisdiction. This plugin is restricted to users 18+.',
+    category: 'adult',
+    icon: '🔞',
+    tags: ['nsfw', 'adult', 'uncensored', 'venice', 'image-gen'],
+    rating: 4.1,
+    downloads: 3800,
+    size: '9 KB',
+    permissions: ['network', 'storage'],
+    changelog: [{ version: '1.0.0', notes: 'Initial release — Venice backend required' }],
+  },
+  {
+    id: 'nsfw-image-gen',
+    name: 'Adult Image Generator',
+    author: 'Nexus Labs',
+    version: '0.8.0',
+    description: 'Generate unrestricted images via your own ComfyUI / A1111 server.',
+    longDescription:
+      'Connects to your self-hosted ComfyUI or Automatic1111 instance to generate adult images. Supports LoRA loading, negative prompts, aspect ratios, and inpainting. No prompts or images leave your server. Requires self-hosted Stable Diffusion — no cloud API is used. 18+ only.',
+    category: 'adult',
+    icon: '🎭',
+    tags: ['nsfw', 'adult', 'stable-diffusion', 'comfyui', 'a1111'],
+    rating: 4.0,
+    downloads: 2900,
+    size: '12 KB',
+    permissions: ['network', 'storage'],
+    changelog: [
+      { version: '0.8.0', notes: 'LoRA support, inpainting' },
+      { version: '0.7.0', notes: 'Initial release' },
+    ],
+  },
+  {
+    id: 'roleplay-personas',
+    name: 'Roleplay Personas',
+    author: 'NexusApps',
+    version: '1.0.0',
+    description: 'Custom AI personas with no character limits. Venice backend recommended.',
+    longDescription:
+      'Create persistent AI personas with custom names, personalities, and backstories. Personas have no built-in content restrictions when used with a Venice uncensored backend. Save and switch between multiple personas in any conversation. All persona data is stored locally.',
+    category: 'adult',
+    icon: '🎪',
+    tags: ['roleplay', 'persona', 'character', 'uncensored', 'fiction'],
+    rating: 4.5,
+    downloads: 5200,
+    size: '8 KB',
+    permissions: ['storage'],
+    changelog: [{ version: '1.0.0', notes: 'Initial release' }],
+    new: true,
+  },
+
   // ── Experimental ─────────────────────────────────────────────
   {
     id: 'vision-analyzer',
@@ -382,6 +565,8 @@ export const CATEGORIES: { id: PluginCategory | 'all'; label: string; icon: stri
   { id: 'security',      label: 'Security',     icon: '🛡️' },
   { id: 'utilities',     label: 'Utilities',    icon: '🔧' },
   { id: 'experimental',  label: 'Labs',         icon: '🧪' },
+  { id: 'files',        label: 'Files',        icon: '📁' },
+  { id: 'adult',        label: 'Adult (18+)',  icon: '🔞' },
 ];
 
 // ── Persistence ───────────────────────────────────────────────────

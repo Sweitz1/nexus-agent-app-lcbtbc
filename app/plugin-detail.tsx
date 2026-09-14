@@ -106,6 +106,16 @@ export default function PluginDetailScreen() {
           </View>
         </View>
 
+        {/* 18+ warning */}
+        {plugin.category === 'adult' && (
+          <View style={styles.adultBanner}>
+            <Text style={styles.adultBannerIcon}>🔞</Text>
+            <Text style={styles.adultBannerText}>
+              This plugin is restricted to adults 18+. You are responsible for complying with local laws. All content is generated on your own server.
+            </Text>
+          </View>
+        )}
+
         {/* Action buttons */}
         <View style={styles.actions}>
           {!inst ? (
@@ -168,7 +178,7 @@ export default function PluginDetailScreen() {
                 <Text style={styles.permIcon}>
                   {{ network: '🌐', storage: '💾', camera: '📷', microphone: '🎤',
                     calendar: '📅', notifications: '🔔', clipboard: '📋',
-                    'sandboxed-execution': '⚡' }[perm] ?? '🔒'}
+                    'sandboxed-execution': '⚡', location: '📍', contacts: '👥' }[perm] ?? '🔒'}
                 </Text>
                 <Text style={styles.permText}>{perm}</Text>
               </View>
@@ -286,4 +296,12 @@ const styles = StyleSheet.create({
   changeEntry: { gap: 2 },
   changeVersion: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
   changeNotes: { fontSize: 13, color: COLORS.textSecondary },
+
+  adultBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: 'rgba(255,60,60,0.08)', borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: 'rgba(255,60,60,0.3)', padding: SPACING.md,
+  },
+  adultBannerIcon: { fontSize: 20, marginTop: 1 },
+  adultBannerText: { flex: 1, fontSize: 12, color: '#ff6b6b', lineHeight: 18 },
 });
