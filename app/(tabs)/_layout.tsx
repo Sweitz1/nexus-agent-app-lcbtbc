@@ -6,6 +6,7 @@ import {
   ListTodo,
   Brain,
   Settings,
+  Lock,
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 
@@ -14,6 +15,7 @@ const PlusIcon = withStrippedProps(Plus);
 const TasksIcon = withStrippedProps(ListTodo);
 const MemoryIcon = withStrippedProps(Brain);
 const SettingsIcon = withStrippedProps(Settings);
+const VeniceIcon = withStrippedProps(Lock);
 
 export default function TabsLayout() {
   return (
@@ -56,6 +58,13 @@ export default function TabsLayout() {
         options={{
           title: 'Memory',
           tabBarIcon: ({ color, size }) => <MemoryIcon size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="venice"
+        options={{
+          title: 'Venice',
+          tabBarIcon: ({ color, size }) => <VeniceIcon size={size} color={color} />,
         }}
       />
       <Tabs.Screen
