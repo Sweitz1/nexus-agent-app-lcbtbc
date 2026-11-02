@@ -1,6 +1,6 @@
 # Nexus Agent — Android APK
 
-**Nexus Agent** is a self-contained AutoGPT-style AI agent app that runs entirely on your Android device. It connects directly to OpenAI, Anthropic (Claude), and Google Gemini — no backend server required. Everything runs in your browser engine on-device, with all data stored locally.
+**Nexus Agent** is a self-contained AutoGPT-style AI agent app that runs entirely on your Android device. It connects directly to OpenAI, Anthropic (Claude), Google Gemini, **Venice AI** (private, no-log), or a **local LLM** running on your phone or LAN — no backend server required. Everything runs in your browser engine on-device, with all data stored locally.
 
 ---
 
@@ -38,9 +38,30 @@
    - **OpenAI** — get from [platform.openai.com](https://platform.openai.com)
    - **Anthropic (Claude)** — get from [console.anthropic.com](https://console.anthropic.com)
    - **Google Gemini** — get from [aistudio.google.com](https://aistudio.google.com)
+   - **Venice AI** — get from [venice.ai/settings/api](https://venice.ai/settings/api). Default model `venice-uncensored`; you can type any Venice model id.
+   - **Local LLM** — no key needed. Point it at any OpenAI-compatible server (see below).
    - **GitHub** — optional, for GitHub read/write tools (Personal Access Token)
 4. Select your **Default Provider**
 5. Tap **Save Settings**
+
+---
+
+## Private / Local AI
+
+### Venice AI
+Venice runs open-weight models with no prompt logging. The app calls `https://api.venice.ai/api/v1` directly from the device and disables Venice's default system prompt so the agent's own instructions are used as-is.
+
+### Local LLM (fully offline inference)
+Choose **Local LLM (on-device / LAN)** in Providers and set the server URL:
+
+| Server | URL to enter | Notes |
+|--------|-------------|-------|
+| Ollama in **Termux** on the same phone | `http://127.0.0.1:11434/v1` | `pkg install ollama`, then `OLLAMA_ORIGINS=* ollama serve` and `ollama pull llama3.2` |
+| Ollama on a PC on your Wi‑Fi | `http://<pc-ip>:11434/v1` | Start with `OLLAMA_HOST=0.0.0.0 OLLAMA_ORIGINS=* ollama serve` |
+| LM Studio | `http://<pc-ip>:1234/v1` | Enable "Serve on local network" and CORS |
+| llama.cpp `llama-server` | `http://<host>:8080/v1` | |
+
+`OLLAMA_ORIGINS=*` is required: the app's page runs from a `file://` origin, and Ollama blocks cross-origin requests unless you allow them. Small models (1–3B) run on most phones; bigger ones need a PC. The model must be good at following JSON instructions for the agent loop to work well.
 
 ---
 

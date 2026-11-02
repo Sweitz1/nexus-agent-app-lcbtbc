@@ -287,9 +287,64 @@ function toast(msg, color = 'var(--primary)') {
 // ────────────────────────────────────────────────────────────────────────────
 // LLM ROUTER
 // ────────────────────────────────────────────────────────────────────────────
+const PROVIDERS = {
+  openai:    { label:'OpenAI GPT', keyField:'openaiKey', keyHint:'sk-…', modelField:'openaiModel',
+               models:['gpt-4o','gpt-4o-mini','gpt-4-turbo','gpt-3.5-turbo'] },
+  anthropic: { label:'Anthropic Claude', keyField:'anthropicKey', keyHint:'sk-ant-…', modelField:'anthropicModel',
+               models:['claude-opus-5-5','claude-sonnet-5-5','claude-haiku-5-5','claude-opus-4-8','claude-sonnet-4-6'] },
+  google:    { label:'Google Gemini', keyField:'googleKey', keyHint:'AIza…', modelField:'googleModel',
+               models:['gemini-2.0-flash','gemini-1.5-pro','gemini-1.5-flash'] },
+  venice:    { label:'Venice AI (private)', keyField:'veniceKey', keyHint:'Venice API key', modelField:'veniceModel',
+               models:['venice-uncensored','llama-3.3-70b','qwen3-235b','mistral-31-24b','llama-3.2-3b'],
+               note:'Private, no-log inference via api.venice.ai. Model list is editable — type any Venice model id.' },
+  local:     { label:'Local LLM (on-device / LAN)', keyField:'localKey', keyHint:'optional', modelField:'localModel',
+               urlField:'localUrl', urlHint:'http://127.0.0.1:11434/v1', keyOptional:true,
+               models:['llama3.2','qwen2.5','mistral','dolphin-mistral','gemma2'],
+               note:'Any OpenAI-compatible server: Ollama (Termux or PC), LM Studio, llama.cpp server. Nothing leaves your network. For Ollama set OLLAMA_ORIGINS=* so the app can reach it.' },
+};
+function providerReady(id, s = DB.settings()) {
+  const p = PROVIDERS[id];
+  if (!p) return false;
+  if (p.urlField) return !!(s[p.urlField] || p.urlHint);
+  return !!s[p.keyField];
+}
+function extractJson(text) {
+  const m = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/(\{[\s\S]*\})/);
+  return JSON.parse(m ? m[1] : text);
+}
+async function callOpenAICompat(label, baseUrl, key, model, messages, expectJson, extra = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (key) headers['Authorization'] = `Bearer ${key}`;
+  const r = await fetch(`${baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+    method: 'POST', headers,
+    body: JSON.stringify({ model, messages, stream: false, ...extra })
+  });
+  if (!r.ok) throw new Error(`${label} ${r.status}: ${await r.text()}`);
+  const d = await r.json();
+  const text = d.choices[0].message.content;
+  return expectJson ? extractJson(text) : text;
+}
+
 async function callLLM(messages, expectJson = true) {
   const s = DB.settings();
   const provider = s.defaultProvider || 'openai';
+
+  if (provider === 'venice') {
+    if (!s.veniceKey) throw new Error('No Venice API key. Add it in Providers.');
+    return callOpenAICompat('Venice', 'https://api.venice.ai/api/v1', s.veniceKey,
+      s.veniceModel || 'venice-uncensored', messages, expectJson,
+      { venice_parameters: { include_venice_system_prompt: false } });
+  }
+
+  if (provider === 'local') {
+    const base = s.localUrl || PROVIDERS.local.urlHint;
+    try {
+      return await callOpenAICompat('Local LLM', base, s.localKey, s.localModel || 'llama3.2', messages, expectJson);
+    } catch (e) {
+      if (e instanceof TypeError) throw new Error(`Cannot reach local LLM at ${base}. Is the server running and CORS allowed (OLLAMA_ORIGINS=*)?`);
+      throw e;
+    }
+  }
 
   if (provider === 'openai') {
     if (!s.openaiKey) throw new Error('No OpenAI key. Add it in Providers.');
@@ -321,7 +376,7 @@ async function callLLM(messages, expectJson = true) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: s.anthropicModel || 'claude-opus-4-8',
+        model: s.anthropicModel || 'claude-sonnet-5-5',
         max_tokens: 4096,
         ...(sys ? { system: sys.content } : {}),
         messages: msgs
@@ -331,8 +386,7 @@ async function callLLM(messages, expectJson = true) {
     const d = await r.json();
     const text = d.content[0].text;
     if (!expectJson) return text;
-    const m = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/(\{[\s\S]*\})/);
-    return JSON.parse(m ? m[1] : text);
+    return extractJson(text);
   }
 
   if (provider === 'google') {
@@ -728,11 +782,9 @@ const PAGES = {
     let selected = new Set(['web_fetch','memory_search','memory_write']);
 
     const s = DB.settings();
-    const providers = [
-      { id:'openai', label:'OpenAI GPT', model: s.openaiModel||'gpt-4o', hasKey: !!s.openaiKey },
-      { id:'anthropic', label:'Anthropic Claude', model: s.anthropicModel||'claude-opus-4-8', hasKey: !!s.anthropicKey },
-      { id:'google', label:'Google Gemini', model: s.googleModel||'gemini-1.5-pro', hasKey: !!s.googleKey },
-    ].filter(p => p.hasKey);
+    const providers = Object.entries(PROVIDERS)
+      .filter(([id]) => providerReady(id, s))
+      .map(([id, p]) => ({ id, label: p.label, model: s[p.modelField] || p.models[0] }));
 
     c.innerHTML = `
       <div class="card" style="max-width:600px">
@@ -843,15 +895,11 @@ const PAGES = {
     c.innerHTML = `
       <div class="card" style="max-width:560px">
         <div class="card-title">Model Providers</div>
-        ${[
-          { id:'openai', label:'OpenAI', keyField:'openaiKey', keyHint:'sk-…', modelField:'openaiModel', modelHint:'gpt-4o', models:['gpt-4o','gpt-4o-mini','gpt-4-turbo','gpt-3.5-turbo'] },
-          { id:'anthropic', label:'Anthropic', keyField:'anthropicKey', keyHint:'sk-ant-…', modelField:'anthropicModel', modelHint:'claude-opus-4-8', models:['claude-opus-4-8','claude-sonnet-4-6','claude-haiku-4-5-20251001'] },
-          { id:'google', label:'Google Gemini', keyField:'googleKey', keyHint:'AIza…', modelField:'googleModel', modelHint:'gemini-1.5-pro', models:['gemini-2.0-flash','gemini-1.5-pro','gemini-1.5-flash'] },
-        ].map(p => `
+        ${Object.entries(PROVIDERS).map(([id, p]) => ({ id, ...p, modelHint: p.models[0] })).map(p => `
           <div class="toggle-row">
             <div class="toggle-info">
               <div class="label">${p.label}</div>
-              <div class="desc">${s[p.keyField] ? '✓ Key configured' : 'No key'} · ${s[p.modelField] || p.modelHint}</div>
+              <div class="desc">${p.urlField ? (s[p.urlField] || p.urlHint) : (s[p.keyField] ? '✓ Key configured' : 'No key')} · ${s[p.modelField] || p.modelHint}${active===p.id?' · <b style="color:var(--primary)">default</b>':''}</div>
             </div>
             <button class="btn btn-ghost btn-sm" onclick="window._editProv('${p.id}')">Edit</button>
           </div>`).join('')}
@@ -871,25 +919,24 @@ const PAGES = {
     };
 
     window._editProv = (id) => {
-      const provs = {
-        openai: { label:'OpenAI', keyField:'openaiKey', keyHint:'sk-…', modelField:'openaiModel', models:['gpt-4o','gpt-4o-mini','gpt-4-turbo','gpt-3.5-turbo'] },
-        anthropic: { label:'Anthropic', keyField:'anthropicKey', keyHint:'sk-ant-…', modelField:'anthropicModel', models:['claude-opus-4-8','claude-sonnet-4-6','claude-haiku-4-5-20251001'] },
-        google: { label:'Google Gemini', keyField:'googleKey', keyHint:'AIza…', modelField:'googleModel', models:['gemini-2.0-flash','gemini-1.5-pro','gemini-1.5-flash'] },
-      };
-      const p = provs[id];
+      const p = PROVIDERS[id];
       const s = DB.settings();
       document.getElementById('prov-edit-area').innerHTML = `
         <div class="card" style="max-width:560px;border-color:var(--primary)">
           <div class="card-title">${p.label}</div>
+          ${p.note ? `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${p.note}</div>` : ''}
+          ${p.urlField ? `<div class="form-group">
+            <label class="form-label">Server URL (OpenAI-compatible)</label>
+            <input class="form-input" id="pe-url" placeholder="${p.urlHint}" value="${s[p.urlField]||''}"/>
+          </div>` : ''}
           <div class="form-group">
-            <label class="form-label">API Key</label>
+            <label class="form-label">API Key${p.keyOptional ? ' (optional)' : ''}</label>
             <input class="form-input" id="pe-key" type="password" placeholder="${p.keyHint}" value="${s[p.keyField]||''}"/>
           </div>
           <div class="form-group">
             <label class="form-label">Model</label>
-            <select class="form-input" id="pe-model">
-              ${p.models.map(m=>`<option ${(s[p.modelField]||p.models[0])===m?'selected':''}>${m}</option>`).join('')}
-            </select>
+            <input class="form-input" id="pe-model" list="pe-models" value="${s[p.modelField]||p.models[0]}"/>
+            <datalist id="pe-models">${p.models.map(m=>`<option value="${m}">`).join('')}</datalist>
           </div>
           <div style="display:flex;gap:8px">
             <button class="btn btn-primary btn-sm" onclick="window._saveProv('${id}','${p.keyField}','${p.modelField}')">Save</button>
@@ -901,15 +948,17 @@ const PAGES = {
 
     window._saveProv = (id, keyField, modelField) => {
       const key = document.getElementById('pe-key').value.trim();
-      const model = document.getElementById('pe-model').value;
-      DB.saveSettings({ ...DB.settings(), [keyField]: key, [modelField]: model });
-      toast(`${id} provider saved.`);
+      const model = document.getElementById('pe-model').value.trim() || PROVIDERS[id].models[0];
+      const urlEl = document.getElementById('pe-url');
+      const extra = urlEl && PROVIDERS[id].urlField ? { [PROVIDERS[id].urlField]: urlEl.value.trim() } : {};
+      DB.saveSettings({ ...DB.settings(), [keyField]: key, [modelField]: model, ...extra });
+      toast(`${PROVIDERS[id].label} saved.`);
       PAGES.providers();
     };
 
     window._setDefault = (id) => {
       DB.saveSettings({ ...DB.settings(), defaultProvider: id });
-      toast(`${id} set as default provider.`);
+      toast(`${PROVIDERS[id].label} set as default provider.`);
       PAGES.providers();
     };
   },
