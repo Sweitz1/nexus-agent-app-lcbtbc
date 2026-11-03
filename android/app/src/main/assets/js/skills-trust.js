@@ -1,5 +1,5 @@
 /* Nexus Agent — Verizon Cloud integration, deepfake / AI-media detection and provenance,
- * and consent-gated synthetic media of the user's OWN voice and face. Loaded after skills-dev.js.
+ * (offline provenance + vision-model review), and consent-gated synthetic media of the user's OWN voice and face. Loaded after skills-dev.js.
  *
  * Policy: no face-swapping or voice cloning of other people. Generation is limited to the
  * user's own likeness (or documented consent), requires an explicit confirmation every time
@@ -14,6 +14,8 @@
   const J = o => JSON.stringify(o, null, 1);
   S.myVoices = S.myVoices || [];
   S.consentLog = S.consentLog || [];
+  // Sightengine/Hive integrations were removed: forget any keys saved by earlier versions.
+  ['svc_sightengine', 'svc_hive'].forEach(k => { if (getKey(k)) setKey(k, ''); });
 
   /* ================================================================== Verizon Cloud */
   const VZ_PKGS = ['com.vcast.mediamanager'];
@@ -48,37 +50,17 @@
     if (!notes.length) notes.push(found.exif ? 'Has camera EXIF data and no AI markers (metadata can be stripped or faked, so this is weak evidence).' : 'No provenance or AI markers found (common for screenshots and re-shared media — not proof either way).');
     return { ...found, notes };
   }
-  async function sightengine(path, video) {
-    const k = getKey('svc_sightengine'); if (!k || !k.includes(':')) return null;
-    const [user, secret] = k.split(':');
-    const r = await nativeAsync('upload', JSON.stringify({ url: `https://api.sightengine.com/1.0/${video ? 'video/check-sync' : 'check'}.json`, fields: { models: 'genai,deepfake', api_user: user, api_secret: secret }, files: [{ field: 'media', path: cleanPath(path) }] }));
-    const d = parseJSON(r.body, {}); if (d.status !== 'success') throw new Error('Sightengine: ' + ((d.error && d.error.message) || r.status));
-    if (video) { const fr = (d.data && d.data.frames) || []; return { source: 'Sightengine', ai_generated: Math.max(0, ...fr.map(f => (f.type || {}).ai_generated || 0)), deepfake: Math.max(0, ...fr.map(f => (f.type || {}).deepfake || 0)), frames: fr.length }; }
-    return { source: 'Sightengine', ai_generated: (d.type || {}).ai_generated, deepfake: (d.type || {}).deepfake };
-  }
-  async function hive(path) {
-    const k = getKey('svc_hive'); if (!k) return null;
-    const r = await nativeAsync('upload', JSON.stringify({ url: 'https://api.thehive.ai/api/v2/task/sync', headers: { Authorization: 'Token ' + k }, files: [{ field: 'media', path: cleanPath(path) }] }));
-    const d = parseJSON(r.body, {}); if (r.status >= 400) throw new Error('Hive: ' + clip(r.body, 160));
-    const classes = []; const walk = o => { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === 'object') { if (o.class && typeof o.score === 'number') classes.push(o); Object.values(o).forEach(walk); } }; walk(d);
-    const max = re => Math.max(0, ...classes.filter(c => re.test(c.class)).map(c => c.score));
-    const gens = classes.filter(c => c.score > 0.5 && !/^(not_|none|ai_generated|deepfake|human)/.test(c.class)).map(c => c.class);
-    const ai = max(/^ai_generated$|^ai_generated_audio$/);
-    return { source: 'Hive', ai_generated: ai, deepfake: max(/deepfake/), ...(ai >= 0.5 && gens.length ? { likely_generator: gens.slice(0, 3) } : {}) };
-  }
   async function visionForensics(paths, kind, ctx) {
     const prompt = `You are a careful media-forensics analyst. Examine ${kind === 'video' ? 'these frames sampled in order from one video' : 'this image'} for signs of AI generation, face swapping or manipulation: inconsistent lighting/shadows/reflections, warped or merged features (hands, teeth, ears, jewelry, glasses), mismatched skin texture or face boundary blending, garbled text, impossible geometry, repeated patterns, ${kind === 'video' ? 'flicker or identity drift between frames, lip/face boundary artifacts, ' : ''}compression inconsistencies. Respond ONLY with JSON: {"likelihood": 0-100, "verdict": "likely authentic" | "uncertain" | "likely AI-generated or manipulated", "signals": [short strings], "caveats": "short"}`;
     const raw = await visionAsk(paths, prompt, ctx);
     const m = raw.match(/\{[\s\S]*\}/); const j = m ? parseJSON(m[0], null) : null;
     return j ? { source: 'Vision model review', ...j } : { source: 'Vision model review', note: clip(raw, 600) };
   }
-  function verdict(prov, apis, vis) {
-    const scores = apis.filter(Boolean).map(a => Math.max(a.ai_generated || 0, a.deepfake || 0));
-    const api = scores.length ? Math.max(...scores) : null;
+  function verdict(prov, vis) {
     if (prov.declaredAI || prov.sdParameters) return 'AI-generated (declared in the file itself)';
-    if (api != null) return api >= 0.85 ? `Very likely AI-generated or deepfaked (detector ${Math.round(api * 100)}%)` : api >= 0.5 ? `Possibly AI-generated/manipulated (detector ${Math.round(api * 100)}%)` : `Likely authentic according to the detector (${Math.round(api * 100)}% AI score)`;
-    if (vis && typeof vis.likelihood === 'number') return `${vis.verdict || 'uncertain'} (visual review ${vis.likelihood}/100 — no detector API configured, treat as a hint, not proof)`;
-    return 'Inconclusive — add a detection API key (Sightengine or Hive) for a stronger result';
+    if (prov.declaredAIEdited) return 'Edited with generative AI (declared in the file itself)';
+    if (vis && typeof vis.likelihood === 'number') return `${vis.verdict || 'uncertain'} (visual review ${vis.likelihood}/100 — a hint, not proof)`;
+    return 'Inconclusive — no provenance markers and no visual review available';
   }
 
   /* ================================================================== consent gate for synthetic media */
@@ -121,22 +103,20 @@
       } },
 
     /* ---------------- Deepfake & AI-media detection */
-    { name: 'deepfake_check', group: 'Deepfake detection', description: 'Check whether an image, video or audio file (workspace path or URL) is AI-generated, deepfaked or manipulated: provenance/metadata (C2PA Content Credentials, AI tool markers), detection APIs (Sightengine/Hive if configured) and a visual forensic review. Reports a verdict with evidence and caveats.', parameters: P({ path: Str('workspace file'), url: Str('or a media URL') }),
+    { name: 'deepfake_check', group: 'Deepfake detection', description: 'Check whether an image, video or audio file (workspace path or URL) is AI-generated, deepfaked or manipulated: provenance/metadata (C2PA Content Credentials, AI tool markers), and a visual forensic review by the vision model. Reports a verdict with evidence and caveats.', parameters: P({ path: Str('workspace file'), url: Str('or a media URL') }),
       run: async (a, ctx) => {
         let path = a.path ? cleanPath(a.path) : null;
         if (!path && a.url) { needNative('Downloads'); path = (await nativeAsync('download', JSON.stringify({ url: a.url, path: `checks/${(new URL(a.url).pathname.split('/').pop() || 'media').replace(/[^\w.-]/g, '_')}` }))).path; }
         if (!path) throw new Error('path or url required');
         const e = extOf(path); const kind = isImagePath(path) ? 'image' : /^(mp4|webm|mov|mkv|3gp)$/.test(e) ? 'video' : /^(mp3|m4a|wav|ogg|aac|flac|opus)$/.test(e) ? 'audio' : 'other';
         const prov = await provenance(path);
-        const apis = [], errs = [];
-        const detectors = kind === 'audio' ? [() => hive(path)] : [() => sightengine(path, kind === 'video'), () => hive(path)];
-        for (const f of detectors) { try { const r = await f(); if (r) apis.push(r); } catch (err) { errs.push(err.message); } }
+        const errs = [];
         let vis = null;
         try {
           if (kind === 'image') vis = await visionForensics([path], 'image', ctx);
           else if (kind === 'video') { const fr = await nativeAsync('video', JSON.stringify({ op: 'frames', path, count: 6, maxWidth: 768 })); vis = await visionForensics(fr.frames.map(f => f.path), 'video', ctx); }
         } catch (err) { errs.push('vision: ' + err.message); }
-        const out = { file: path, type: kind, verdict: verdict(prov, apis, vis), provenance: prov.notes, detectors: apis.length ? apis : 'none configured (Settings → Trust & safety)', visual_review: vis || (kind === 'audio' ? 'not applicable to audio — add a Hive key for AI-voice detection' : 'unavailable'), errors: errs.length ? errs : undefined,
+        const out = { file: path, type: kind, verdict: verdict(prov, vis), provenance: prov.notes, visual_review: vis || (kind === 'audio' ? 'not available for audio — check the source and context instead' : 'unavailable'), errors: errs.length ? errs : undefined,
           caveat: 'No detector is perfect: compression, screenshots and new generators cause false results. For anything important, look for the original source (reverse_image_search) and trusted reporting.' };
         return J(out);
       } },
@@ -158,7 +138,7 @@
       } },
     { name: 'avatar_video_self', group: 'Synthetic media (self)', description: 'Make a talking-avatar video from the USER\'S OWN photo speaking a script (D-ID), e.g. a video message or intro. Never for another person\'s face without their documented permission; requires explicit confirmation every time; output is labelled AI-generated.', parameters: P({ photo: Str('workspace photo of the user (front-facing)'), script: Str('what the avatar says'), voice: Str('optional Microsoft voice id, e.g. en-US-JennyNeural / en-US-GuyNeural') }, ['photo', 'script']),
       run: async a => {
-        needNative('Avatar video'); const key = getKey('svc_did'); if (!key) throw new Error('Add a D-ID API key in Settings → Trust & safety');
+        needNative('Avatar video'); const key = getKey('svc_did'); if (!key) throw new Error('Add a D-ID API key in Settings → Synthetic media of yourself');
         await requireConsent('talking-avatar video', [a.photo]);
         const auth = { Authorization: 'Basic ' + key };
         const up = await nativeAsync('upload', JSON.stringify({ url: 'https://api.d-id.com/images', headers: auth, files: [{ field: 'image', path: cleanPath(a.photo) }] }));
@@ -180,10 +160,7 @@
 
   /* ================================================================== settings */
   const coreRenderPro = renderProSettings, coreBindPro = bindProSettings;
-  renderProSettings = () => coreRenderPro() + `<div class="card" id="trustCard"><h3>Trust &amp; safety: deepfake detection</h3>
-    <p class="hint">Offline provenance checks and a visual review work without keys. A detector API gives much stronger results.</p>
-    <div class="row"><div><label>Sightengine "api_user:api_secret"</label><input type="password" data-secret="svc_sightengine" placeholder="${getKey('svc_sightengine') ? 'saved ✓' : ''}"></div><div><label>Hive API key (AI-generated / deepfake model)</label><input type="password" data-secret="svc_hive" placeholder="${getKey('svc_hive') ? 'saved ✓' : ''}"></div></div>
-    <h3 style="margin-top:.8em">Synthetic media of yourself</h3>
+  renderProSettings = () => coreRenderPro() + `<div class="card" id="trustCard"><h3>Synthetic media of yourself</h3>
     <p class="hint">Voice cloning (ElevenLabs key in Media &amp; audio) and talking avatars (D-ID) are limited to <b>your own</b> voice and face, need confirmation every time, and are labelled AI-generated. Face swaps and cloning other people are not supported.</p>
     <div class="row"><div><label>D-ID API key</label><input type="password" data-secret="svc_did" placeholder="${getKey('svc_did') ? 'saved ✓' : ''}"></div></div>
   </div>`;
@@ -192,7 +169,7 @@
     const card = $('#trustCard', v); if (!card) return;
     $$('[data-secret]', card).forEach(el => el.addEventListener('change', () => { setKey(el.dataset.secret, el.value); el.value = ''; el.placeholder = 'saved ✓'; toast('Saved on device'); }));
   };
-  { const coreSecrets = secretIds; secretIds = () => [...coreSecrets(), { id: 'svc_sightengine', name: 'Sightengine user:secret' }, { id: 'svc_hive', name: 'Hive API key' }, { id: 'svc_did', name: 'D-ID API key' }]; }
+  { const coreSecrets = secretIds; secretIds = () => [...coreSecrets(), { id: 'svc_did', name: 'D-ID API key' }]; }
 
   window.NexusTrust = { provenance, verdict };
 })();
