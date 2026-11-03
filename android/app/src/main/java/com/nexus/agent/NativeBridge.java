@@ -1290,6 +1290,92 @@ public class NativeBridge {
         });
     }
 
+    /** Streams a workspace file as the raw request body. spec {url, method, headers, path}; resolves {status, body}. */
+    @JavascriptInterface
+    public void uploadRaw(String id, String specJson) {
+        async(id, () -> {
+            JSONObject sp = new JSONObject(specJson);
+            URL url = new URL(sp.getString("url"));
+            if (!"https".equals(url.getProtocol())) throw new IllegalArgumentException("https only");
+            File f = workspace.resolve(sp.getString("path"));
+            HttpURLConnection c = (HttpURLConnection) url.openConnection();
+            try {
+                c.setConnectTimeout(20000);
+                c.setReadTimeout(300000);
+                c.setRequestMethod(sp.optString("method", "POST"));
+                c.setDoOutput(true);
+                c.setFixedLengthStreamingMode(f.length());
+                c.setRequestProperty("Content-Type", MainActivity.mimeFor(f.getName()));
+                JSONObject h = sp.optJSONObject("headers");
+                if (h != null) { Iterator<String> it = h.keys(); while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.optString(k)); } }
+                try (InputStream in = new FileInputStream(f); OutputStream os = c.getOutputStream()) { Workspace.copy(in, os); }
+                int st = c.getResponseCode();
+                InputStream is = st >= 400 ? c.getErrorStream() : c.getInputStream();
+                JSONObject o = new JSONObject();
+                o.put("status", st);
+                o.put("body", is == null ? "" : readAll(is));
+                return o.toString();
+            } finally { c.disconnect(); }
+        });
+    }
+
+    // ------------------------------------------------------------------ OAuth loopback (Google sign-in)
+
+    private final Map<Integer, java.net.ServerSocket> oauthSockets = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Opens a one-shot listener on 127.0.0.1:<random port> for an OAuth redirect; returns the port. */
+    @JavascriptInterface
+    public int oauthStart() {
+        try {
+            java.net.ServerSocket ss = new java.net.ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"));
+            oauthSockets.put(ss.getLocalPort(), ss);
+            return ss.getLocalPort();
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /** Waits for the browser redirect; resolves {query} and brings Nexus back to the front. */
+    @JavascriptInterface
+    public void oauthWait(String id, int port, int timeoutMs) {
+        async(id, () -> {
+            java.net.ServerSocket ss = oauthSockets.get(port);
+            if (ss == null) throw new IllegalStateException("No sign-in in progress");
+            try {
+                ss.setSoTimeout(Math.max(10000, Math.min(timeoutMs, 600000)));
+                while (true) {
+                    try (java.net.Socket sock = ss.accept()) {
+                        sock.setSoTimeout(10000);
+                        InputStream in = sock.getInputStream();
+                        StringBuilder line = new StringBuilder();
+                        int c;
+                        while ((c = in.read()) != -1 && c != '\n') line.append((char) c);
+                        String[] parts = line.toString().trim().split(" ");
+                        String target = parts.length > 1 ? parts[1] : "/";
+                        if (target.startsWith("/favicon")) { sock.getOutputStream().write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".getBytes(StandardCharsets.UTF_8)); continue; }
+                        String html = "<!doctype html><meta name=viewport content='width=device-width'><body style='font-family:sans-serif;background:#000;color:#e6f7ff;text-align:center;padding:3em'><h2>✅ Signed in</h2><p>You can return to Nexus Agent.</p></body>";
+                        byte[] b = html.getBytes(StandardCharsets.UTF_8);
+                        sock.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + b.length + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                        sock.getOutputStream().write(b);
+                        sock.getOutputStream().flush();
+                        int q = target.indexOf('?');
+                        bringToFront();
+                        return ok("query", q >= 0 ? target.substring(q + 1) : "");
+                    }
+                }
+            } finally {
+                oauthSockets.remove(port);
+                try { ss.close(); } catch (Exception ignored) { }
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public void oauthCancel(int port) {
+        java.net.ServerSocket ss = oauthSockets.remove(port);
+        if (ss != null) try { ss.close(); } catch (Exception ignored) { }
+    }
+
     // ------------------------------------------------------------------ glasses / device
 
     @JavascriptInterface

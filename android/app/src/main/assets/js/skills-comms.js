@@ -192,6 +192,9 @@ async function caldavEvents(acct, cal, startMs, endMs) {
 }
 
 /* ====================================================================== unified calendar */
+/** Pluggable calendar sources (e.g. Google Calendar API). Each: {name, prefix, calendars(refresh), events(cal, startMs, endMs, query), create(cal, ev), update(id, args), remove(id)} */
+const CAL_SOURCES = [];
+const calSourceFor = id => CAL_SOURCES.find(s => String(id).startsWith(s.prefix));
 async function allCalendars(refresh) {
   const out = [], errors = [];
   if (S.settings.deviceCalendar && N) {
@@ -204,6 +207,9 @@ async function allCalendars(refresh) {
   for (const acct of S.caldavAccounts) {
     if (!acct.enabled) continue;
     try { out.push(...await caldavCalendars(acct, refresh)); } catch (e) { errors.push(e.message); }
+  }
+  for (const src of CAL_SOURCES) {
+    try { out.push(...await src.calendars(refresh)); } catch (e) { errors.push(`${src.name}: ${e.message}`); }
   }
   return { calendars: out, errors };
 }
@@ -222,7 +228,10 @@ async function listEvents(startMs, endMs, { query, calendar } = {}) {
   const events = [];
   for (const cal of targets) {
     try {
-      if (cal.id.startsWith('device:')) {
+      const src = calSourceFor(cal.id);
+      if (src) {
+        events.push(...await src.events(cal, startMs, endMs, query));
+      } else if (cal.id.startsWith('device:')) {
         events.push(...(await nativeAsync('calendar', JSON.stringify({ op: 'events', startMs, endMs, calendarId: cal.deviceId, query: query || '' }))).map(e => ({ ...e, id: 'device:' + e.id })));
       } else {
         const acct = S.caldavAccounts.find(a => cal.id.startsWith(`caldav:${a.id}:`));
@@ -268,7 +277,9 @@ function caldavRef(id) {
 async function createEvent(ev, calendar) {
   const { calendars } = await allCalendars();
   const cal = pickCalendar(calendars, calendar);
-  if (!cal) throw new Error('No writable calendar. Enable device calendars or add a CalDAV account (Settings → Email & calendar).');
+  if (!cal) throw new Error('No writable calendar. Enable device calendars, add a CalDAV account, or connect Google (Settings).');
+  const src = calSourceFor(cal.id);
+  if (src) return src.create(cal, ev);
   if (cal.id.startsWith('device:')) {
     if (!(await ensurePermission('android.permission.WRITE_CALENDAR'))) throw new Error('Calendar permission denied');
     const r = await nativeAsync('calendar', JSON.stringify({ op: 'create', event: { ...ev, calendarId: cal.deviceId } }));
@@ -369,10 +380,11 @@ BUILTIN_SKILLS.push(
       const ev = eventFromArgs(a);
       if (a.method === 'app') { needNative('Calendar'); return N.calendarInsertIntent(JSON.stringify(ev)); }
       const r = await createEvent(ev, a.calendar);
-      return `Created "${ev.title}" ${ev.allDay ? fmtWhen(ev.startMs, true) + ' (all day)' : `${fmtWhen(ev.startMs)}–${fmtTime(ev.endMs)}`} in ${r.calendar}. id: ${r.id}` + (ev.attendees && ev.attendees.length ? '\nNote: invitations are sent only if the calendar service does so; to be sure, email the invite with calendar_export_ics + email_send.' : '');
+      return `Created "${ev.title}" ${ev.allDay ? fmtWhen(ev.startMs, true) + ' (all day)' : `${fmtWhen(ev.startMs)}–${fmtTime(ev.endMs)}`} in ${r.calendar}. id: ${r.id}` + (ev.attendees && ev.attendees.length && !/invites sent/.test(r.calendar) ? '\nNote: invitations are sent only if the calendar service does so; to be sure, email the invite with calendar_export_ics + email_send.' : '');
     } },
   { name: 'calendar_update_event', group: 'Calendar', risky: true, description: 'Change an existing event (id from calendar_events): reschedule, rename, move location, edit notes.', parameters: P2({ id: S2('event id'), title: S2('new title'), start: S2(WHEN), end: S2(WHEN), duration_minutes: N2('with start, if end omitted'), all_day: B2(''), location: S2(''), description: S2(''), recurrence: S2('RRULE') }, ['id']),
     run: async a => {
+      if (calSourceFor(a.id)) return calSourceFor(a.id).update(a.id, a);
       if (a.id.startsWith('device:')) {
         if (!(await ensurePermission('android.permission.WRITE_CALENDAR'))) throw new Error('Calendar permission denied');
         const r = await nativeAsync('calendar', JSON.stringify({ op: 'update', id: a.id.slice(7), event: eventFromArgs(a) }));
@@ -390,6 +402,7 @@ BUILTIN_SKILLS.push(
     } },
   { name: 'calendar_delete_event', group: 'Calendar', risky: true, description: 'Delete an event by id (deletes the whole series for recurring events).', parameters: P2({ id: S2('event id') }, ['id']),
     run: async a => {
+      if (calSourceFor(a.id)) return calSourceFor(a.id).remove(a.id);
       if (a.id.startsWith('device:')) { if (!(await ensurePermission('android.permission.WRITE_CALENDAR'))) throw new Error('Calendar permission denied'); const r = await nativeAsync('calendar', JSON.stringify({ op: 'delete', id: a.id.slice(7) })); return r.deleted ? 'Deleted.' : 'Event not found.'; }
       const { acct, href } = caldavRef(a.id); const r = await http('DELETE', href, davAuth(acct), null, 30000);
       if (r.status >= 400 && r.status !== 404) throw new Error('Delete failed: HTTP ' + r.status); return r.status === 404 ? 'Event not found.' : 'Deleted.';

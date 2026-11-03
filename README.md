@@ -22,7 +22,7 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   - outgoing webhooks
   - delegation to other agents
 
-  **Pro skills** (162 skills in total; each one can be turned on or off per agent):
+  **Pro skills** (191 skills in total; each one can be turned on or off per agent):
 
   | Group | Skills |
   |---|---|
@@ -39,6 +39,11 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   | Translation | `translate` (AI model, DeepL or LibreTranslate), `translate_image` (signs, menus), `translate_file` (text and PDF files) |
   | Email | `email_list` (inbox, unread, search by text, sender or date), `email_read` (full text; saves attachments to the workspace), `email_send`, `email_reply` (threaded, with reply-all), `email_manage` (read/unread, flag, move, delete), `email_folders`, `email_compose` (opens your mail app with a draft; needs no account) |
   | Glasses (native RayNeo X3 Pro) | `glasses_status` (battery, charging, temperature, network, storage, sensors), `glasses_volume`, `glasses_brightness`, `media_control` (Spotify and other players: play, pause, next…), `glasses_settings`, `head_pose`, `ask_yes_no` (**nod = yes, shake = no**), `notifications_read` / `notifications_dismiss`, `camera_record_video` (point-of-view clips with sound) |
+  | Gmail | `gmail_search` (full Gmail search syntax), `gmail_read` (saves attachments), `gmail_send`, `gmail_reply` (threaded, reply-all), `gmail_draft` (saves a draft without sending), `gmail_modify` (read, unread, archive, trash, star, label, spam), `gmail_labels` |
+  | Google Calendar | Your Google calendars are a **source for every Calendar skill** (agenda, free time, create, update, delete; attendees get real invites), plus `gcal_quick_add` ("Lunch with Ann Friday 1pm", with an optional Google Meet link) |
+  | Google Drive & Docs | `drive_search`, `drive_download` (exports Docs, Sheets and Slides to PDF, DOCX, XLSX, CSV, PPTX, TXT or MD), `drive_upload`, `drive_share`, `docs_read`, `docs_create`, `docs_append`, `sheets_read`, `sheets_append` (logs and trackers), `sheets_update`, `sheets_create` |
+  | Google Tasks & more | `gtasks_list`, `gtasks_add`, `gtasks_update`, `google_contacts` (useful on glasses without a phonebook), `youtube_mine` (liked videos, playlists, subscriptions), `google_open` (Search, News, Lens, Assistant, Photos, Keep, Home, Wallet…), `google_account` |
+  | Google Maps | `gmaps_places` (ratings, open now, price level), `gmaps_place_details` (hours, phone, website, reviews), `gmaps_directions` (**live traffic** and turn-by-turn steps, or Google Maps navigation). The Google Translate engine is also available for every translation skill |
   | Music | `music_now_playing` (any app: Spotify, YouTube Music, Plex, podcasts…), `music_control` (control a specific app), `music_play` (routes to your music service), `music_lyrics` (**synced lyrics** on screen and on the glasses HUD) |
   | Spotify | `spotify_search`, `spotify_play` (tracks, albums, playlists, artists; shuffle; device), `spotify_control`, `spotify_now_playing`, `spotify_queue`, `spotify_devices` (Spotify Connect transfer), `spotify_playlists` (list, show, **create from song names**, add), `spotify_library` (like, recent, top tracks and artists) |
   | YouTube Music | `ytmusic_search`, `ytmusic_play` (opens in the YouTube Music app with an automatic radio mix), `ytmusic_open` (home, explore, library, liked) |
@@ -173,6 +178,26 @@ Turn it on in *Settings → "Hey Nexus" wake word*, or ask an agent to call `wak
 - Say **"stop"** or **"cancel"** to interrupt a reply.
 - The app pauses the wake word while it is speaking, so it doesn't hear itself.
 - Models for German, French, Spanish, Italian, Portuguese, Dutch, Russian, Chinese and Japanese are available. With these, set a custom phrase in that language.
+
+## Google services
+
+One Google sign-in gives agents **Gmail, Google Calendar, Drive, Docs, Sheets, Tasks, Contacts** (and optionally your YouTube account). You choose which services are requested.
+
+**One-time setup** (free, about 5 minutes; the steps are also shown in *Settings → Google*):
+
+1. Create a project at [console.cloud.google.com](https://console.cloud.google.com).
+2. Under *APIs & Services → Library*, enable the Gmail, Google Calendar, Drive, Docs, Sheets, Tasks and People APIs, plus the YouTube Data API if you want it.
+3. Set up the *OAuth consent screen*: choose External and add yourself as a test user.
+   - While the app is in Testing mode, Google ends the sign-in after **7 days**. To avoid that, publish the app (it stays unverified, which is fine for personal use; Google shows a warning you can click through).
+4. Under *Credentials*, create an **OAuth client ID** of type **Desktop app**, then paste the client ID and secret into Settings and press **Connect Google**.
+5. Optional: create an **API key** with Places API (New), Routes API and Cloud Translation API enabled. This adds Google Maps search, live-traffic routes and Google Translate.
+
+**How sign-in works:** it uses Google's standard installed-app flow (PKCE) in your normal browser. Google then returns to Nexus through a temporary local address on the device (`http://127.0.0.1:<port>`).
+
+- Typing on glasses is hard, so you can sign in on your phone instead. The phone's browser will end on a page that fails to load, at an address starting with `http://127.0.0.1`. Copy that address and paste it into *Settings → Google → "Signed in on another device?"*. The phone remote console works for this too.
+- Tokens are stored only in the app's private storage. *Disconnect* revokes them with Google.
+
+**Not available:** Google Keep and Google Home devices, because Google offers no public consumer API for them. Use Tasks or Docs instead of Keep. `google_open` launches those apps.
 
 ## Music, display glasses and Meta glasses
 
@@ -358,6 +383,7 @@ android/
     js/skills-shop.js   wake word control, Amazon/Walmart shopping + list, Plex, fast food & delivery
     js/skills-screen.js screen-control skills, consent and sensitive-action guard, settings
     js/skills-music.js  Spotify, YouTube Music, media sessions, lyrics, display-glasses HUD, Meta glasses
+    js/skills-google.js Google sign-in, Gmail, Calendar source, Drive, Docs, Sheets, Tasks, Contacts, YouTube, Maps, Translate
     hud.html            HUD shown on external display glasses
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console
