@@ -19,8 +19,11 @@
   const SCOPES = {
     gmail: ['https://www.googleapis.com/auth/gmail.modify'], calendar: ['https://www.googleapis.com/auth/calendar'],
     drive: ['https://www.googleapis.com/auth/drive'], docs: ['https://www.googleapis.com/auth/documents'], sheets: ['https://www.googleapis.com/auth/spreadsheets'],
-    tasks: ['https://www.googleapis.com/auth/tasks'], contacts: ['https://www.googleapis.com/auth/contacts.readonly'], youtube: ['https://www.googleapis.com/auth/youtube.readonly'],
+    tasks: ['https://www.googleapis.com/auth/tasks'],
+    // Google Photos after the 2025 API change: upload + app albums, and download what the user picks.
+    photos: ['https://www.googleapis.com/auth/photoslibrary.appendonly', 'https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata', 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly'], contacts: ['https://www.googleapis.com/auth/contacts.readonly'], youtube: ['https://www.googleapis.com/auth/youtube.readonly'],
   };
+  if (S.settings.googleServices.photos === undefined) S.settings.googleServices = { ...S.settings.googleServices, photos: true };
   const svcOn = k => !!(S.settings.googleServices || {})[k];
   const tok = () => parseJSON(getKey('svc_google'), null);
   const connected = () => !!(tok() && S.settings.googleClientId);
@@ -192,6 +195,13 @@
   }
   const openMaps = (url) => { needNative(); if (N.startIntent(JSON.stringify({ action: 'android.intent.action.VIEW', data: url, package: 'com.google.android.apps.maps' })) === 'ok') return 'opened Google Maps'; return N.openUrl(url) ? 'opened' : 'could not open'; };
 
+  /* ================================================================== Google Photos */
+  const PH = 'https://photoslibrary.googleapis.com/v1';
+  async function photosAlbum(title) {
+    const albums = (await g('GET', `${PH}/albums?excludeNonAppCreatedData=true&pageSize=50`)).albums || [];
+    return albums.find(a => a.title.toLowerCase() === String(title).toLowerCase()) || (await g('POST', `${PH}/albums`, { album: { title } }));
+  }
+
   /* ================================================================== Translate engine */
   {
     const coreTranslate = translateText;
@@ -346,6 +356,50 @@
         if (a.action === 'delete') { await g('DELETE', `${TSK}/lists/${l.id}/tasks/${t.id}`, null, { raw: true }); return `Deleted "${t.title}".`; }
         await g('PATCH', `${TSK}/lists/${l.id}/tasks/${t.id}`, a.action === 'reopen' ? { status: 'needsAction', completed: null } : { status: 'completed' });
         return `${a.action === 'reopen' ? 'Reopened' : 'Completed'} "${t.title}".`;
+      } },
+
+    /* ---------------- Google Photos */
+    { name: 'gphotos_upload', group: 'Google Photos', risky: true, description: 'Upload photos/videos from the workspace (camera shots, glasses captures, generated images) to Google Photos, optionally into an album.', parameters: P({ paths: Arr('workspace image/video paths'), album: Str('optional album name (created if needed)'), description: Str('optional caption') }, ['paths']),
+      run: async a => {
+        need('photos'); needNative('Uploads');
+        const items = [];
+        for (const p of a.paths.slice(0, 50)) {
+          const r = await nativeAsync('uploadRaw', JSON.stringify({ url: `${PH}/uploads`, method: 'POST', path: cleanPath(p), headers: { Authorization: 'Bearer ' + await ensureToken(), 'Content-Type': 'application/octet-stream', 'X-Goog-Upload-Content-Type': { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime' }[extOf(p)] || 'application/octet-stream', 'X-Goog-Upload-Protocol': 'raw' } }));
+          if (r.status >= 400) throw new Error(`Upload of ${p} failed: HTTP ${r.status} ${clip(r.body, 150)}`);
+          items.push({ description: a.description || '', simpleMediaItem: { uploadToken: r.body.trim(), fileName: cleanPath(p).replace(/^.*\//, '') } });
+        }
+        const album = a.album ? await photosAlbum(a.album) : null;
+        const res = await g('POST', `${PH}/mediaItems:batchCreate`, { ...(album ? { albumId: album.id } : {}), newMediaItems: items });
+        const ok = (res.newMediaItemResults || []).filter(x => x.status && (x.status.message === 'Success' || x.status.message === 'OK' || !x.status.code));
+        return `Uploaded ${ok.length}/${items.length} to Google Photos${album ? ` (album "${album.title}"${album.productUrl ? ' · ' + album.productUrl : ''})` : ''}.`;
+      } },
+    { name: 'gphotos_pick', group: 'Google Photos', description: 'Download photos/videos from Google Photos: opens the Google Photos picker (on this device, or scan the QR on your phone), the user selects items, and they are saved to the workspace.', parameters: P({ max: Num('max items, default 20'), wait_minutes: Num('how long to wait for the selection, default 10') }),
+      run: async a => {
+        need('photos'); needNative('Downloads');
+        const sess = await g('POST', 'https://photospicker.googleapis.com/v1/sessions', { pickingConfig: { maxItemCount: String(Math.min(2000, a.max || 20)) } });
+        const url = sess.pickerUri + (/autoclose/.test(sess.pickerUri) ? '' : '/autoclose');
+        let qr = ''; try { qr = await window.NexusMedia.qrDataUrl(sess.pickerUri); } catch { /* optional */ }
+        $('#modalBox').innerHTML = `<h3>Pick from Google Photos</h3><p>Select photos in Google Photos, then tap <b>Done</b>. You can also scan this with your phone:</p>${qr ? `<img src="${esc(wsUrl(qr))}" alt="" style="width:11em;background:#fff;padding:.4em;border-radius:6px">` : ''}<div class="row"><button class="primary" id="gpOpen">Open Google Photos here</button><button id="gpNo">Cancel</button></div><p class="hint" id="gpSt">waiting for your selection…</p>`;
+        $('#modal').classList.add('show'); let cancelled = false; modalClose = () => { cancelled = true; $('#modal').classList.remove('show'); modalClose = null; };
+        $('#gpOpen').onclick = () => N.openUrl(url); $('#gpNo').onclick = () => modalClose(); N.openUrl(url);
+        const until = Date.now() + (a.wait_minutes || 10) * 60000; let st = sess;
+        while (!cancelled && Date.now() < until && !st.mediaItemsSet) { await sleep(3000); st = await g('GET', `https://photospicker.googleapis.com/v1/sessions/${sess.id}`).catch(() => st); }
+        modalClose && modalClose(); if (N.bringToFront) N.bringToFront();
+        if (!st.mediaItemsSet) { g('DELETE', `https://photospicker.googleapis.com/v1/sessions/${sess.id}`, null, { raw: true }).catch(() => {}); return cancelled ? 'Cancelled.' : 'No selection was made in time.'; }
+        const items = []; let page = '';
+        do { const r = await g('GET', `https://photospicker.googleapis.com/v1/mediaItems?sessionId=${sess.id}&pageSize=100${page ? '&pageToken=' + page : ''}`); items.push(...(r.mediaItems || [])); page = r.nextPageToken; } while (page && items.length < 2000);
+        const saved = [];
+        for (const it of items) { const f = it.mediaFile || {}; const r = await nativeAsync('download', JSON.stringify({ url: f.baseUrl + (it.type === 'VIDEO' ? '=dv' : '=d'), headers: { Authorization: 'Bearer ' + await ensureToken() }, path: `gphotos/${(f.filename || it.id).replace(/[\\/:*?"<>|]/g, '_')}` })); saved.push(r.path); }
+        g('DELETE', `https://photospicker.googleapis.com/v1/sessions/${sess.id}`, null, { raw: true }).catch(() => {});
+        return `Downloaded ${saved.length} item(s):\n` + saved.join('\n');
+      } },
+    { name: 'gphotos_albums', group: 'Google Photos', description: 'List albums and items that Nexus uploaded to Google Photos (Google only lets apps list what they created).', parameters: P({ album: Str('optional album name to list items of') }),
+      run: async a => {
+        need('photos');
+        const albums = (await g('GET', `${PH}/albums?excludeNonAppCreatedData=true&pageSize=50`)).albums || [];
+        if (!a.album) return albums.map(x => `• ${x.title} · ${x.mediaItemsCount || 0} items · ${x.productUrl}`).join('\n') || 'No albums created by Nexus yet.';
+        const al = albums.find(x => x.title.toLowerCase().includes(a.album.toLowerCase())); if (!al) return 'Album not found.';
+        return ((await g('POST', `${PH}/mediaItems:search`, { albumId: al.id, pageSize: 50 })).mediaItems || []).map(m => `• ${m.filename} · ${m.mimeType} · ${m.productUrl}`).join('\n') || 'Empty album.';
       } },
 
     /* ---------------- Contacts / YouTube / Google apps */

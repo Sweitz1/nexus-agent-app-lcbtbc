@@ -24,6 +24,11 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Photos/videos captured with Meta (or other camera) glasses that sync to the gallery. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- APK services: see all installed apps (backup, inspect, integrate) and open the system
+         installer / uninstaller (the user always confirms there). -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 

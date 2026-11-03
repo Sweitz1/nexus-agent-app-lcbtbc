@@ -22,7 +22,7 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   - outgoing webhooks
   - delegation to other agents
 
-  **Pro skills** (191 skills in total; each one can be turned on or off per agent):
+  **Pro skills** (221 skills in total; each one can be turned on or off per agent):
 
   | Group | Skills |
   |---|---|
@@ -44,6 +44,13 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   | Google Drive & Docs | `drive_search`, `drive_download` (exports Docs, Sheets and Slides to PDF, DOCX, XLSX, CSV, PPTX, TXT or MD), `drive_upload`, `drive_share`, `docs_read`, `docs_create`, `docs_append`, `sheets_read`, `sheets_append` (logs and trackers), `sheets_update`, `sheets_create` |
   | Google Tasks & more | `gtasks_list`, `gtasks_add`, `gtasks_update`, `google_contacts` (useful on glasses without a phonebook), `youtube_mine` (liked videos, playlists, subscriptions), `google_open` (Search, News, Lens, Assistant, Photos, Keep, Home, Wallet…), `google_account` |
   | Google Maps | `gmaps_places` (ratings, open now, price level), `gmaps_place_details` (hours, phone, website, reviews), `gmaps_directions` (**live traffic** and turn-by-turn steps, or Google Maps navigation). The Google Translate engine is also available for every translation skill |
+  | Google Photos | `gphotos_upload` (to an album, created if needed), `gphotos_pick` (**download what you select** in the Google Photos picker, on this device or by scanning a QR with your phone), `gphotos_albums` |
+  | APK | `apk_apps`, `apk_extract` (back up any installed app; split apps become an .apks bundle), `apk_inspect` (versions, SDK levels, permissions, components, signing certificate, deep links), `apk_install`, `apk_uninstall` (Android asks you to confirm both) |
+  | App integrations | `app_integrations` (reads an app's manifest: deep links, share targets, text actions, custom intents) and `app_integrate`, which **turns any installed app into a new agent skill** (for example "spotify:search:{{input}}", "share to Notes") |
+  | Scraper | `scrape_page` (metadata, JSON-LD, headings, text, links, images, tables, or exactly the CSS selectors you name), `scrape_list` (repeating items across pages, saved to CSV or JSON), `scrape_tables`, `scrape_crawl` (polite: 1 page per second, same site), `scrape_watch` (price-drop and change alerts). `render=true` runs the page's JavaScript in a hidden browser. robots.txt is respected |
+  | Downloads | `download_batch`, `download_page_media` (largest images, videos, audio, PDFs and other documents on a page), `download_system` (Android download manager for big files, which resume in the background), `download_status`, `download_import` |
+  | Coding & builds | `run_python` (**Python 3 on the device** via Pyodide: numpy, pandas, matplotlib and scikit-learn; files your code writes are saved), `run_code` (C, C++, Java, Go, Rust, Ruby and more through a Piston runner you host), `web_preview`, `code_template` (Android app, static site, Python or Node CLI), `build_android_app` (**builds an installable APK with GitHub Actions** and downloads it) |
+  | GitHub | `github_list` (repos, issues, PRs, Actions runs, workflows, releases, branches, notifications), `github_search`, `github_get`, `github_write` (create repos; put or delete files; issues and comments; PRs, including merge; branches; releases with assets; GitHub Pages), `github_push` (a whole folder in one commit), `github_actions` (status, failed-job logs, artifacts, release downloads, run or re-run) |
   | Music | `music_now_playing` (any app: Spotify, YouTube Music, Plex, podcasts…), `music_control` (control a specific app), `music_play` (routes to your music service), `music_lyrics` (**synced lyrics** on screen and on the glasses HUD) |
   | Spotify | `spotify_search`, `spotify_play` (tracks, albums, playlists, artists; shuffle; device), `spotify_control`, `spotify_now_playing`, `spotify_queue`, `spotify_devices` (Spotify Connect transfer), `spotify_playlists` (list, show, **create from song names**, add), `spotify_library` (like, recent, top tracks and artists) |
   | YouTube Music | `ytmusic_search`, `ytmusic_play` (opens in the YouTube Music app with an automatic radio mix), `ytmusic_open` (home, explore, library, liked) |
@@ -198,6 +205,28 @@ One Google sign-in gives agents **Gmail, Google Calendar, Drive, Docs, Sheets, T
 - Tokens are stored only in the app's private storage. *Disconnect* revokes them with Google.
 
 **Not available:** Google Keep and Google Home devices, because Google offers no public consumer API for them. Use Tasks or Docs instead of Keep. `google_open` launches those apps.
+
+## Developer services: build an app from your glasses
+
+Add a GitHub token in *Settings → Developer*. Use a fine-grained token with Contents, Actions, Issues, Pull requests and Administration permissions (Administration is needed to create repos), plus Pages if you'll publish sites.
+
+You can then ask, for example, *"make me a tip-calculator app and install it"*:
+
+1. `code_template` creates an Android project, with a build workflow, in the workspace.
+2. The agent writes the app's HTML, CSS and JS, and checks it with `web_preview`.
+3. `build_android_app` creates a private repo, pushes the project in one commit, waits for GitHub Actions to build it, and downloads the APK.
+4. `apk_install` opens Android's installer, where you confirm.
+
+Static sites work the same way with `github_write enable_pages`.
+
+Details:
+
+- **Python** runs fully on the device. The first run downloads the Pyodide runtime (about 10 MB) from jsDelivr; packages load on demand.
+- **Other languages:** `run_code` sends code to a [Piston](https://github.com/engineer-man/piston) server you host.
+- **APK services** need Android's "Install unknown apps" permission for Nexus. Nexus opens that setting the first time. Nexus can see all installed apps (the `QUERY_ALL_PACKAGES` permission), which is fine for a sideloaded app but would not be allowed on Google Play.
+- **App integrations** are stored as custom skills. Manage or remove them in *Settings → Developer*.
+- **Google Photos:** since Google's 2025 API change, apps can upload, manage the albums they create, and download items you choose in the Google Photos picker. They can't browse your whole library. Tick *photos* in *Settings → Google* and reconnect.
+- **Scraping and downloads:** robots.txt is respected by default and crawling is rate-limited. Downloading from streaming services (YouTube, Netflix and others) is intentionally not supported, because their terms and copy protection forbid it.
 
 ## Music, display glasses and Meta glasses
 
@@ -374,6 +403,8 @@ android/
     NexusAccessibilityService.java  screen control: UI tree, tap/type/scroll/swipe/gestures, screenshots, stop pill, app block list
     MusicTools.java        media sessions of all apps: now playing + per-app transport controls
     HudPresentation.java   HUD on external displays (Lenovo Legion Glasses / Glasses T1 and other display glasses)
+    ApkTools.java          installed apps, APK extract/inspect/install/uninstall, integration discovery
+    AxmlParser.java        binary AndroidManifest.xml parser (components, intent filters, deep links)
     WebhookServer.java     LAN HTTP server: incoming webhooks + phone remote console
   app/src/main/assets/
     index.html          core agent runtime and UI (providers, agents, modes, webhooks)
@@ -383,7 +414,8 @@ android/
     js/skills-shop.js   wake word control, Amazon/Walmart shopping + list, Plex, fast food & delivery
     js/skills-screen.js screen-control skills, consent and sensitive-action guard, settings
     js/skills-music.js  Spotify, YouTube Music, media sessions, lyrics, display-glasses HUD, Meta glasses
-    js/skills-google.js Google sign-in, Gmail, Calendar source, Drive, Docs, Sheets, Tasks, Contacts, YouTube, Maps, Translate
+    js/skills-google.js Google sign-in, Gmail, Calendar source, Drive, Docs, Sheets, Tasks, Contacts, Photos, YouTube, Maps, Translate
+    js/skills-dev.js    APK services & app integrations, scraper, downloads, Python/code runner/templates/builds, GitHub
     hud.html            HUD shown on external display glasses
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console

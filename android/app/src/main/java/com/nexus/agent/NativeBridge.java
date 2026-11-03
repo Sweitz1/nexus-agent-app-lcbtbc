@@ -76,6 +76,7 @@ public class NativeBridge {
     private final CalendarTools calendar;
     private final GlassesTools glasses;
     private final MusicTools music;
+    private final ApkTools apk;
     private android.media.session.MediaSession tapSession;
     private android.media.AudioTrack silentTrack;
     private final java.util.Map<String, java.util.concurrent.CountDownLatch> ttsDone = new java.util.concurrent.ConcurrentHashMap<>();
@@ -91,6 +92,7 @@ public class NativeBridge {
         this.calendar = new CalendarTools(activity);
         this.glasses = new GlassesTools(activity);
         this.music = new MusicTools(activity);
+        this.apk = new ApkTools(activity, workspace);
         NexusNotificationListener.sink = n -> activity.emit("notification", n.toString());
         WakeWordService.sink = e -> activity.emit("wake", e.toString());
         NexusAccessibilityService.sink = (t, d) -> { try { d.put("type", t); } catch (Exception ignored) { } activity.emit("screen", d.toString()); };
@@ -709,6 +711,25 @@ public class NativeBridge {
             URL url = new URL(req.getString("url"));
             if (!"http".equals(url.getProtocol()) && !"https".equals(url.getProtocol())) throw new IllegalArgumentException("Only http/https");
             HttpURLConnection c = (HttpURLConnection) url.openConnection();
+            if (req.optBoolean("dropAuthOnRedirect")) {
+                // GitHub artifacts/logs/assets redirect to pre-signed storage URLs that reject the API token.
+                c.setInstanceFollowRedirects(false);
+                c.setRequestProperty("User-Agent", "NexusAgent/1.0 (Android; RayNeo)");
+                JSONObject h0 = req.optJSONObject("headers");
+                if (h0 != null) { Iterator<String> it = h0.keys(); while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h0.optString(k)); } }
+                int st0 = c.getResponseCode();
+                if (st0 >= 300 && st0 < 400 && c.getHeaderField("Location") != null) {
+                    URL next = new URL(url, c.getHeaderField("Location"));
+                    c.disconnect();
+                    c = (HttpURLConnection) next.openConnection();
+                    req.remove("headers");
+                } else if (st0 >= 400) {
+                    throw new java.io.IOException("HTTP " + st0);
+                } else {
+                    c.disconnect();                       // no redirect: request again normally
+                    c = (HttpURLConnection) url.openConnection();
+                }
+            }
             try {
                 c.setConnectTimeout(20000);
                 c.setReadTimeout(120000);
@@ -1374,6 +1395,138 @@ public class NativeBridge {
     public void oauthCancel(int port) {
         java.net.ServerSocket ss = oauthSockets.remove(port);
         if (ss != null) try { ss.close(); } catch (Exception ignored) { }
+    }
+
+    // ------------------------------------------------------------------ APKs & app integrations
+
+    @JavascriptInterface
+    public void apk(String id, String specJson) {
+        async(id, () -> {
+            JSONObject s = new JSONObject(specJson);
+            switch (s.getString("op")) {
+                case "list": return apk.list(s.optBoolean("system"), s.optString("filter"));
+                case "extract": return apk.extract(s.getString("package"));
+                case "inspect": return apk.inspect(s.getString("ref"));
+                case "integrations": return apk.integrations(s.getString("ref"));
+                case "install": return ok("result", apk.install(s.getString("path")));
+                case "uninstall": return ok("result", apk.uninstall(s.getString("package")));
+                default: throw new IllegalArgumentException("unknown apk op");
+            }
+        });
+    }
+
+    // ------------------------------------------------------------------ rendered scraping (hidden WebView)
+
+    /** Loads a page in a hidden, isolated WebView (JavaScript on, no bridge) and returns the rendered HTML. */
+    @JavascriptInterface
+    public void renderPage(String id, String url, int waitMs) {
+        activity.runOnUiThread(() -> {
+            try {
+                Uri u = Uri.parse(url);
+                if (!"https".equals(u.getScheme()) && !"http".equals(u.getScheme())) throw new IllegalArgumentException("http(s) only");
+                android.webkit.WebView w = new android.webkit.WebView(activity);
+                android.webkit.WebSettings st = w.getSettings();
+                st.setJavaScriptEnabled(true);
+                st.setDomStorageEnabled(true);
+                st.setAllowFileAccess(false);
+                st.setAllowContentAccess(false);
+                st.setLoadsImagesAutomatically(false);
+                st.setBlockNetworkImage(true);
+                w.setAlpha(0f);
+                w.setTranslationX(-20000f);
+                ((android.view.ViewGroup) activity.getWindow().getDecorView()).addView(w, new android.view.ViewGroup.LayoutParams(1080, 2400));
+                final boolean[] done = {false};
+                final android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
+                Runnable finish = () -> {
+                    if (done[0]) return;
+                    done[0] = true;
+                    w.evaluateJavascript("JSON.stringify({html: document.documentElement.outerHTML, url: location.href, title: document.title})", v -> {
+                        try {
+                            String json = new org.json.JSONTokener(v).nextValue().toString();
+                            activity.callback(id, true, json);
+                        } catch (Exception e) {
+                            activity.callback(id, false, errorJson(e));
+                        }
+                        ((android.view.ViewGroup) activity.getWindow().getDecorView()).removeView(w);
+                        w.destroy();
+                    });
+                };
+                w.setWebViewClient(new android.webkit.WebViewClient() {
+                    @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView v, android.webkit.WebResourceRequest r) {
+                        String sc = r.getUrl().getScheme();
+                        return !("http".equals(sc) || "https".equals(sc));   // never launch apps/intents
+                    }
+                    @Override public void onPageFinished(android.webkit.WebView v, String f) { h.postDelayed(finish, Math.max(500, Math.min(waitMs, 20000))); }
+                });
+                h.postDelayed(finish, 45000);
+                w.loadUrl(url);
+            } catch (Exception e) {
+                activity.callback(id, false, errorJson(e));
+            }
+        });
+    }
+
+    // ------------------------------------------------------------------ system download manager
+
+    @JavascriptInterface
+    public String systemDownload(String url, String fileName, String headersJson) {
+        try {
+            android.app.DownloadManager dm = (android.app.DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
+            android.app.DownloadManager.Request r = new android.app.DownloadManager.Request(Uri.parse(url));
+            String name = (fileName == null || fileName.isEmpty() ? Uri.parse(url).getLastPathSegment() : fileName);
+            if (name == null || name.isEmpty()) name = "download_" + System.currentTimeMillis();
+            name = name.replaceAll("[\\\\/:*?\"<>|]", "_");
+            r.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "Nexus/" + name);
+            r.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            r.setTitle(name);
+            if (headersJson != null && !headersJson.isEmpty()) {
+                JSONObject h = new JSONObject(headersJson);
+                Iterator<String> it = h.keys();
+                while (it.hasNext()) { String k = it.next(); r.addRequestHeader(k, h.optString(k)); }
+            }
+            long dl = dm.enqueue(r);
+            return "{\"id\":" + dl + ",\"file\":" + JSONObject.quote("Download/Nexus/" + name) + "}";
+        } catch (Exception e) {
+            return errorJson(e);
+        }
+    }
+
+    @JavascriptInterface
+    public String systemDownloadStatus(String idsJson) {
+        try {
+            android.app.DownloadManager dm = (android.app.DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
+            JSONArray ids = new JSONArray(idsJson);
+            long[] arr = new long[ids.length()];
+            for (int i = 0; i < arr.length; i++) arr[i] = ids.getLong(i);
+            JSONArray out = new JSONArray();
+            try (Cursor c = dm.query(new android.app.DownloadManager.Query().setFilterById(arr))) {
+                while (c != null && c.moveToNext()) {
+                    JSONObject o = new JSONObject();
+                    o.put("id", c.getLong(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_ID)));
+                    o.put("title", c.getString(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_TITLE)));
+                    int st = c.getInt(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS));
+                    o.put("status", st == android.app.DownloadManager.STATUS_SUCCESSFUL ? "done" : st == android.app.DownloadManager.STATUS_FAILED ? "failed" : st == android.app.DownloadManager.STATUS_PAUSED ? "paused" : st == android.app.DownloadManager.STATUS_PENDING ? "pending" : "running");
+                    o.put("bytes", c.getLong(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)));
+                    o.put("total", c.getLong(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_TOTAL_SIZE_BYTES)));
+                    o.put("reason", c.getInt(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_REASON)));
+                    out.put(o);
+                }
+            }
+            return out.toString();
+        } catch (Exception e) {
+            return errorJson(e);
+        }
+    }
+
+    /** Copies a finished system download into the workspace. */
+    @JavascriptInterface
+    public void systemDownloadImport(String id, long dlId) {
+        async(id, () -> {
+            android.app.DownloadManager dm = (android.app.DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
+            Uri u = dm.getUriForDownloadedFile(dlId);
+            if (u == null) throw new IllegalStateException("Download not finished");
+            return ok("path", importUri(u));
+        });
     }
 
     // ------------------------------------------------------------------ glasses / device

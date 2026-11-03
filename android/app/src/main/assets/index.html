@@ -830,7 +830,7 @@ function renderSkills() {
   $$('[data-sk]', v).forEach(cb => cb.addEventListener('change', () => { const n = cb.dataset.sk; S.disabledSkills = S.disabledSkills.filter(x => x !== n); if (!cb.checked) S.disabledSkills.push(n); save(); }));
   $$('[data-auto]', v).forEach(cb => { cb.addEventListener('click', e => e.stopPropagation()); cb.addEventListener('change', () => { const n = cb.dataset.auto; S.autoApprove = S.autoApprove.filter(x => x !== n); if (cb.checked) S.autoApprove.push(n); save(); }); });
   const list = $('#custList');
-  S.customSkills.forEach(s => {
+  S.customSkills.filter(s => s.kind !== 'intent').forEach(s => {
     const card = document.createElement('div'); card.className = 'card';
     card.innerHTML = s.kind === 'prompt'
       ? `<h3><span>${esc(s.name)} <span class="pill">prompt</span></span><button class="small danger" data-act="del">Delete</button></h3>
@@ -1079,5 +1079,6 @@ document.addEventListener('DOMContentLoaded', boot);
 <script src="js/skills-screen.js"></script>
 <script src="js/skills-music.js"></script>
 <script src="js/skills-google.js"></script>
+<script src="js/skills-dev.js"></script>
 </body>
 </html>
