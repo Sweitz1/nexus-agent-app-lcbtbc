@@ -328,6 +328,8 @@ The result is a verdict with the evidence and honest caveats. Audio gets the pro
 - **Speak replies in the narrator voice:** chat replies are synthesized with your narrator voice. If the network fails, Nexus falls back to the device voice.
 - **Skills:** `narrate`, `narrator_voices`, `narrator_set_voice`, `narrator_style`.
 
+**On the glasses:** the Nexus Glasses app speaks in the same narrator voice. The phone renders each reply as audio while the text is already showing, and the glasses stream it from the phone and play it. Turn it on or off in *☰ → Settings → Narrator voice* on the glasses, or with "Speak on the glasses in the narrator voice" under *Settings → Nexus Glasses* on the phone. If the narrator isn't set up, the network drops, or the phone uses the offline device voice, the glasses use their own voice. Confirmation questions always use the glasses' own voice, so they are instant.
+
 Nexus doesn't imitate or clone specific real people, celebrities and professional narrators included. Use a voice that its owner has published or licensed, a stock AI voice, or your own voice (`voice_clone_self`).
 
 ## Music, display glasses and Meta glasses

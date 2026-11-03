@@ -189,7 +189,71 @@ public class ClientBridge {
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "c" + System.nanoTime());
     }
 
-    @JavascriptInterface public void stopSpeaking() { if (ttsReady) tts.stop(); }
+    @JavascriptInterface public void stopSpeaking() { if (ttsReady) tts.stop(); stopAudio(); }
+
+    // ------------------------------------------------------------------ narrator audio from the phone
+
+    private android.media.MediaPlayer player;
+    private int audioGen = 0;
+
+    /**
+     * Downloads an audio file from the phone (req {url, headers, timeoutMs}) and plays it.
+     * Callback once playback starts ({durationMs}) or fails; "tts" events mark speaking on/off so
+     * the UI treats it like speech.
+     */
+    @JavascriptInterface
+    public void playAudio(String id, String reqJson) {
+        final int gen;
+        synchronized (this) { gen = ++audioGen; }
+        pool.execute(() -> {
+            HttpURLConnection c = null;
+            try {
+                JSONObject r = new JSONObject(reqJson);
+                c = (HttpURLConnection) new URL(r.getString("url")).openConnection();
+                int t = r.optInt("timeoutMs", 90000);
+                c.setConnectTimeout(Math.min(t, 8000));
+                c.setReadTimeout(t);
+                JSONObject h = r.optJSONObject("headers");
+                if (h != null) { Iterator<String> it = h.keys(); while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.optString(k)); } }
+                int st = c.getResponseCode();
+                if (st != 200) throw new Exception("HTTP " + st);
+                java.io.File f = new java.io.File(act.getCacheDir(), "narrator_" + gen + ".mp3");
+                try (InputStream in = c.getInputStream(); java.io.FileOutputStream fo = new java.io.FileOutputStream(f)) {
+                    byte[] buf = new byte[16384]; int n; while ((n = in.read(buf)) > 0) fo.write(buf, 0, n);
+                }
+                if (f.length() < 200) throw new Exception("empty audio");
+                act.runOnUiThread(() -> {
+                    synchronized (ClientBridge.this) { if (gen != audioGen) { f.delete(); act.callback(id, false, "{\"error\":\"superseded\"}"); return; } }
+                    try {
+                        releasePlayer();
+                        if (ttsReady) tts.stop();
+                        android.media.MediaPlayer mp = new android.media.MediaPlayer();
+                        mp.setAudioAttributes(new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ASSISTANT).setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH).build());
+                        mp.setDataSource(f.getAbsolutePath());
+                        mp.setOnCompletionListener(m -> { act.emit("tts", "{\"speaking\":false}"); releasePlayer(); f.delete(); });
+                        mp.setOnErrorListener((m, w, x) -> { act.emit("tts", "{\"speaking\":false}"); releasePlayer(); f.delete(); return true; });
+                        mp.prepare();
+                        mp.start();
+                        player = mp;
+                        act.emit("tts", "{\"speaking\":true}");
+                        act.callback(id, true, "{\"durationMs\":" + mp.getDuration() + "}");
+                    } catch (Exception e) { f.delete(); act.callback(id, false, err(e)); }
+                });
+            } catch (Exception e) {
+                act.callback(id, false, err(e));
+            } finally { if (c != null) c.disconnect(); }
+        });
+    }
+
+    private void releasePlayer() {
+        if (player != null) { try { player.stop(); } catch (Exception ignored) { } player.release(); player = null; }
+    }
+
+    @JavascriptInterface
+    public void stopAudio() {
+        synchronized (this) { audioGen++; }
+        act.runOnUiThread(() -> { if (player != null) { releasePlayer(); act.emit("tts", "{\"speaking\":false}"); } });
+    }
 
     @JavascriptInterface
     public void listen(String id, String lang) {
@@ -258,6 +322,7 @@ public class ClientBridge {
     }
 
     void shutdown() {
+        act.runOnUiThread(this::releasePlayer);
         if (rec != null) rec.destroy();
         if (tts != null) tts.shutdown();
         pool.shutdownNow();

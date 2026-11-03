@@ -6,7 +6,21 @@
  * (_nexus._tcp). Pairing: a 6-digit PIN (shown as text + QR) is exchanged for the token. */
 'use strict';
 (() => {
-  S.settings = { glassesServer: false, glassesForwardNotifications: true, glassesRemoteAddr: '', ...S.settings };
+  S.settings = { glassesServer: false, glassesForwardNotifications: true, glassesRemoteAddr: '', glassesNarrator: true, ...S.settings };
+
+  /* ---------------------------------------------------------------- narrator voice for the glasses */
+  // The phone synthesizes speech with the narrator voice (js/skills-narrator.js); the glasses fetch the
+  // MP3 from /client/audio?id=… and play it, falling back to their own device voice.
+  const narratorReady = () => !!(S.settings.glassesNarrator && window.NexusNarrator && (S.settings.ttsEngine || 'device') !== 'device' && N && N.serverRespondFile);
+  const audioJobs = new Map();
+  function makeAudio(text) {
+    const t = plain(stripThink(String(text || ''))).slice(0, 2400); if (!t) return null;
+    const id = uid(); const st = window.NexusNarrator.STYLES.conversational.text + ' ' + (S.settings.narratorCustom || '');
+    const job = { created: Date.now(), promise: NexusMedia.textToAudioFile(t, { output: `tmp/glasses_${id}.mp3`, instructions: st }).then(r => r.path) };
+    job.promise.catch(() => {}); audioJobs.set(id, job);
+    for (const [k, j] of audioJobs) if (Date.now() - j.created > 10 * 60000) { audioJobs.delete(k); j.promise.then(p => { try { fsx.del(p); } catch { /* gone */ } }).catch(() => {}); }
+    return id;
+  }
   // Every address the glasses may use to reach this phone: Wi-Fi/hotspot IPs, VPN (e.g. Tailscale 100.x)
   // and an optional remote address for glasses on their own eSIM / mobile data.
   function phoneAddrs() {
@@ -80,7 +94,7 @@
       seen(b.device || (new URLSearchParams(ev.query || '')).get('device'));
       if (path === '/client/hello') {
         let battery = null; try { battery = parseJSON(N.deviceStatus(), {}).battery; } catch { /* optional */ }
-        return reply(ev, 200, { name: deviceLabel(), agents: S.agents.map(a => ({ id: a.id, name: a.name })), current: (agentById(S.current) || {}).name, mode: S.mode, battery, seq, wake: !!(N.wakeRunning && N.wakeRunning()) });
+        return reply(ev, 200, { name: deviceLabel(), agents: S.agents.map(a => ({ id: a.id, name: a.name })), current: (agentById(S.current) || {}).name, mode: S.mode, battery, seq, wake: !!(N.wakeRunning && N.wakeRunning()), narrator: narratorReady() });
       }
       if (path === '/client/ask') {
         const text = String(b.text || '').trim(); const images = (b.images || []).slice(0, 4);
@@ -89,7 +103,20 @@
         for (const [i, im] of images.entries()) attachments.push(await fsx.writeB64(`glasses/cam_${tsName()}_${i}.${/png/.test(im.mime) ? 'png' : 'jpg'}`, im.b64));
         const agent = (b.agent && agentByName(b.agent)) || agentById(S.current) || S.agents[0];
         const r = await dispatch(text || 'What am I looking at? Be brief.', { origin: 'glasses', agentId: agent.id, mode: b.mode || (S.mode === 'auto' ? 'auto' : S.mode), attachments });
-        return reply(ev, 200, { agent: r.agent, reply: stripThink(r.text) });
+        const answer = stripThink(r.text); let audio = null;
+        if (b.voice && narratorReady()) { try { audio = makeAudio(answer); } catch (e) { console.warn('glasses narrator', e); } }
+        return reply(ev, 200, { agent: r.agent, reply: answer, audio });
+      }
+      if (path === '/client/tts') {
+        if (!narratorReady()) return reply(ev, 409, { error: 'Narrator voice not set up on the phone' });
+        const id = makeAudio(b.text); return id ? reply(ev, 200, { audio: id }) : reply(ev, 400, { error: 'empty text' });
+      }
+      if (path === '/client/audio') {
+        const job = audioJobs.get((new URLSearchParams(ev.query || '')).get('id') || '');
+        if (!job) return reply(ev, 404, { error: 'unknown audio' });
+        let p; try { p = await job.promise; } catch (e) { return reply(ev, 502, { error: 'speech failed: ' + e.message }); }
+        N.serverRespondFile(ev.reqId, 200, 'audio/mpeg', p);
+        setTimeout(() => { try { fsx.del(p); } catch { /* gone */ } }, 120000); return;
       }
       if (path === '/client/events') {
         const since = Number((new URLSearchParams(ev.query || '')).get('since') || 0);
@@ -130,6 +157,7 @@
     <p>${online() ? `<span class="status-dot on"></span>Connected: <b>${esc(clientName || 'glasses')}</b>` : '<span class="status-dot"></span>No glasses connected'}</p>
     <div class="row"><button class="primary nogrow" id="gsPair">Pair glasses</button></div>
     <label class="inline"><input type="checkbox" data-k="glassesForwardNotifications" data-t="bool">Forward phone notifications to the glasses</label>
+    <label class="inline"><input type="checkbox" data-k="glassesNarrator" data-t="bool">Speak on the glasses in the narrator voice (Settings → Narrator; needs ElevenLabs or an AI voice)</label>
     <label>Remote address for glasses on mobile data / eSIM (optional)</label><input data-k="glassesRemoteAddr" placeholder="e.g. my-phone.tailnet.ts.net or 100.101.102.103">
     <p class="hint">When the glasses use their own eSIM they are not on your Wi-Fi. Install <b>Tailscale</b> (or another private VPN) on both phone and glasses and pair once; the glasses then reach the phone over the VPN automatically. Don't expose the port to the open internet.</p>
     <p class="hint">Keep Nexus running on the phone (it can stay in the background). Both devices must be on the same Wi-Fi or the phone's hotspot.</p></div>`;

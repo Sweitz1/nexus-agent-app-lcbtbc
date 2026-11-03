@@ -519,6 +519,17 @@ public class NativeBridge {
         if (server != null) server.respond(reqId, status, contentType, body);
     }
 
+    /** Answers a server request with a workspace file as the body (e.g. narrator audio for the glasses). */
+    @JavascriptInterface
+    public void serverRespondFile(String reqId, int status, String contentType, String path) {
+        if (server == null) return;
+        try {
+            java.io.File f = workspace.resolve(path);
+            if (f.isFile()) { server.respondFile(reqId, status, contentType, f); return; }
+        } catch (Exception ignored) { }
+        server.respond(reqId, 404, "application/json", "{\"error\":\"file not found\"}");
+    }
+
 
     // ------------------------------------------------------------------ file workspace
 

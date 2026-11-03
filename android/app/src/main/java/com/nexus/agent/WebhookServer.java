@@ -50,6 +50,7 @@ class WebhookServer extends Thread {
         int status = 504;
         String contentType = "application/json";
         String body = "{\"error\":\"agent timeout\"}";
+        java.io.File file;   // when set, the file's bytes are the response body (e.g. narrator audio)
     }
 
     WebhookServer(MainActivity activity, int port, String token) throws IOException {
@@ -91,6 +92,30 @@ class WebhookServer extends Thread {
         p.contentType = contentType == null || contentType.isEmpty() ? "application/json" : contentType;
         p.body = body == null ? "" : body;
         p.latch.countDown();
+    }
+
+    /** Answers a pending request with a workspace file streamed as the body. */
+    void respondFile(String reqId, int status, String contentType, java.io.File f) {
+        Pending p = pending.get(reqId);
+        if (p == null) return;
+        p.status = status;
+        p.contentType = contentType == null || contentType.isEmpty() ? "application/octet-stream" : contentType;
+        p.file = f;
+        p.latch.countDown();
+    }
+
+    private static void writeFile(OutputStream out, int status, String type, java.io.File f) throws IOException {
+        String head = "HTTP/1.1 " + status + " " + reason(status) + "\r\n"
+                + "Content-Type: " + type + "\r\n"
+                + "Content-Length: " + f.length() + "\r\n"
+                + "Access-Control-Allow-Origin: *\r\n"
+                + "Connection: close\r\n\r\n";
+        out.write(head.getBytes(StandardCharsets.UTF_8));
+        try (java.io.FileInputStream in = new java.io.FileInputStream(f)) {
+            byte[] buf = new byte[16384]; int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+        }
+        out.flush();
     }
 
     private void handle(Socket s) {
@@ -172,7 +197,8 @@ class WebhookServer extends Thread {
             boolean done = p.latch.await(RESPONSE_TIMEOUT_S, TimeUnit.SECONDS);
             pending.remove(reqId);
             if (!done) { write(out, 504, "application/json", "{\"error\":\"agent timeout\"}"); return; }
-            write(out, p.status, p.contentType, p.body);
+            if (p.file != null) writeFile(out, p.status, p.contentType, p.file);
+            else write(out, p.status, p.contentType, p.body);
         } catch (Exception ignored) {
         }
     }
