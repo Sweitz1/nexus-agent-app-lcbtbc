@@ -22,7 +22,7 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   - outgoing webhooks
   - delegation to other agents
 
-  **Pro skills** (221 skills in total; each one can be turned on or off per agent):
+  **Pro skills** (229 skills in total; each one can be turned on or off per agent):
 
   | Group | Skills |
   |---|---|
@@ -51,6 +51,9 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   | Downloads | `download_batch`, `download_page_media` (largest images, videos, audio, PDFs and other documents on a page), `download_system` (Android download manager for big files, which resume in the background), `download_status`, `download_import` |
   | Coding & builds | `run_python` (**Python 3 on the device** via Pyodide: numpy, pandas, matplotlib and scikit-learn; files your code writes are saved), `run_code` (C, C++, Java, Go, Rust, Ruby and more through a Piston runner you host), `web_preview`, `code_template` (Android app, static site, Python or Node CLI), `build_android_app` (**builds an installable APK with GitHub Actions** and downloads it) |
   | GitHub | `github_list` (repos, issues, PRs, Actions runs, workflows, releases, branches, notifications), `github_search`, `github_get`, `github_write` (create repos; put or delete files; issues and comments; PRs, including merge; branches; releases with assets; GitHub Pages), `github_push` (a whole folder in one commit), `github_actions` (status, failed-job logs, artifacts, release downloads, run or re-run) |
+  | Verizon Cloud | `verizon_cloud`: status, upload (sends files to the Verizon Cloud app), backup (saves to the gallery or Downloads so Verizon Cloud's automatic backup picks them up), open. `file_save_to_device` works with any cloud backup app |
+  | Deepfake detection | `deepfake_check` (images, video and audio: provenance plus detector APIs plus a visual forensic review, giving a verdict with evidence and caveats), `media_provenance` (offline: C2PA Content Credentials, IPTC "AI-generated" tags, AI tool and editor markers), `reverse_image_search` (Google Lens) |
+  | Synthetic media of yourself | `voice_clone_self` (ElevenLabs), `avatar_video_self` (D-ID talking photo), `my_synthetic_media`. **Only your own voice and face**; confirmation is required every time and outputs are labelled AI-generated |
   | Music | `music_now_playing` (any app: Spotify, YouTube Music, Plex, podcasts…), `music_control` (control a specific app), `music_play` (routes to your music service), `music_lyrics` (**synced lyrics** on screen and on the glasses HUD) |
   | Spotify | `spotify_search`, `spotify_play` (tracks, albums, playlists, artists; shuffle; device), `spotify_control`, `spotify_now_playing`, `spotify_queue`, `spotify_devices` (Spotify Connect transfer), `spotify_playlists` (list, show, **create from song names**, add), `spotify_library` (like, recent, top tracks and artists) |
   | YouTube Music | `ytmusic_search`, `ytmusic_play` (opens in the YouTube Music app with an automatic radio mix), `ytmusic_open` (home, explore, library, liked) |
@@ -227,6 +230,24 @@ Details:
 - **App integrations** are stored as custom skills. Manage or remove them in *Settings → Developer*.
 - **Google Photos:** since Google's 2025 API change, apps can upload, manage the albums they create, and download items you choose in the Google Photos picker. They can't browse your whole library. Tick *photos* in *Settings → Google* and reconnect.
 - **Scraping and downloads:** robots.txt is respected by default and crawling is rate-limited. Downloading from streaming services (YouTube, Netflix and others) is intentionally not supported, because their terms and copy protection forbid it.
+
+## Verizon Cloud, deepfake detection and synthetic media
+
+**Verizon Cloud** offers no public API, so Nexus works through the app and through Android storage:
+
+- **Upload:** files are sent straight to the Verizon Cloud app, where you confirm.
+- **Automatic backup:** files are saved to *Pictures/Movies/Music/Download → Nexus*, which Verizon Cloud backs up when backup is on in its settings.
+- **Getting files out:** in Verizon Cloud, select items, then *Share → Nexus Agent* (they appear in *Files → imports*). With screen control enabled, an agent can also operate the Verizon Cloud app for you.
+
+**Deepfake detection** (`deepfake_check`) combines three things:
+
+1. **Provenance** (offline): C2PA Content Credentials; IPTC *trainedAlgorithmicMedia* declarations; Stable Diffusion and ComfyUI parameters; Midjourney, DALL·E, Firefly, Imagen and other markers; editing apps.
+2. **Detector APIs** (optional keys in *Settings → Trust & safety*): [Sightengine](https://sightengine.com) for images and video, and [Hive](https://thehive.ai) for images, video and AI-voice audio.
+3. **A visual forensic review by your vision model.** For videos, it reviews sampled frames.
+
+The result is a verdict with the evidence and honest caveats. No detector is perfect, so `reverse_image_search` helps you find the original source.
+
+**Synthetic media is limited to yourself.** Nexus can clone **your own voice** (ElevenLabs; usable for every text-to-audio skill) and make a **talking-avatar video from your own photo** (D-ID). Every run shows a consent confirmation that cannot be auto-approved or bypassed by settings, and the decision is logged. Outputs are labelled *AI-generated*. **Face swaps and cloning other people's faces or voices are intentionally not supported**: they mainly enable impersonation, fraud and non-consensual imagery.
 
 ## Music, display glasses and Meta glasses
 
@@ -416,6 +437,7 @@ android/
     js/skills-music.js  Spotify, YouTube Music, media sessions, lyrics, display-glasses HUD, Meta glasses
     js/skills-google.js Google sign-in, Gmail, Calendar source, Drive, Docs, Sheets, Tasks, Contacts, Photos, YouTube, Maps, Translate
     js/skills-dev.js    APK services & app integrations, scraper, downloads, Python/code runner/templates/builds, GitHub
+    js/skills-trust.js  Verizon Cloud, deepfake detection & provenance, consent-gated synthetic media of yourself
     hud.html            HUD shown on external display glasses
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console

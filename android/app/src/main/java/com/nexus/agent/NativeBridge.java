@@ -1529,6 +1529,78 @@ public class NativeBridge {
         });
     }
 
+    // ------------------------------------------------------------------ hand files to other apps / the gallery
+
+    /** Shares workspace files directly to one app (no chooser). spec {paths, package, mime}. */
+    @JavascriptInterface
+    public String shareFilesTo(String specJson) {
+        try {
+            JSONObject s = new JSONObject(specJson);
+            JSONArray paths = s.getJSONArray("paths");
+            ArrayList<Uri> uris = new ArrayList<>();
+            for (int i = 0; i < paths.length(); i++) uris.add(WorkspaceProvider.uriFor(activity, workspace.resolve(paths.getString(i))));
+            if (uris.isEmpty()) return "No files";
+            Intent i = new Intent(uris.size() == 1 ? Intent.ACTION_SEND : Intent.ACTION_SEND_MULTIPLE);
+            String mime = s.optString("mime", "");
+            if (mime.isEmpty()) mime = uris.size() == 1 ? MainActivity.mimeFor(paths.getString(0)) : "*/*";
+            i.setType(mime);
+            if (uris.size() == 1) i.putExtra(Intent.EXTRA_STREAM, uris.get(0)); else i.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+            android.content.ClipData clip = android.content.ClipData.newRawUri("files", uris.get(0));
+            for (int k = 1; k < uris.size(); k++) clip.addItem(new android.content.ClipData.Item(uris.get(k)));
+            i.setClipData(clip);
+            if (!s.optString("package").isEmpty()) i.setPackage(s.optString("package"));
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(s.optString("package").isEmpty() ? Intent.createChooser(i, "Send to").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION) : i);
+            return "ok";
+        } catch (ActivityNotFoundException e) {
+            return "That app does not accept these files";
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Saves a workspace file into shared storage (Pictures/Movies/Music/Download, subfolder Nexus) so
+     * the gallery and backup apps (Google Photos, Verizon Cloud, Samsung Cloud…) pick it up.
+     */
+    @JavascriptInterface
+    public void saveToMediaStore(String id, String specJson) {
+        async(id, () -> {
+            if (Build.VERSION.SDK_INT < 29) throw new UnsupportedOperationException("Needs Android 10 or newer");
+            JSONObject s = new JSONObject(specJson);
+            File f = workspace.resolve(s.getString("path"));
+            String mime = MainActivity.mimeFor(f.getName());
+            String kind = s.optString("kind", mime.startsWith("image/") ? "image" : mime.startsWith("video/") ? "video" : mime.startsWith("audio/") ? "audio" : "download");
+            Uri coll; String dir;
+            switch (kind) {
+                case "image": coll = android.provider.MediaStore.Images.Media.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY); dir = android.os.Environment.DIRECTORY_PICTURES; break;
+                case "video": coll = android.provider.MediaStore.Video.Media.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY); dir = android.os.Environment.DIRECTORY_MOVIES; break;
+                case "audio": coll = android.provider.MediaStore.Audio.Media.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY); dir = android.os.Environment.DIRECTORY_MUSIC; break;
+                default: coll = android.provider.MediaStore.Downloads.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY); dir = android.os.Environment.DIRECTORY_DOWNLOADS;
+            }
+            String folder = s.optString("folder", "Nexus").replaceAll("[^\\w .-]", "_");
+            android.content.ContentValues v = new android.content.ContentValues();
+            v.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, f.getName());
+            v.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime);
+            v.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, dir + "/" + folder);
+            v.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1);
+            android.content.ContentResolver cr = activity.getContentResolver();
+            Uri u = cr.insert(coll, v);
+            if (u == null) throw new java.io.IOException("Could not create the file in shared storage");
+            try (InputStream in = new FileInputStream(f); OutputStream out = cr.openOutputStream(u)) {
+                if (out == null) throw new java.io.IOException("cannot write");
+                Workspace.copy(in, out);
+            }
+            v.clear();
+            v.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0);
+            cr.update(u, v, null, null);
+            JSONObject o = new JSONObject();
+            o.put("uri", u.toString());
+            o.put("location", dir + "/" + folder + "/" + f.getName());
+            return o.toString();
+        });
+    }
+
     // ------------------------------------------------------------------ glasses / device
 
     @JavascriptInterface

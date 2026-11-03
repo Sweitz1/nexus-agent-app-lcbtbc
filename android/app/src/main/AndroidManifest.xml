@@ -47,6 +47,7 @@
         <package android:name="com.google.android.youtube" />
         <package android:name="com.plexapp.android" />
         <package android:name="com.facebook.stella" />
+        <package android:name="com.vcast.mediamanager" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
