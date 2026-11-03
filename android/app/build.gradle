@@ -1,0 +1,53 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.nexus.agent'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.nexus.agent'
+        // RayNeo X3 Pro ships an Android 12-based OS; 26+ keeps phones/tablets working too.
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    signingConfigs {
+        // Optional release signing from CI secrets; falls back to the debug key so the
+        // release APK is always installable via `adb install`.
+        release {
+            def ks = System.getenv('NEXUS_KEYSTORE_PATH')
+            if (ks != null && new File(ks).exists()) {
+                storeFile file(ks)
+                storePassword System.getenv('NEXUS_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('NEXUS_KEY_ALIAS')
+                keyPassword System.getenv('NEXUS_KEY_PASSWORD')
+            } else {
+                def dbg = signingConfigs.getByName('debug')
+                storeFile dbg.storeFile
+                storePassword dbg.storePassword
+                keyAlias dbg.keyAlias
+                keyPassword dbg.keyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// No third-party dependencies: the native shell uses only the Android framework.
