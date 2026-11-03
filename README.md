@@ -319,6 +319,17 @@ The result is a verdict with the evidence and honest caveats. Audio gets the pro
 
 **Synthetic media is limited to yourself.** Nexus can clone **your own voice** (ElevenLabs; usable for every text-to-audio skill) and make a **talking-avatar video from your own photo** (D-ID; add the key in *Settings → Synthetic media of yourself*). Every run shows a consent confirmation that cannot be auto-approved or bypassed by settings, and the decision is logged. Outputs are labelled *AI-generated*. **Face swaps and cloning other people's faces or voices are intentionally not supported**: they mainly enable impersonation, fraud and non-consensual imagery.
 
+## Narrator: natural audiobook voices
+
+*Settings → Narrator* makes text-to-audio, audiobooks and (optionally) spoken chat replies sound like a real narrator:
+
+- **Narration styles:** audiobook (warm and natural), romance/romantasy (intimate, with distinct voices for each character), epic fantasy/LitRPG, thriller, documentary, bedtime and conversational. You can add your own direction, for example "a touch slower; light Scottish accent for Callum". OpenAI `gpt-4o-mini-tts` voices receive the style as voice instructions. ElevenLabs voices get matching voice settings, plus context from the neighbouring chunk so long passages flow naturally.
+- **Find a narrator voice:** search ElevenLabs' Voice Library, the voices their owners chose to share, filtered for audiobook narration. Preview a voice and press **Use**, which adds it to your ElevenLabs account and makes it the narrator.
+- **Speak replies in the narrator voice:** chat replies are synthesized with your narrator voice. If the network fails, Nexus falls back to the device voice.
+- **Skills:** `narrate`, `narrator_voices`, `narrator_set_voice`, `narrator_style`.
+
+Nexus doesn't imitate or clone specific real people, celebrities and professional narrators included. Use a voice that its owner has published or licensed, a stock AI voice, or your own voice (`voice_clone_self`).
+
 ## Music, display glasses and Meta glasses
 
 **Spotify** (full control through the Spotify Web API):
@@ -503,6 +514,7 @@ android/
     js/skills-pro.js    files, coding, engineering, image, PDF, OCR, zip, video, maps, phone, translation skills
     js/skills-comms.js  email and calendar skills, CalDAV client, iCalendar parser/writer, account settings
     js/skills-media.js  scanner, Telegram, Kino, audiobooks, text-to-audio, glasses skills, Media tab, player, RayNeo agent
+    js/skills-narrator.js  narration styles, ElevenLabs Voice Library narrator finder, narrator voice for replies
     js/skills-shop.js   wake word control, Amazon/Walmart shopping + list, Plex, fast food & delivery
     js/skills-screen.js screen-control skills, consent and sensitive-action guard, settings
     js/skills-music.js  Spotify, YouTube Music, media sessions, lyrics, display-glasses HUD, Meta glasses

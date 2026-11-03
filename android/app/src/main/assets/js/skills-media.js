@@ -170,7 +170,9 @@
     const out = await fsx.writeBytes(output, all); for (const p of paths) if (p !== out) fsx.del(p); return out;
   }
   /** Synthesizes text to an audio file. engine: device (offline WAV) | provider (OpenAI/Venice-compatible MP3) | elevenlabs. */
-  async function textToAudioFile(text, { engine, voice, output, onProgress } = {}) {
+  // Narration hook (js/skills-narrator.js): style instructions for OpenAI-style TTS and voice settings for ElevenLabs.
+  window.narrationParams = window.narrationParams || (() => ({ instructions: '', eleven: null }));
+  async function textToAudioFile(text, { engine, voice, output, onProgress, instructions } = {}) {
     engine = engine || S.settings.ttsEngine || 'device';
     text = plain(text); if (!text) throw new Error('No text to speak');
     needNative('Text to audio');
@@ -184,10 +186,13 @@
       const part = `${outPath}.part${i}`;
       if (engine === 'elevenlabs') {
         const key = getKey('svc_elevenlabs'); if (!key) throw new Error('Add an ElevenLabs API key in Settings → Media & audio');
-        await nativeAsync('download', JSON.stringify({ url: `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice || S.settings.elevenVoice)}?output_format=mp3_44100_128`, method: 'POST', headers: { 'xi-api-key': key, 'Content-Type': 'application/json', Accept: 'audio/mpeg' }, body: JSON.stringify({ text: chunks[i], model_id: S.settings.elevenModel }), path: part }));
+        const np = window.narrationParams(); const eb = { text: chunks[i], model_id: S.settings.elevenModel };
+        if (np.eleven) eb.voice_settings = np.eleven;
+        if (i > 0) eb.previous_text = chunks[i - 1].slice(-600); if (i < chunks.length - 1) eb.next_text = chunks[i + 1].slice(0, 300);   // smooth prosody across chunks
+        await nativeAsync('download', JSON.stringify({ url: `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice || S.settings.elevenVoice)}?output_format=mp3_44100_128`, method: 'POST', headers: { 'xi-api-key': key, 'Content-Type': 'application/json', Accept: 'audio/mpeg' }, body: JSON.stringify(eb), path: part }));
       } else {
         const p = providerById(S.settings.ttsProvider); if (!p) throw new Error('Choose a TTS provider in Settings → Media & audio');
-        await nativeAsync('download', JSON.stringify({ url: base(p) + '/audio/speech', method: 'POST', headers: { ...authHeaders(p, getKey(p.id)), 'Content-Type': 'application/json' }, body: JSON.stringify({ model: S.settings.ttsModel, voice: voice || S.settings.ttsVoice, input: chunks[i], response_format: 'mp3' }), path: part }));
+        await nativeAsync('download', JSON.stringify({ url: base(p) + '/audio/speech', method: 'POST', headers: { ...authHeaders(p, getKey(p.id)), 'Content-Type': 'application/json' }, body: JSON.stringify({ model: S.settings.ttsModel, voice: voice || S.settings.ttsVoice, input: chunks[i], response_format: 'mp3', ...(() => { const ins = instructions != null ? instructions : window.narrationParams().instructions; return ins && /gpt-4o.*tts/i.test(S.settings.ttsModel) ? { instructions: ins } : {}; })() }), path: part }));
       }
       parts.push(part); onProgress && onProgress(i + 1, chunks.length);
     }
