@@ -1,0 +1,129 @@
+name: Build Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  android:
+    name: Android release APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Install ImageMagick
+        run: sudo apt-get install -y imagemagick
+
+      - name: Copy web assets and generate icons
+        run: |
+          mkdir -p android-webview/app/src/main/assets
+          cp dist/index.html android-webview/app/src/main/assets/
+          for size in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            dir=${size%%:*}; px=${size##*:}
+            mkdir -p android-webview/app/src/main/res/mipmap-$dir
+            convert assets/icon.png -resize ${px}x${px} android-webview/app/src/main/res/mipmap-$dir/ic_launcher.png
+          done
+
+      - name: Prepare signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          KS="$RUNNER_TEMP/release.jks"
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$KS"
+            echo "Signing with the keystore from repository secrets."
+            {
+              echo "NEXUS_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "NEXUS_KEY_ALIAS=$KEY_ALIAS"
+              echo "NEXUS_KEY_PASSWORD=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+            } >> "$GITHUB_ENV"
+          else
+            PW="$(openssl rand -hex 16)"
+            echo "::add-mask::$PW"
+            keytool -genkeypair -v -keystore "$KS" -alias nexus -keyalg RSA -keysize 2048 \
+              -validity 10000 -storepass "$PW" -keypass "$PW" -dname "CN=Nexus Agent"
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret set. Signed with a one-off key: future builds will not install as updates over this one."
+            {
+              echo "NEXUS_KEYSTORE_PASSWORD=$PW"
+              echo "NEXUS_KEY_ALIAS=nexus"
+              echo "NEXUS_KEY_PASSWORD=$PW"
+            } >> "$GITHUB_ENV"
+          fi
+          echo "NEXUS_KEYSTORE_PATH=$KS" >> "$GITHUB_ENV"
+
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+
+      - name: Build signed release APK
+        working-directory: android-webview
+        run: |
+          gradle wrapper
+          ./gradlew assembleRelease --no-daemon
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
+          mkdir -p ../out && cp "$APK" ../out/nexus-agent-1.1.0.apk
+          rm -f "$NEXUS_KEYSTORE_PATH"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexus-agent-android-release
+          path: out/nexus-agent-1.1.0.apk
+          retention-days: 90
+
+  windows:
+    name: Windows installers
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Stage Electron app
+        shell: bash
+        run: |
+          mkdir -p stage/dist stage/assets
+          cp dist/index.html stage/dist/
+          cp electron-main.js stage/
+          cp assets/icon.png stage/assets/
+          magick assets/icon.png -define icon:auto-resize=256,128,64,48,32,16 stage/assets/icon.ico
+          cat > stage/package.json <<'JSON'
+          {
+            "name": "nexus-agent",
+            "productName": "Nexus Agent",
+            "version": "1.1.0",
+            "description": "Nexus Agent AI assistant",
+            "author": "Nexus Agent",
+            "main": "electron-main.js"
+          }
+          JSON
+          sed 's#"dist-electron"#"../dist-electron"#' electron-builder.json > stage/electron-builder.json
+
+      - name: Install Electron and build installers
+        shell: bash
+        working-directory: stage
+        run: |
+          npm install --save-dev electron@33.2.1 electron-builder@25.1.8 --no-audit --no-fund
+          npx electron-builder --win nsis msi --x64 --config electron-builder.json --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexus-agent-windows
+          path: |
+            dist-electron/*.exe
+            dist-electron/*.msi
+          retention-days: 90

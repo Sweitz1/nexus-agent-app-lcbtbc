@@ -1,28 +1,41 @@
 {
   "appId": "com.nexusagent.app",
   "productName": "Nexus Agent",
-  "copyright": "Copyright © 2024 Nexus Agent",
-  "main": "electron-main.js",
+  "copyright": "Copyright \u00a9 2026 Nexus Agent",
   "directories": {
     "output": "dist-electron"
   },
   "files": [
     "dist/**/*",
     "electron-main.js",
-    "assets/icon.png",
-    "assets/icon.ico"
+    "assets/**/*"
   ],
   "win": {
     "target": [
       {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      },
+      {
         "target": "msi",
-        "arch": ["x64"]
+        "arch": [
+          "x64"
+        ]
       }
     ],
     "icon": "assets/icon.ico"
   },
   "msi": {
     "oneClick": false,
+    "perMachine": false,
+    "runAfterFinish": true,
+    "shortcutName": "Nexus Agent"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
     "perMachine": false,
     "runAfterFinish": true,
     "shortcutName": "Nexus Agent"
