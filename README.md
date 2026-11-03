@@ -22,7 +22,7 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   - outgoing webhooks
   - delegation to other agents
 
-  **Pro skills** (113 skills in total; each one can be turned on or off per agent):
+  **Pro skills** (130 skills in total; each one can be turned on or off per agent):
 
   | Group | Skills |
   |---|---|
@@ -39,6 +39,9 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   | Translation | `translate` (AI model, DeepL or LibreTranslate), `translate_image` (signs, menus), `translate_file` (text and PDF files) |
   | Email | `email_list` (inbox, unread, search by text, sender or date), `email_read` (full text; saves attachments to the workspace), `email_send`, `email_reply` (threaded, with reply-all), `email_manage` (read/unread, flag, move, delete), `email_folders`, `email_compose` (opens your mail app with a draft; needs no account) |
   | Glasses (native RayNeo X3 Pro) | `glasses_status` (battery, charging, temperature, network, storage, sensors), `glasses_volume`, `glasses_brightness`, `media_control` (Spotify and other players: play, pause, next…), `glasses_settings`, `head_pose`, `ask_yes_no` (**nod = yes, shake = no**), `notifications_read` / `notifications_dismiss`, `camera_record_video` (point-of-view clips with sound) |
+  | Shopping | `shop_search` (compares Amazon and Walmart: prices, ratings, Prime, pickup), `shop_product`, `shop_add_to_cart` (opens the store's add-to-cart page; **you check out yourself**), `shop_open` (search, cart, orders and tracking, deals, buy again), `shopping_list`, `shopping_list_to_cart` (whole list into the cart in one step) |
+  | Plex | `plex_search`, `plex_browse` (libraries, on deck, recently added), `plex_details`, `plex_play` (plays on the glasses, resumes from your progress, picks up a show at the next unwatched episode, plays albums and playlists as a queue, or opens the item in the Plex app), `plex_mark` |
+  | Food | `food_order_app` (26 chains, including McDonald's, Chick-fil-A, Taco Bell, Domino's, Starbucks and Chipotle), `food_delivery` (DoorDash, Uber Eats/Postmates, Grubhub, Instacart, Gopuff, Walmart, Amazon Fresh, Deliveroo, Just Eat, Wolt, Glovo, Lieferando, Swiggy, Zomato), `food_orders` (order tracking), `food_nearby` (sorted by distance), `delivery_services` |
   | Scanner | `scan_code` (live camera or image: QR, EAN/UPC, Code 128/39, ITF, Data Matrix, PDF417, Aztec; recognises links, Wi-Fi, contacts, events and products), `qr_generate` (including Wi-Fi login codes), `product_lookup` (Open Food Facts, UPCitemdb) |
   | Telegram | `telegram_send`, `telegram_send_file`, `telegram_read`, `telegram_chats`. Optionally, the bot can answer you from anywhere (text, photos, documents, transcribed voice notes) |
   | Kino | `kino_search`, `kino_trending`, `kino_details` (cast, runtime, rating, trailer, **where to stream, rent or buy**), `kino_play` (trailers and videos in the in-app player), `kino_feed` (a scrolling poster feed in the Media tab) |
@@ -149,6 +152,31 @@ Small local models often don't support tool calling. The app detects this and co
 - **Permissions.** Camera, location, contacts, call and microphone permissions are only requested the first time a skill needs them.
 - **Confirmation.** Risky skills ask before running. These are deleting files, calls, SMS, contacts, location, app launching, intents, raw HTTP and webhooks. In the **Skills** tab you can tick *always allow* on any of them.
 - **Upgrading from 1.0.0.** The app now runs from a secure local origin, which the camera, workers and WebAssembly need. Agents and settings saved in 1.0.0 don't carry over, but API keys do. To keep your configuration, use *Settings → Export config* on 1.0.0 before upgrading, then import it on 1.1.0.
+
+## "Hey Nexus" wake word
+
+Turn it on in *Settings → "Hey Nexus" wake word*, or ask an agent to call `wake_word` with `on`.
+
+- **Offline and private.** The wake word uses [Vosk](https://alphacephei.com/vosk/), an open-source recogniser that runs on the device. The small speech model (about 40 MB) downloads once. Audio is never uploaded while the app waits for the wake phrase.
+- **Background listening.** A microphone foreground service keeps listening with the screen off or while you use other apps. A small notification shows while it is listening.
+- **After the wake word** a tone plays. Your request is transcribed and sent to the current agent (or the current mode), and the answer is read aloud. You can choose how the request is transcribed:
+  - *Offline* (default): fully private.
+  - *System speech recognizer*: more accurate, but uses Google's service where available.
+- **Waking the app from the background.** Grant *Allow opening from background* (Android's "display over other apps") so the wake word can bring Nexus to the front. Without it, a "tap to open" alert appears instead.
+- **Other phrases.** "Hey Nexus", "Hi Nexus" and "OK Nexus" all work, and so do common mishearings such as "hey next us". You can add your own phrase. Words must exist in the model's vocabulary.
+- Say **"stop"** or **"cancel"** to interrupt a reply.
+- The app pauses the wake word while it is speaking, so it doesn't hear itself.
+- Models for German, French, Spanish, Italian, Portuguese, Dutch, Russian, Chinese and Japanese are available. With these, set a custom phrase in that language.
+
+## Shopping, Plex and food
+
+- **Amazon and Walmart** don't offer a public ordering API to consumers, so purchases always finish in their apps:
+  - Agents search and compare prices by reading the stores' public search pages. If a store shows a robot check, the agent opens the app's search instead.
+  - Agents fill your cart through the stores' add-to-cart links and open your orders, tracking, deals and buy-again pages.
+  - The Amazon store country is a setting (amazon.com, .co.uk, .de, .ca and more).
+- **Plex:** press *Sign in with Plex* and approve the code on your phone; the code is shown as a QR. The app finds your server and prefers the local connection. You can also enter the server URL and token by hand.
+  - Videos are **transcoded by default**, so anything plays on the glasses (HEVC, MKV, surround sound and so on). Music plays directly.
+- **Fast food and delivery:** agents open a chain's own app or online ordering page, or search DoorDash, Uber Eats and the other services for a dish or restaurant. They can also open order tracking and find the nearest locations. You place the final order in the app.
 
 ## Native RayNeo agent, Media tab and on-demand skills
 
@@ -263,12 +291,14 @@ android/
     RawHttp.java           HTTP/1.1 client for WebDAV/CalDAV verbs (PROPFIND, REPORT) and PATCH
     GlassesTools.java      battery/network/storage status, volume, media keys, settings panels, head pose, nod/shake detection
     NexusNotificationListener.java  notification access (read, announce, dismiss)
+    WakeWordService.java   offline "Hey Nexus" wake word (Vosk) as a microphone foreground service
     WebhookServer.java     LAN HTTP server: incoming webhooks + phone remote console
   app/src/main/assets/
     index.html          core agent runtime and UI (providers, agents, modes, webhooks)
     js/skills-pro.js    files, coding, engineering, image, PDF, OCR, zip, video, maps, phone, translation skills
     js/skills-comms.js  email and calendar skills, CalDAV client, iCalendar parser/writer, account settings
     js/skills-media.js  scanner, Telegram, Kino, audiobooks, text-to-audio, glasses skills, Media tab, player, RayNeo agent
+    js/skills-shop.js   wake word control, Amazon/Walmart shopping + list, Plex, fast food & delivery
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console
 .github/workflows/build-apk.yml

@@ -214,7 +214,12 @@
   mini.innerHTML = `<span id="miniT" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.85em"></span><span id="miniTime" class="hint"></span>
     <button class="small" id="miniPrev" title="Back 30s / previous chapter">⏮</button><button class="small" id="miniPlay">⏯</button><button class="small" id="miniNext" title="Next chapter">⏭</button><button class="small" id="miniRate">1×</button><button class="small" id="miniRead" title="Read along">📖</button><button class="small" id="miniX">✕</button>`;
   document.body.appendChild(mini);
-  const book = id => S.audiobooks.find(b => b.id === id);
+  const TEMPQ = []; // transient queues (e.g. a Plex album) — not stored in the audiobook library
+  const book = id => S.audiobooks.find(b => b.id === id) || TEMPQ.find(b => b.id === id);
+  async function playQueue(title, chapters, startIndex = 0, startTime = 0) {
+    const q = { id: 'q:' + uid(), title, author: '', source: 'queue', chapters, pos: { ch: 0, t: 0 }, rate: 1 };
+    TEMPQ.splice(0, TEMPQ.length, q); return playBook(q.id, startIndex, startTime);
+  }
   function updateMini() {
     if (!NOW) { mini.style.display = 'none'; return; }
     mini.style.display = 'flex';
@@ -725,5 +730,5 @@
   // Secrets for export / phone remote console.
   { const coreSecrets = secretIds; secretIds = () => [...coreSecrets(), { id: 'svc_telegram', name: 'Telegram bot token' }, { id: 'svc_tmdb', name: 'TMDB key' }, { id: 'svc_elevenlabs', name: 'ElevenLabs key' }]; }
 
-  window.NexusMedia = { scanLive, decodeImagePath, qrToFile, describeCode, textToAudioFile, playBook, playFile, AP, epubChapters, textChapters, kinoSearch, kinoTrending, kinoDetails, archiveSearch, archiveBook, tgHandle, tgFetchUpdates, mediaState, askYesNo };
+  window.NexusMedia = { playQueue, playVideo, qrDataUrl: async t => { const p = await qrToFile(t, 360, `tmp/qr_${uid()}.png`); return p; }, scanLive, decodeImagePath, qrToFile, describeCode, textToAudioFile, playBook, playFile, AP, epubChapters, textChapters, kinoSearch, kinoTrending, kinoDetails, archiveSearch, archiveBook, tgHandle, tgFetchUpdates, mediaState, askYesNo };
 })();

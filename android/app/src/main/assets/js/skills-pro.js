@@ -421,8 +421,9 @@ async function appleGet(path, params) {
   return d;
 }
 const appleLink = (q, lat, lon) => 'https://maps.apple.com/?' + new URLSearchParams(Object.fromEntries(Object.entries({ q, ll: lat != null ? `${lat},${lon}` : null }).filter(([, v]) => v))).toString();
-async function nominatim(q, limit = 5) {
-  const r = await http('GET', `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=${limit}&q=${encodeURIComponent(q)}`, { 'Accept-Language': navigator.language || 'en' }, null, 20000);
+async function nominatim(q, limit = 5, center) {
+  const box = center && isFinite(center.lat) ? `&viewbox=${center.lon - 0.25},${center.lat + 0.25},${center.lon + 0.25},${center.lat - 0.25}&bounded=1` : '';
+  const r = await http('GET', `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=${limit}&q=${encodeURIComponent(q)}${box}`, { 'Accept-Language': navigator.language || 'en' }, null, 20000);
   return (parseJSON(r.body, []) || []).map(x => ({ name: x.name || x.display_name.split(',')[0], address: x.display_name, lat: Number(x.lat), lon: Number(x.lon), type: x.type }));
 }
 async function currentLocation() {
@@ -646,8 +647,7 @@ BUILTIN_SKILLS.push(
       if (a.near) center = await resolvePlace(a.near);
       const apple = await appleGet('/v1/search', { q: a.query, searchLocation: center ? `${center.lat},${center.lon}` : null, lang: navigator.language || 'en-US' }).catch(e => ({ __err: e.message }));
       if (apple && apple.results) return 'Source: Apple Maps\n' + J(apple.results.slice(0, limit).map(r => ({ name: r.name, address: (r.formattedAddressLines || []).join(', '), category: r.poiCategory, lat: r.coordinate.latitude, lon: r.coordinate.longitude, apple_maps: appleLink(r.name, r.coordinate.latitude, r.coordinate.longitude) })));
-      const q = center && center.label !== 'current location' ? `${a.query}, ${a.near}` : a.query;
-      const res = await nominatim(q, limit);
+      const res = await nominatim(a.query, limit, center);
       return `Source: OpenStreetMap${apple && apple.__err ? ' (Apple Maps error: ' + apple.__err + ')' : ' (add an Apple Maps token in Settings for Apple results)'}\n` + J(res.map(r => ({ ...r, apple_maps: appleLink(r.name, r.lat, r.lon) })));
     } },
   { name: 'apple_maps_directions', group: 'Maps', description: 'Route, distance and travel time between two places (Apple Maps; OSRM fallback for driving/walking). Use "here" for current location.', parameters: P({ origin: s_('start, or "here"'), destination: s_('end'), mode: s_('driving | walking | transit') }, ['destination']),

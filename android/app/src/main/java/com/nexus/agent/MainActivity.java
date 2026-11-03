@@ -53,6 +53,7 @@ public class MainActivity extends Activity {
 
     WebView webView;
     NativeBridge bridge;
+    static volatile boolean visible = false;
     private boolean pageReady = false;
     private final ArrayList<String> pendingEvents = new ArrayList<>();
 
@@ -146,8 +147,15 @@ public class MainActivity extends Activity {
         handleIntent(intent);
     }
 
+    @Override
+    protected void onResume() { super.onResume(); visible = true; }
+
+    @Override
+    protected void onPause() { visible = false; super.onPause(); }
+
     private void handleIntent(Intent intent) {
         if (intent == null) return;
+        if (intent.getBooleanExtra("wake", false)) { emit("wake", "{\"phase\":\"tap\"}"); return; }
         try {
             String action = intent.getAction();
             if (Intent.ACTION_SEND.equals(action) || Intent.ACTION_SEND_MULTIPLE.equals(action)) {

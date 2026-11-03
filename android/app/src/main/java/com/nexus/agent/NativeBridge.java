@@ -87,6 +87,7 @@ public class NativeBridge {
         this.calendar = new CalendarTools(activity);
         this.glasses = new GlassesTools(activity);
         NexusNotificationListener.sink = n -> activity.emit("notification", n.toString());
+        WakeWordService.sink = e -> activity.emit("wake", e.toString());
         this.prefs = activity.getSharedPreferences("nexus_secure", Context.MODE_PRIVATE);
         tts = new TextToSpeech(activity, status -> {
             ttsReady = status == TextToSpeech.SUCCESS;
@@ -935,6 +936,111 @@ public class NativeBridge {
         java.nio.ByteBuffer fb = java.nio.ByteBuffer.wrap(fmt).order(java.nio.ByteOrder.LITTLE_ENDIAN);
         int byteRate = fmt.length >= 12 ? fb.getInt(8) : 0;
         return byteRate > 0 ? pcm.length * 1000L / byteRate : 0;
+    }
+
+    // ------------------------------------------------------------------ wake word ("Hey Nexus")
+
+    @JavascriptInterface
+    public boolean wakeModelInstalled(String name) { return WakeWordService.installed(activity, name); }
+
+    /** Downloads and unpacks a Vosk model zip into app-private storage. Emits wake_model {pct}. */
+    @JavascriptInterface
+    public void wakeModelDownload(String id, String url, String name) {
+        async(id, () -> {
+            URL u = new URL(url);
+            if (!"https".equals(u.getProtocol())) throw new IllegalArgumentException("https only");
+            File zip = new File(activity.getCacheDir(), "vosk_" + System.nanoTime() + ".zip");
+            HttpURLConnection c = (HttpURLConnection) u.openConnection();
+            try {
+                c.setConnectTimeout(20000);
+                c.setReadTimeout(120000);
+                c.setInstanceFollowRedirects(true);
+                int st = c.getResponseCode();
+                if (st >= 400) throw new java.io.IOException("HTTP " + st);
+                long len = c.getContentLengthLong(), got = 0;
+                int lastPct = -1;
+                try (InputStream in = c.getInputStream(); OutputStream out = new FileOutputStream(zip)) {
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) {
+                        out.write(buf, 0, n);
+                        got += n;
+                        int pct = len > 0 ? (int) (got * 100 / len) : -1;
+                        if (pct != lastPct && pct % 5 == 0) { lastPct = pct; activity.emit("wake_model", "{\"pct\":" + pct + "}"); }
+                    }
+                }
+            } finally { c.disconnect(); }
+            File root = WakeWordService.modelsDir(activity);
+            //noinspection ResultOfMethodCallIgnored
+            root.mkdirs();
+            String rootCanon = root.getCanonicalPath();
+            try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(zip)) {
+                java.util.Enumeration<? extends java.util.zip.ZipEntry> en = zf.entries();
+                while (en.hasMoreElements()) {
+                    java.util.zip.ZipEntry e = en.nextElement();
+                    File t = new File(root, e.getName()).getCanonicalFile();
+                    if (!t.getPath().startsWith(rootCanon + File.separator)) throw new java.io.IOException("unsafe zip entry");
+                    if (e.isDirectory()) { //noinspection ResultOfMethodCallIgnored
+                        t.mkdirs(); continue; }
+                    File p = t.getParentFile();
+                    if (p != null) //noinspection ResultOfMethodCallIgnored
+                        p.mkdirs();
+                    try (InputStream in = zf.getInputStream(e); OutputStream out = new FileOutputStream(t)) { Workspace.copy(in, out); }
+                }
+            } finally {
+                //noinspection ResultOfMethodCallIgnored
+                zip.delete();
+            }
+            if (!WakeWordService.installed(activity, name)) throw new java.io.IOException("Model unpacked but " + name + " not found in archive");
+            return "{\"ok\":true}";
+        });
+    }
+
+    /** spec {model: name, phrases: [...], commandMode: vosk|system}. Needs RECORD_AUDIO. */
+    @JavascriptInterface
+    public String wakeStart(String specJson) {
+        try {
+            if (!activity.hasMicPermission()) return "{\"error\":\"Microphone permission not granted\"}";
+            JSONObject s = new JSONObject(specJson);
+            String name = s.getString("model");
+            if (!WakeWordService.installed(activity, name)) return "{\"error\":\"Speech model not installed\"}";
+            Intent i = new Intent(activity, WakeWordService.class);
+            i.putExtra("model", WakeWordService.modelDir(activity, name).getAbsolutePath());
+            i.putExtra("phrases", s.getJSONArray("phrases").toString());
+            i.putExtra("commandMode", s.optString("commandMode", "vosk"));
+            if (Build.VERSION.SDK_INT >= 26) activity.startForegroundService(i); else activity.startService(i);
+            return "{\"ok\":true}";
+        } catch (Exception e) {
+            return errorJson(e);
+        }
+    }
+
+    @JavascriptInterface
+    public void wakeStop() { activity.stopService(new Intent(activity, WakeWordService.class)); }
+
+    @JavascriptInterface
+    public boolean wakeRunning() { return WakeWordService.running(); }
+
+    @JavascriptInterface
+    public void wakePause(boolean p) { WakeWordService.pause(p); }
+
+    @JavascriptInterface
+    public void wakeSuspend() { WakeWordService.suspend(); }
+
+    @JavascriptInterface
+    public void wakeResume() { WakeWordService.resume(); }
+
+    /** "Display over other apps" lets the wake word bring Nexus to the front from the background. */
+    @JavascriptInterface
+    public boolean canDrawOverlays() { return Build.VERSION.SDK_INT < 23 || android.provider.Settings.canDrawOverlays(activity); }
+
+    @JavascriptInterface
+    public void requestOverlay() {
+        try {
+            activity.startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + activity.getPackageName())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (Exception e) {
+            glasses.openSettings("app");
+        }
     }
 
     // ------------------------------------------------------------------ glasses / device
