@@ -22,7 +22,7 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   - outgoing webhooks
   - delegation to other agents
 
-  **Pro skills** (229 skills in total; each one can be turned on or off per agent):
+  **Pro skills** (233 skills in total; each one can be turned on or off per agent):
 
   | Group | Skills |
   |---|---|
@@ -51,6 +51,7 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   | Downloads | `download_batch`, `download_page_media` (largest images, videos, audio, PDFs and other documents on a page), `download_system` (Android download manager for big files, which resume in the background), `download_status`, `download_import` |
   | Coding & builds | `run_python` (**Python 3 on the device** via Pyodide: numpy, pandas, matplotlib and scikit-learn; files your code writes are saved), `run_code` (C, C++, Java, Go, Rust, Ruby and more through a Piston runner you host), `web_preview`, `code_template` (Android app, static site, Python or Node CLI), `build_android_app` (**builds an installable APK with GitHub Actions** and downloads it) |
   | GitHub | `github_list` (repos, issues, PRs, Actions runs, workflows, releases, branches, notifications), `github_search`, `github_get`, `github_write` (create repos; put or delete files; issues and comments; PRs, including merge; branches; releases with assets; GitHub Pages), `github_push` (a whole folder in one commit), `github_actions` (status, failed-job logs, artifacts, release downloads, run or re-run) |
+  | AutoGPT | `autogpt_start` (an autonomous background run toward a goal; optionally repeats hourly or daily), `autogpt_status`, `autogpt_control` (pause, resume, stop, delete), `autogpt_server_run` (sends a task to a self-hosted AutoGPT agent over the Agent Protocol and collects its outputs and files) |
   | Verizon Cloud | `verizon_cloud`: status, upload (sends files to the Verizon Cloud app), backup (saves to the gallery or Downloads so Verizon Cloud's automatic backup picks them up), open. `file_save_to_device` works with any cloud backup app |
   | Deepfake detection | `deepfake_check` (images, video and audio: provenance markers plus a visual forensic review by your vision model, giving a verdict with evidence and caveats), `media_provenance` (offline: C2PA Content Credentials, IPTC "AI-generated" tags, AI tool and editor markers), `reverse_image_search` (Google Lens) |
   | Synthetic media of yourself | `voice_clone_self` (ElevenLabs), `avatar_video_self` (D-ID talking photo), `my_synthetic_media`. **Only your own voice and face**; confirmation is required every time and outputs are labelled AI-generated |
@@ -230,6 +231,26 @@ Details:
 - **App integrations** are stored as custom skills. Manage or remove them in *Settings → Developer*.
 - **Google Photos:** since Google's 2025 API change, apps can upload, manage the albums they create, and download items you choose in the Google Photos picker. They can't browse your whole library. Tick *photos* in *Settings → Google* and reconnect.
 - **Scraping and downloads:** robots.txt is respected by default and crawling is rate-limited. Downloading from streaming services (YouTube, Netflix and others) is intentionally not supported, because their terms and copy protection forbid it.
+
+## AutoGPT: autonomous goals
+
+Give Nexus a bigger goal in the **Auto** tab, in the **AutoGPT** chat mode, or by voice ("Hey Nexus, in the background, research … and email me a PDF"). It then works AutoGPT-style:
+
+1. **Plan.** A planner agent breaks the goal into 3–10 tasks and sets success criteria.
+2. **Act.** A worker agent does one task at a time with all its skills: web, files, PDF, email, calendar, code, shopping and so on. Useful results are saved as workspace files.
+3. **Review.** After each task the planner marks it done or failed, keeps notes, adds or removes tasks, and decides when the goal is met.
+4. **Report.** A final summary goes to the chat. It is also read aloud, shown on the glasses HUD, sent to paired Telegram chats and sent to your reply webhooks.
+
+Controls:
+
+- **Budgets:** a task budget and a time budget for each run. When a run hits its budget, *Continue* adds 10 more tasks.
+- Pause, resume and stop.
+- **Ask me before each step:** you approve or skip every task before it runs.
+- **Repeat:** runs the goal again hourly or daily at a set time, while the app is open.
+
+Runs interrupted by an app restart wait for you to resume them. Risky actions inside a run still ask for confirmation, and they are declined automatically if nobody answers. Autonomous runs cannot start other autonomous runs. You choose the planner and worker agents in *Settings → AutoGPT*.
+
+**Real AutoGPT:** if you self-host AutoGPT (Forge or classic agents, which speak the open [Agent Protocol](https://agentprotocol.ai)), enter its URL in *Settings → AutoGPT*. `autogpt_server_run` then sends tasks to it and downloads its artifacts.
 
 ## Verizon Cloud, deepfake detection and synthetic media
 
@@ -437,6 +458,7 @@ android/
     js/skills-google.js Google sign-in, Gmail, Calendar source, Drive, Docs, Sheets, Tasks, Contacts, Photos, YouTube, Maps, Translate
     js/skills-dev.js    APK services & app integrations, scraper, downloads, Python/code runner/templates/builds, GitHub
     js/skills-trust.js  Verizon Cloud, deepfake detection & provenance, consent-gated synthetic media of yourself
+    js/skills-auto.js   AutoGPT: autonomous plan→act→review runs, budgets, scheduling, Auto tab, Agent Protocol client
     hud.html            HUD shown on external display glasses
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console
