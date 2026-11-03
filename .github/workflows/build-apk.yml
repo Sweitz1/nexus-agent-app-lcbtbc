@@ -11,6 +11,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Publish a release with this tag (e.g. v2.6.0); leave empty for a normal build'
+        required: false
+        default: ''
   release:
     types: [published]
 
@@ -74,9 +79,10 @@ jobs:
           NEXUS_KEY_ALIAS: ${{ secrets.NEXUS_KEY_ALIAS }}
           NEXUS_KEY_PASSWORD: ${{ secrets.NEXUS_KEY_PASSWORD }}
           # Tagged releases must be signed with your own key, never the debug key.
-          NEXUS_REQUIRE_RELEASE_KEY: ${{ startsWith(github.ref, 'refs/tags/v') && '1' || '0' }}
+          NEXUS_REQUIRE_RELEASE_KEY: ${{ (startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != '') && '1' || '0' }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/v* || -n "$RELEASE_TAG" ]]; then
             gradle --no-daemon assembleDebug assembleRelease bundleRelease
           else
             gradle --no-daemon assembleDebug assembleRelease
@@ -120,11 +126,11 @@ jobs:
             out/*.txt
           retention-days: 30
 
-      - name: Publish GitHub Release (tags)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish GitHub Release (tag push or manual run with release_tag)
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
         run: |
           {
             echo "## Nexus Agent $TAG"
@@ -141,7 +147,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" out/*.apk out/*.aab out/*.txt --clobber
           else
-            gh release create "$TAG" out/*.apk out/*.aab out/*.txt --title "Nexus Agent $TAG" --notes-file notes.md
+            gh release create "$TAG" out/*.apk out/*.aab out/*.txt --target "$GITHUB_SHA" --title "Nexus Agent $TAG" --notes-file notes.md
           fi
 
       - name: Attach to GitHub release (published manually)

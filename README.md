@@ -114,7 +114,7 @@ Both APKs are signed with APK Signature Scheme v1, v2 and v3. With your release 
 
 Without the secrets, everyday builds use the debug key so they still install with `adb`.
 
-**Publishing a release:** push a version tag, for example `git tag v2.6.0 && git push origin v2.6.0`. The workflow then:
+**Publishing a release:** push a version tag (`git tag v2.6.0 && git push origin v2.6.0`), or open *Actions → Build Nexus Agent APK → Run workflow* and enter a **release_tag** such as `v2.6.0`. The workflow then:
 
 1. refuses to build unless your release key is configured;
 2. builds both APKs and the Google Play bundles (`.aab`);
