@@ -88,6 +88,7 @@ public class NativeBridge {
         this.glasses = new GlassesTools(activity);
         NexusNotificationListener.sink = n -> activity.emit("notification", n.toString());
         WakeWordService.sink = e -> activity.emit("wake", e.toString());
+        NexusAccessibilityService.sink = (t, d) -> { try { d.put("type", t); } catch (Exception ignored) { } activity.emit("screen", d.toString()); };
         this.prefs = activity.getSharedPreferences("nexus_secure", Context.MODE_PRIVATE);
         tts = new TextToSpeech(activity, status -> {
             ttsReady = status == TextToSpeech.SUCCESS;
@@ -1041,6 +1042,71 @@ public class NativeBridge {
         } catch (Exception e) {
             glasses.openSettings("app");
         }
+    }
+
+    // ------------------------------------------------------------------ screen control (accessibility)
+
+    @JavascriptInterface
+    public boolean screenEnabled() { return NexusAccessibilityService.instance != null; }
+
+    @JavascriptInterface
+    public void screenOpenSettings() {
+        try { activity.startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { }
+    }
+
+    @JavascriptInterface
+    public void screenBlocklist(String regex) { NexusAccessibilityService.setBlocklist(regex); }
+
+    @JavascriptInterface
+    public void screenIndicator(String text) {
+        NexusAccessibilityService s = NexusAccessibilityService.instance;
+        if (s == null) return;
+        if (text == null || text.isEmpty()) s.hidePill(); else s.showPill(text);
+    }
+
+    /** Brings Nexus back to the front after a screen-control task. */
+    @JavascriptInterface
+    public void bringToFront() {
+        activity.runOnUiThread(() -> {
+            Intent i = new Intent(activity, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { activity.startActivity(i); } catch (Exception ignored) { }
+        });
+    }
+
+    /**
+     * spec {op: read|label|click|longclick|type|submit|scroll|swipe|tap|global|screenshot|foreground, ...}
+     * Every acting op waits for the UI to settle.
+     */
+    @JavascriptInterface
+    public void screen(String id, String specJson) {
+        async(id, () -> {
+            NexusAccessibilityService s = NexusAccessibilityService.instance;
+            if (s == null) throw new IllegalStateException("Screen control is off. Enable \"Nexus Agent screen control\" in Android Settings → Accessibility.");
+            JSONObject sp = new JSONObject(specJson);
+            String op = sp.getString("op");
+            String r;
+            switch (op) {
+                case "read": return s.snapshot(sp.optInt("max", 150));
+                case "foreground": return ok("package", s.foreground());
+                case "label": return ok("label", s.label(sp.getInt("id")));
+                case "click": r = s.click(sp.getInt("id"), false); break;
+                case "longclick": r = s.click(sp.getInt("id"), true); break;
+                case "type": r = s.type(sp.getInt("id"), sp.getString("text"), sp.optBoolean("append")); break;
+                case "submit": r = s.submit(sp.getInt("id")); break;
+                case "scroll": r = s.scroll(sp.optInt("id", 0), sp.optString("direction", "down")); break;
+                case "swipe": r = s.swipe(sp.getInt("x1"), sp.getInt("y1"), sp.getInt("x2"), sp.getInt("y2"), sp.optInt("ms", 300)); break;
+                case "tap": r = s.tapAt(sp.getInt("x"), sp.getInt("y")); break;
+                case "global": r = s.global(sp.optString("action", "back")); break;
+                case "screenshot": {
+                    File f = workspace.unique(sp.optString("path", "screens/screen_" + System.currentTimeMillis() + ".jpg"));
+                    s.screenshot(f);
+                    return ok("path", workspace.rel(f));
+                }
+                default: throw new IllegalArgumentException("unknown screen op " + op);
+            }
+            s.settle(sp.optInt("settleMs", 2500));
+            return ok("result", r);
+        });
     }
 
     // ------------------------------------------------------------------ glasses / device

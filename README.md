@@ -22,7 +22,7 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   - outgoing webhooks
   - delegation to other agents
 
-  **Pro skills** (130 skills in total; each one can be turned on or off per agent):
+  **Pro skills** (140 skills in total; each one can be turned on or off per agent):
 
   | Group | Skills |
   |---|---|
@@ -39,6 +39,7 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   | Translation | `translate` (AI model, DeepL or LibreTranslate), `translate_image` (signs, menus), `translate_file` (text and PDF files) |
   | Email | `email_list` (inbox, unread, search by text, sender or date), `email_read` (full text; saves attachments to the workspace), `email_send`, `email_reply` (threaded, with reply-all), `email_manage` (read/unread, flag, move, delete), `email_folders`, `email_compose` (opens your mail app with a draft; needs no account) |
   | Glasses (native RayNeo X3 Pro) | `glasses_status` (battery, charging, temperature, network, storage, sensors), `glasses_volume`, `glasses_brightness`, `media_control` (Spotify and other players: play, pause, next…), `glasses_settings`, `head_pose`, `ask_yes_no` (**nod = yes, shake = no**), `notifications_read` / `notifications_dismiss`, `camera_record_video` (point-of-view clips with sound) |
+  | Screen control | `screen_open_app`, `screen_read` (UI elements of the app in front), `screen_tap`, `screen_type`, `screen_scroll`, `screen_swipe`, `screen_nav` (back, home, recents, notifications), `screen_wait`, `screen_screenshot` (screenshot passed to the vision model), `screen_return`. Agents operate other apps for you, for example *"reorder my usual from DoorDash"* |
   | Shopping | `shop_search` (compares Amazon and Walmart: prices, ratings, Prime, pickup), `shop_product`, `shop_add_to_cart` (opens the store's add-to-cart page; **you check out yourself**), `shop_open` (search, cart, orders and tracking, deals, buy again), `shopping_list`, `shopping_list_to_cart` (whole list into the cart in one step) |
   | Plex | `plex_search`, `plex_browse` (libraries, on deck, recently added), `plex_details`, `plex_play` (plays on the glasses, resumes from your progress, picks up a show at the next unwatched episode, plays albums and playlists as a queue, or opens the item in the Plex app), `plex_mark` |
   | Food | `food_order_app` (26 chains, including McDonald's, Chick-fil-A, Taco Bell, Domino's, Starbucks and Chipotle), `food_delivery` (DoorDash, Uber Eats/Postmates, Grubhub, Instacart, Gopuff, Walmart, Amazon Fresh, Deliveroo, Just Eat, Wolt, Glovo, Lieferando, Swiggy, Zomato), `food_orders` (order tracking), `food_nearby` (sorted by distance), `delivery_services` |
@@ -168,6 +169,23 @@ Turn it on in *Settings → "Hey Nexus" wake word*, or ask an agent to call `wak
 - The app pauses the wake word while it is speaking, so it doesn't hear itself.
 - Models for German, French, Spanish, Italian, Portuguese, Dutch, Russian, Chinese and Japanese are available. With these, set a custom phrase in that language.
 
+## Screen control (accessibility)
+
+Agents can operate other apps step by step: open the app, read the screen, tap, type, scroll and repeat. Each action returns the updated screen to the agent. For apps that don't expose readable elements (games, maps, video, some web views), the agent takes a screenshot and has the vision model look at it.
+
+**To enable:** *Settings → Screen control → Enable in Accessibility settings*, then switch on **Nexus Agent screen control**. Android shows its standard warning for accessibility services.
+
+**Guardrails:**
+
+- **Consent per task and app.** The first time an agent wants to control an app during a task, it asks you.
+- **Money, sending and deleting always ask you first.** Buttons such as *Place order, Pay, Buy, Checkout, Confirm, Send, Transfer, Tip, Subscribe, Book, Delete, Post* need your confirmation, and **cannot be set to always allow**. Nexus jumps to the front to ask (on screen and aloud, and by nod if you enabled that), then returns to the app.
+- **Password fields** are never read or typed into. Text that looks like a card number is refused; you enter payment details yourself.
+- **Protected apps are blocked:** banking, wallets (PayPal, Venmo, Cash App, crypto exchanges), password managers and authenticators. You can edit the pattern in Settings.
+- **You can always stop it.** A floating *🤖 Nexus is controlling — tap to stop* pill shows while it works. Tapping it, saying "stop" after "Hey Nexus", or the back key stops the task.
+- When the task ends, Nexus returns to the front. You can turn this off.
+
+The service only acts when an agent task calls it. Screen contents go to your chosen model provider, just like any other prompt, so use a local model for anything private.
+
 ## Shopping, Plex and food
 
 - **Amazon and Walmart** don't offer a public ordering API to consumers, so purchases always finish in their apps:
@@ -292,6 +310,7 @@ android/
     GlassesTools.java      battery/network/storage status, volume, media keys, settings panels, head pose, nod/shake detection
     NexusNotificationListener.java  notification access (read, announce, dismiss)
     WakeWordService.java   offline "Hey Nexus" wake word (Vosk) as a microphone foreground service
+    NexusAccessibilityService.java  screen control: UI tree, tap/type/scroll/swipe/gestures, screenshots, stop pill, app block list
     WebhookServer.java     LAN HTTP server: incoming webhooks + phone remote console
   app/src/main/assets/
     index.html          core agent runtime and UI (providers, agents, modes, webhooks)
@@ -299,6 +318,7 @@ android/
     js/skills-comms.js  email and calendar skills, CalDAV client, iCalendar parser/writer, account settings
     js/skills-media.js  scanner, Telegram, Kino, audiobooks, text-to-audio, glasses skills, Media tab, player, RayNeo agent
     js/skills-shop.js   wake word control, Amazon/Walmart shopping + list, Plex, fast food & delivery
+    js/skills-screen.js screen-control skills, consent and sensitive-action guard, settings
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console
 .github/workflows/build-apk.yml

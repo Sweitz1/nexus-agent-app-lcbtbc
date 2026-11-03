@@ -357,7 +357,7 @@ async function runAgent(agent, userText, { history = [], onStep = () => {}, dept
       : [{ type: 'text', text: last.content }, ...images.map(i => ({ type: 'image_url', image_url: { url: `data:${i.mime};base64,${i.b64}` } }))];
   }
   const steps = [];
-  const max = Math.max(1, Number(S.settings.maxSteps) || 8);
+  let max = Math.max(1, Number(S.settings.maxSteps) || 8);
   for (let i = 0; i <= max; i++) {
     if (token !== runToken) throw new Error('Stopped');
     let r;
@@ -389,6 +389,7 @@ async function runAgent(agent, userText, { history = [], onStep = () => {}, dept
           else {
             if (onDemand && !loaded.has(def.group)) { loaded.add(def.group); tools = pickTools(); }
             out = await execSkill(c.name, c.args, { agent, depth, origin, token });
+            if (def.group === 'Screen') max = Math.max(max, Number(S.settings.screenMaxSteps) || 40); // UI automation needs many small steps
           }
         }
       } catch (e) { out = 'Error: ' + e.message; }
@@ -1075,5 +1076,6 @@ document.addEventListener('DOMContentLoaded', boot);
 <script src="js/skills-comms.js"></script>
 <script src="js/skills-media.js"></script>
 <script src="js/skills-shop.js"></script>
+<script src="js/skills-screen.js"></script>
 </body>
 </html>
