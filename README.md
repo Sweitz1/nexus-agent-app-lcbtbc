@@ -332,6 +332,32 @@ The result is a verdict with the evidence and honest caveats. Audio gets the pro
 
 Nexus doesn't imitate or clone specific real people, celebrities and professional narrators included. Use a voice that its owner has published or licensed, a stock AI voice, or your own voice (`voice_clone_self`).
 
+## Bluetooth, car, Android Auto and casting
+
+The card is under *Settings → Bluetooth, car & casting*. Each feature also works by voice through the skills listed.
+
+- **Bluetooth** (`bluetooth_devices`, `bluetooth_scan`, `bluetooth_pair`, `bluetooth_settings`, `audio_output`)
+  - Shows your paired devices: speakers, headphones, cars and keyboards, and which are connected.
+  - Scans for devices in pairing mode and pairs with them. Android shows its own PIN confirmation.
+  - Shows where audio is playing and opens the media output switcher.
+  - Android doesn't let apps connect, disconnect or forget audio devices. For those, Nexus opens Bluetooth settings.
+- **Media over Bluetooth and in the car**
+  - Nexus' player (audiobooks, narration, podcasts, spoken answers) is mirrored into Android's media session.
+  - Over Bluetooth, the car or headphones show the title, and the steering-wheel or headset buttons (play/pause, next, previous) control Nexus.
+  - Lock-screen controls work too.
+- **2015 VW Passat:** most 2015 Passats, including US models, have no Android Auto. VW added App-Connect in the 2016 model year. Use Bluetooth: pair the phone with the car once, and Nexus audio plays through the car with track info on the display (if your radio shows it) and steering-wheel controls. Mirroring the phone screen onto the car display isn't possible without Android Auto.
+- **Android Auto**
+  - **Media app:** browse Audiobooks (continue listening or pick a chapter), Narrations, and **Ask Nexus**. Saying "play \<question\> on Nexus" asks the agent and reads the answer aloud.
+  - **Messaging app:** Nexus messages are read aloud, and you can reply by voice. The agent answers in the same conversation. Press *Start car conversation*, or use `car_message`.
+  - Apps that weren't installed from Google Play only appear after you enable **Unknown sources** in Android Auto's developer settings. Open Android Auto's settings and tap *Version* 10 times to unlock them.
+  - Nexus must be running on the phone; it can stay in the background.
+- **Casting to TVs and speakers** (`cast_devices`, `cast_media`, `cast_control`)
+  - DLNA/UPnP smart TVs, speakers and receivers on your Wi-Fi play workspace videos, music, audiobooks and photos, or a media URL. That covers Samsung, LG, Sony, Panasonic, Philips and Roku TVs, Kodi, VLC and AV receivers.
+  - Files are streamed from the phone through the local server, with seeking support.
+  - You can play, pause, stop, seek, set the volume and check status.
+  - Chromecast and Google TV use Google's own Cast protocol. Use screen mirroring for those.
+- **Screen mirroring** (`screen_mirror`): opens the system Cast / Smart View panel to mirror the whole phone or glasses screen to a TV (Chromecast, Google TV, Miracast TVs, Fire TV). Existing external-display support (HUD) also shows on a mirrored display.
+
 ## Music, display glasses and Meta glasses
 
 **Spotify** (full control through the Spotify Web API):
@@ -509,7 +535,11 @@ android/
     HudPresentation.java   HUD on external displays (Lenovo Legion Glasses / Glasses T1 and other display glasses)
     ApkTools.java          installed apps, APK extract/inspect/install/uninstall, integration discovery
     AxmlParser.java        binary AndroidManifest.xml parser (components, intent filters, deep links)
-    WebhookServer.java     LAN HTTP server: incoming webhooks, phone remote console, glasses client API
+    WebhookServer.java     LAN HTTP server: incoming webhooks, phone remote console, glasses client API, cast streams
+    BluetoothTools.java    Bluetooth state, paired devices, scan, pairing, audio output
+    NexusMediaService.java media session + MediaBrowserService (car/Bluetooth display & buttons, Android Auto media)
+    CarMessaging.java      Android Auto conversation notifications with voice reply
+    CastTools.java         DLNA/UPnP discovery (SSDP) and control (AVTransport, RenderingControl)
     ServerKeepAliveService.java  foreground service that keeps the server alive while glasses are served
   app/src/main/assets/
     index.html          core agent runtime and UI (providers, agents, modes, webhooks)
@@ -517,6 +547,7 @@ android/
     js/skills-comms.js  email and calendar skills, CalDAV client, iCalendar parser/writer, account settings
     js/skills-media.js  scanner, Telegram, Kino, audiobooks, text-to-audio, glasses skills, Media tab, player, RayNeo agent
     js/skills-narrator.js  narration styles, ElevenLabs Voice Library narrator finder, narrator voice for replies
+    js/skills-connect.js   Bluetooth, car media session sync, Android Auto browse + messaging, DLNA casting, screen mirroring
     js/skills-shop.js   wake word control, Amazon/Walmart shopping + list, Plex, fast food & delivery
     js/skills-screen.js screen-control skills, consent and sensitive-action guard, settings
     js/skills-music.js  Spotify, YouTube Music, media sessions, lyrics, display-glasses HUD, Meta glasses

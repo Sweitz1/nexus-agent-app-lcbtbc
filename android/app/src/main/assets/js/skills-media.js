@@ -735,5 +735,5 @@
   // Secrets for export / phone remote console.
   { const coreSecrets = secretIds; secretIds = () => [...coreSecrets(), { id: 'svc_telegram', name: 'Telegram bot token' }, { id: 'svc_tmdb', name: 'TMDB key' }, { id: 'svc_elevenlabs', name: 'ElevenLabs key' }]; }
 
-  window.NexusMedia = { playQueue, playVideo, qrDataUrl: async t => { const p = await qrToFile(t, 360, `tmp/qr_${uid()}.png`); return p; }, scanLive, decodeImagePath, qrToFile, describeCode, textToAudioFile, playBook, playFile, AP, epubChapters, textChapters, kinoSearch, kinoTrending, kinoDetails, archiveSearch, archiveBook, tgHandle, tgFetchUpdates, mediaState, askYesNo };
+  window.NexusMedia = { nowPlaying: () => NOW, playQueue, playVideo, qrDataUrl: async t => { const p = await qrToFile(t, 360, `tmp/qr_${uid()}.png`); return p; }, scanLive, decodeImagePath, qrToFile, describeCode, textToAudioFile, playBook, playFile, AP, epubChapters, textChapters, kinoSearch, kinoTrending, kinoDetails, archiveSearch, archiveBook, tgHandle, tgFetchUpdates, mediaState, askYesNo };
 })();

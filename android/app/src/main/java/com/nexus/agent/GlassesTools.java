@@ -126,6 +126,7 @@ class GlassesTools {
         switch (panel == null ? "" : panel) {
             case "wifi": a = Settings.ACTION_WIFI_SETTINGS; break;
             case "bluetooth": a = Settings.ACTION_BLUETOOTH_SETTINGS; break;
+            case "cast": a = Settings.ACTION_CAST_SETTINGS; break;
             case "display": a = Settings.ACTION_DISPLAY_SETTINGS; break;
             case "sound": a = Settings.ACTION_SOUND_SETTINGS; break;
             case "battery": a = Intent.ACTION_POWER_USAGE_SUMMARY; break;

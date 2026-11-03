@@ -72,6 +72,9 @@ public class NativeBridge {
     private SpeechRecognizer recognizer;
     private String speechCallbackId;
     private WebhookServer server;
+    private int serverPort = 8787;
+    private BluetoothTools bt;
+    private CastTools cast;
     final Workspace workspace;
     private final MediaTools media;
     private final EmailClient email;
@@ -96,6 +99,8 @@ public class NativeBridge {
         this.music = new MusicTools(activity);
         this.apk = new ApkTools(activity, workspace);
         NexusNotificationListener.sink = n -> activity.emit("notification", n.toString());
+        NexusMediaService.sink = c -> activity.emit("carMedia", c.toString());
+        CarMessaging.sink = t -> activity.emit("carReply", CarMessaging.json(t));
         WakeWordService.sink = e -> activity.emit("wake", e.toString());
         NexusAccessibilityService.sink = (t, d) -> { try { d.put("type", t); } catch (Exception ignored) { } activity.emit("screen", d.toString()); };
         this.prefs = activity.getSharedPreferences("nexus_secure", Context.MODE_PRIVATE);
@@ -457,6 +462,7 @@ public class NativeBridge {
             stopServer();
             server = new WebhookServer(activity, port, token);
             server.start();
+            serverPort = port;
             advertise(port);
             try {
                 Intent ka = new Intent(activity, ServerKeepAliveService.class);
@@ -518,6 +524,57 @@ public class NativeBridge {
     public void serverRespond(String reqId, int status, String contentType, String body) {
         if (server != null) server.respond(reqId, status, contentType, body);
     }
+
+    // ------------------------------------------------------------------ Bluetooth
+
+    private BluetoothTools bt() { if (bt == null) bt = new BluetoothTools(activity); return bt; }
+
+    @JavascriptInterface public String btPermissions() { return new JSONArray(BluetoothTools.requiredPermissions()).toString(); }
+    @JavascriptInterface public void btState(String id) { async(id, () -> bt().state()); }
+    @JavascriptInterface public void btPaired(String id) { async(id, () -> bt().paired()); }
+    @JavascriptInterface public void btScan(String id, int timeoutMs) { async(id, () -> bt().scan(timeoutMs)); }
+    @JavascriptInterface public void btPair(String id, String address) { async(id, () -> ok("result", bt().pair(address))); }
+    @JavascriptInterface public String audioOutput() { try { return bt().audioOutput(); } catch (Exception e) { return errorJson(e); } }
+    @JavascriptInterface public boolean openOutputSwitcher() { return bt().openOutputSwitcher(); }
+
+    // ------------------------------------------------------------------ car / Bluetooth media session, Android Auto
+
+    /** Mirrors Nexus' player into the system media session (car display, steering-wheel buttons, lock screen). */
+    @JavascriptInterface public void mediaSessionUpdate(String json) { NexusMediaService.update(activity, json); }
+
+    /** Browse tree for Android Auto: {root:[{id,title,subtitle,playable}], "<folder id>":[…]}. */
+    @JavascriptInterface
+    public void mediaCatalog(String json) {
+        try { NexusMediaService.catalog = new JSONObject(json); NexusMediaService.catalogChanged(); } catch (Exception ignored) { }
+    }
+
+    @JavascriptInterface public void carMessage(String sender, String text) { CarMessaging.post(activity, sender, text, false); }
+    @JavascriptInterface public void carClear() { CarMessaging.clear(activity); }
+
+    // ------------------------------------------------------------------ casting (DLNA / UPnP TVs and speakers)
+
+    private CastTools cast() { if (cast == null) cast = new CastTools(activity); return cast; }
+
+    @JavascriptInterface public void castDiscover(String id, int timeoutMs) { async(id, () -> cast().discover(timeoutMs)); }
+
+    /** req {device, path | url, mime, title}: workspace files are streamed by the local server. */
+    @JavascriptInterface
+    public void castFile(String id, String reqJson) {
+        async(id, () -> {
+            JSONObject r = new JSONObject(reqJson);
+            String url = r.optString("url", "");
+            String mime = r.optString("mime", "video/mp4");
+            if (url.isEmpty()) {
+                if (server == null) throw new Exception("Turn on the local server (Settings → Webhooks & server) to cast files");
+                java.io.File f = workspace.resolve(r.getString("path"));
+                if (!f.isFile()) throw new Exception("File not found: " + r.getString("path"));
+                url = "http://" + localIp() + ":" + serverPort + WebhookServer.share(f, mime, 6 * 3600_000L);
+            }
+            return ok("result", cast().play(r.optString("device", ""), url, mime, r.optString("title", "Nexus")));
+        });
+    }
+
+    @JavascriptInterface public void castControl(String id, String device, String action, String arg) { async(id, () -> ok("result", cast().control(device, action, arg))); }
 
     /** Answers a server request with a workspace file as the body (e.g. narrator audio for the glasses). */
     @JavascriptInterface

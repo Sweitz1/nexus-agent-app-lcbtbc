@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android Auto: Nexus is a media app (audiobooks, narration, Ask Nexus) and a messaging app (talk to the agent). -->
+<automotiveApp>
+    <uses name="media" />
+    <uses name="notification" />
+</automotiveApp>

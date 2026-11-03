@@ -40,7 +40,7 @@ class WebhookServer extends Thread {
     private final MainActivity activity;
     private final int port;
     private final String token;
-    private final ExecutorService workers = Executors.newFixedThreadPool(6);
+    private final ExecutorService workers = Executors.newFixedThreadPool(16);
     private final ConcurrentHashMap<String, Pending> pending = new ConcurrentHashMap<>();
     private volatile ServerSocket socket;
     private volatile boolean running = false;
@@ -92,6 +92,62 @@ class WebhookServer extends Thread {
         p.contentType = contentType == null || contentType.isEmpty() ? "application/json" : contentType;
         p.body = body == null ? "" : body;
         p.latch.countDown();
+    }
+
+    // ------------------------------------------------------------------ cast shares
+
+    private static final class Share { final java.io.File file; final String type; final long expires; Share(java.io.File f, String t, long e) { file = f; type = t; expires = e; } }
+    private static final ConcurrentHashMap<String, Share> shares = new ConcurrentHashMap<>();
+
+    /** Publishes a file at /cast/<random>/<name> for hours; returns the path part of the URL. */
+    static String share(java.io.File f, String type, long ttlMs) {
+        long now = System.currentTimeMillis();
+        for (java.util.Map.Entry<String, Share> e : shares.entrySet()) if (e.getValue().expires < now) shares.remove(e.getKey());
+        String id = UUID.randomUUID().toString().replace("-", "");
+        shares.put(id, new Share(f, type, now + ttlMs));
+        String name = f.getName().replaceAll("[^A-Za-z0-9._-]", "_");
+        return "/cast/" + id + "/" + name;
+    }
+
+    private static void serveShare(OutputStream out, String path, String range, boolean head) throws IOException {
+        String[] seg = path.split("/");
+        Share sh = seg.length >= 3 ? shares.get(seg[2]) : null;
+        if (sh == null || sh.expires < System.currentTimeMillis() || !sh.file.isFile()) { write(out, 404, "text/plain", "not found"); return; }
+        long len = sh.file.length(), start = 0, end = len - 1;
+        boolean partial = false;
+        if (range.startsWith("bytes=")) {
+            try {
+                String r = range.substring(6).split(",")[0].trim();
+                int dash = r.indexOf('-');
+                String a = r.substring(0, dash).trim(), b = r.substring(dash + 1).trim();
+                if (a.isEmpty()) { start = Math.max(0, len - Long.parseLong(b)); }
+                else { start = Long.parseLong(a); if (!b.isEmpty()) end = Math.min(len - 1, Long.parseLong(b)); }
+                if (start > end || start >= len) {
+                    out.write(("HTTP/1.1 416 Range Not Satisfiable\r\nContent-Range: bytes */" + len + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                    out.flush(); return;
+                }
+                partial = true;
+            } catch (Exception ignored) { start = 0; end = len - 1; }
+        }
+        long count = end - start + 1;
+        StringBuilder h = new StringBuilder();
+        h.append(partial ? "HTTP/1.1 206 Partial Content\r\n" : "HTTP/1.1 200 OK\r\n");
+        h.append("Content-Type: ").append(sh.type).append("\r\n");
+        h.append("Content-Length: ").append(count).append("\r\n");
+        h.append("Accept-Ranges: bytes\r\n");
+        if (partial) h.append("Content-Range: bytes ").append(start).append('-').append(end).append('/').append(len).append("\r\n");
+        h.append("transferMode.dlna.org: Streaming\r\n");
+        h.append("contentFeatures.dlna.org: DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000\r\n");
+        h.append("Connection: close\r\n\r\n");
+        out.write(h.toString().getBytes(StandardCharsets.UTF_8));
+        if (!head) {
+            try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(sh.file, "r")) {
+                raf.seek(start);
+                byte[] buf = new byte[65536]; long left = count; int n;
+                while (left > 0 && (n = raf.read(buf, 0, (int) Math.min(buf.length, left))) > 0) { out.write(buf, 0, n); left -= n; }
+            }
+        }
+        out.flush();
     }
 
     /** Answers a pending request with a workspace file streamed as the body. */
@@ -165,6 +221,13 @@ class WebhookServer extends Thread {
                 return;
             }
             if (path.equals("/health")) { write(out, 200, "application/json", "{\"ok\":true,\"app\":\"nexus-agent\"}"); return; }
+
+            // Media shared with a TV / speaker for casting: unguessable one-off links, no token (TVs
+            // can't send one), with Range support so video can seek.
+            if (path.startsWith("/cast/") && (method.equals("GET") || method.equals("HEAD"))) {
+                serveShare(out, path, headers.optString("range", ""), method.equals("HEAD"));
+                return;
+            }
 
             // Glasses-client pairing exchanges a short PIN for the token, so it is the one open path
             // (the JS side rate-limits it and the PIN expires after a few minutes).

@@ -660,7 +660,7 @@ async function dispatch(prompt, { mode = S.mode, agentId = S.current, origin = '
   } else {
     final = await runWithBubble(agent, prompt, history, origin, token, images);
   }
-  if (S.settings.speakReplies && !['webhook', 'glasses'].includes(origin)) speak(final);
+  if (S.settings.speakReplies && !['webhook', 'glasses', 'car'].includes(origin)) speak(final);
   notifyReplyHooks(finalAgent, prompt, final, origin);
   return { agent: finalAgent, text: final };
 }
@@ -1092,6 +1092,7 @@ document.addEventListener('DOMContentLoaded', boot);
 <script src="js/skills-comms.js"></script>
 <script src="js/skills-media.js"></script>
 <script src="js/skills-narrator.js"></script>
+<script src="js/skills-connect.js"></script>
 <script src="js/skills-shop.js"></script>
 <script src="js/skills-screen.js"></script>
 <script src="js/skills-music.js"></script>
