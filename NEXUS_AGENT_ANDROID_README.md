@@ -39,6 +39,7 @@
    - **Anthropic (Claude)** — get from [console.anthropic.com](https://console.anthropic.com)
    - **Google Gemini** — get from [aistudio.google.com](https://aistudio.google.com)
    - **Venice AI** — get from [venice.ai/settings/api](https://venice.ai/settings/api). Default model `venice-uncensored`; you can type any Venice model id.
+   - **SpicyAPI** — paste your key, the API base URL (ends in `/v1`) and a model id from your SpicyAPI dashboard.
    - **Local LLM** — no key needed. Point it at any OpenAI-compatible server (see below).
    - **GitHub** — optional, for GitHub read/write tools (Personal Access Token)
 4. Select your **Default Provider**

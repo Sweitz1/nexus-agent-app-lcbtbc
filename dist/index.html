@@ -297,6 +297,9 @@ const PROVIDERS = {
   venice:    { label:'Venice AI (private)', keyField:'veniceKey', keyHint:'Venice API key', modelField:'veniceModel',
                models:['venice-uncensored','llama-3.3-70b','qwen3-235b','mistral-31-24b','llama-3.2-3b'],
                note:'Private, no-log inference via api.venice.ai. Model list is editable — type any Venice model id.' },
+  spicy:     { label:'SpicyAPI', keyField:'spicyKey', keyHint:'sk-spicy-…', modelField:'spicyModel',
+               urlField:'spicyUrl', urlHint:'https://…/v1', urlRequired:true, models:[],
+               note:'OpenAI-compatible. Paste the API base URL and model id from your SpicyAPI dashboard.' },
   local:     { label:'Local LLM (on-device / LAN)', keyField:'localKey', keyHint:'optional', modelField:'localModel',
                urlField:'localUrl', urlHint:'http://127.0.0.1:11434/v1', keyOptional:true,
                models:['llama3.2','qwen2.5','mistral','dolphin-mistral','gemma2'],
@@ -305,6 +308,7 @@ const PROVIDERS = {
 function providerReady(id, s = DB.settings()) {
   const p = PROVIDERS[id];
   if (!p) return false;
+  if (p.urlRequired) return !!(s[p.urlField] && s[p.keyField] && s[p.modelField]);
   if (p.urlField) return !!(s[p.urlField] || p.urlHint);
   return !!s[p.keyField];
 }
@@ -334,6 +338,11 @@ async function callLLM(messages, expectJson = true) {
     return callOpenAICompat('Venice', 'https://api.venice.ai/api/v1', s.veniceKey,
       s.veniceModel || 'venice-uncensored', messages, expectJson,
       { venice_parameters: { include_venice_system_prompt: false } });
+  }
+
+  if (provider === 'spicy') {
+    if (!s.spicyKey || !s.spicyUrl || !s.spicyModel) throw new Error('SpicyAPI needs a base URL, key and model. Add them in Providers.');
+    return callOpenAICompat('SpicyAPI', s.spicyUrl, s.spicyKey, s.spicyModel, messages, expectJson);
   }
 
   if (provider === 'local') {
@@ -784,7 +793,7 @@ const PAGES = {
     const s = DB.settings();
     const providers = Object.entries(PROVIDERS)
       .filter(([id]) => providerReady(id, s))
-      .map(([id, p]) => ({ id, label: p.label, model: s[p.modelField] || p.models[0] }));
+      .map(([id, p]) => ({ id, label: p.label, model: s[p.modelField] || p.models[0] || '' }));
 
     c.innerHTML = `
       <div class="card" style="max-width:600px">
@@ -895,11 +904,11 @@ const PAGES = {
     c.innerHTML = `
       <div class="card" style="max-width:560px">
         <div class="card-title">Model Providers</div>
-        ${Object.entries(PROVIDERS).map(([id, p]) => ({ id, ...p, modelHint: p.models[0] })).map(p => `
+        ${Object.entries(PROVIDERS).map(([id, p]) => ({ id, ...p, modelHint: p.models[0] || 'no model set' })).map(p => `
           <div class="toggle-row">
             <div class="toggle-info">
               <div class="label">${p.label}</div>
-              <div class="desc">${p.urlField ? (s[p.urlField] || p.urlHint) : (s[p.keyField] ? '✓ Key configured' : 'No key')} · ${s[p.modelField] || p.modelHint}${active===p.id?' · <b style="color:var(--primary)">default</b>':''}</div>
+              <div class="desc">${p.urlField && !p.urlRequired ? (s[p.urlField] || p.urlHint) : p.urlField ? (s[p.keyField] && s[p.urlField] ? '✓ Configured' : 'Not configured') : (s[p.keyField] ? '✓ Key configured' : 'No key')} · ${s[p.modelField] || p.modelHint}${active===p.id?' · <b style="color:var(--primary)">default</b>':''}</div>
             </div>
             <button class="btn btn-ghost btn-sm" onclick="window._editProv('${p.id}')">Edit</button>
           </div>`).join('')}
@@ -935,7 +944,7 @@ const PAGES = {
           </div>
           <div class="form-group">
             <label class="form-label">Model</label>
-            <input class="form-input" id="pe-model" list="pe-models" value="${s[p.modelField]||p.models[0]}"/>
+            <input class="form-input" id="pe-model" list="pe-models" placeholder="model id" value="${s[p.modelField]||p.models[0]||''}"/>
             <datalist id="pe-models">${p.models.map(m=>`<option value="${m}">`).join('')}</datalist>
           </div>
           <div style="display:flex;gap:8px">
@@ -948,7 +957,7 @@ const PAGES = {
 
     window._saveProv = (id, keyField, modelField) => {
       const key = document.getElementById('pe-key').value.trim();
-      const model = document.getElementById('pe-model').value.trim() || PROVIDERS[id].models[0];
+      const model = document.getElementById('pe-model').value.trim() || PROVIDERS[id].models[0] || '';
       const urlEl = document.getElementById('pe-url');
       const extra = urlEl && PROVIDERS[id].urlField ? { [PROVIDERS[id].urlField]: urlEl.value.trim() } : {};
       DB.saveSettings({ ...DB.settings(), [keyField]: key, [modelField]: model, ...extra });
