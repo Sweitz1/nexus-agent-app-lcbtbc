@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a11y_description">Lets your Nexus agents read the screen and tap, type and scroll in other apps when you ask them to (for example: reorder on DoorDash). Nothing happens unless an agent task is running; a floating "Nexus is controlling" button shows while it works and stops it when tapped. Password fields are never read, banking and password-manager apps are blocked, and purchase/payment/send buttons always ask you first.</string>
+</resources>
