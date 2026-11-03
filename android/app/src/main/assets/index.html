@@ -52,6 +52,18 @@ main{flex:1;overflow:hidden;position:relative}
 .steps div{white-space:pre-wrap;overflow:hidden;max-height:4.5em}
 .composer{display:flex;gap:.4em;padding:.45em .6em;border-top:1px solid var(--line);align-items:flex-end}
 .composer textarea{min-height:2.3em;max-height:8em;flex:1}
+.chips{display:flex;gap:.35em;flex-wrap:wrap;padding:0 .6em}
+.chips:empty{display:none}
+.chip{font-size:.8em;border:1px solid var(--line);border-radius:99px;padding:.1em .5em;display:flex;gap:.3em;align-items:center}
+.chip img{height:1.6em;border-radius:3px}
+.thumbs{display:flex;gap:.4em;flex-wrap:wrap;margin-top:.3em}
+.thumbs img{max-height:7em;max-width:45%;border-radius:6px;border:1px solid var(--line)}
+.thumbs span{font-size:.8em;color:var(--dim)}
+.filerow{display:flex;gap:.5em;align-items:center;border-bottom:1px solid var(--line);padding:.35em 0;flex-wrap:wrap}
+.filerow .fname{flex:1;min-width:10em;word-break:break-all}
+.filerow img{width:3em;height:3em;object-fit:cover;border-radius:4px}
+#camVideo{width:100%;max-height:60vh;background:#000;border-radius:8px}
+#cam,#attach{min-width:2.3em}
 #mic{font-size:1.25em;min-width:2.6em;border-color:var(--accent2);color:var(--accent2)}
 #mic.on{background:#2a0d4a;animation:pulse 1s infinite}
 @keyframes pulse{50%{box-shadow:0 0 18px var(--accent2)}}
@@ -84,6 +96,7 @@ body.glasses header .brand{display:none}
   <button data-tab="chat" class="active">Chat</button>
   <button data-tab="agents">Agents</button>
   <button data-tab="providers">Models</button>
+  <button data-tab="files">Files</button>
   <button data-tab="skills">Skills</button>
   <button data-tab="hooks">Webhooks</button>
   <button data-tab="settings">Settings</button>
@@ -95,6 +108,7 @@ body.glasses header .brand{display:none}
         <option value="solo">Solo</option>
         <option value="council">Council</option>
         <option value="chain">Chain</option>
+        <option value="translate">Translate</option>
       </select>
       <select id="agentSel" title="Agent"></select>
       <span id="modeInfo" class="hint"></span>
@@ -102,8 +116,11 @@ body.glasses header .brand{display:none}
       <button id="newChat" class="small">New</button>
     </div>
     <div id="messages"></div>
+    <div id="chips" class="chips"></div>
     <div class="composer">
       <button id="mic" title="Voice (touchpad long-press / assistant key)">🎙</button>
+      <button id="cam" title="Take a photo for the agent">📷</button>
+      <button id="attach" title="Attach files">📎</button>
       <textarea id="input" rows="1" placeholder="Ask your agents…"></textarea>
       <button id="send" class="primary">Send</button>
       <button id="stop" class="danger" style="display:none">Stop</button>
@@ -111,6 +128,7 @@ body.glasses header .brand{display:none}
   </section>
   <section id="view-agents" class="view"></section>
   <section id="view-providers" class="view"></section>
+  <section id="view-files" class="view"></section>
   <section id="view-skills" class="view"></section>
   <section id="view-hooks" class="view"></section>
   <section id="view-settings" class="view"></section>
@@ -201,7 +219,7 @@ function defaultState() {
     A('Claude', 'anthropic', 'claude-sonnet-5-5', 'You are Claude, a thoughtful, precise assistant. Use tools when they help.'),
     A('Grok', 'xai', 'grok-4', 'You are Grok: witty, bold and to the point. Use tools when they help.'),
     A('Local', 'ollama', 'llama3.1:8b', 'You are a private assistant running fully on the user\'s own hardware. Be concise.', { tools: false, council: false }),
-    A('Nexus', 'anthropic', 'claude-sonnet-5-5', 'You are Nexus, the orchestrator. Break tasks down, delegate to other agents with ask_agent when another model is a better fit (Venice for unfiltered answers, Grok for real-time/witty takes, Local for private data), use device and web skills, then give one clear final answer. You are displayed on AR glasses: keep answers short and scannable.', { council: false }),
+    A('Nexus', 'anthropic', 'claude-sonnet-5-5', 'You are Nexus, the orchestrator. Break tasks down, delegate to other agents with ask_agent when another model is a better fit (Venice for unfiltered answers, Grok for real-time/witty takes, Local for private data), use your skills (web, files, code, PDF, OCR, images, video, zip, maps, phone, translation; camera_photo shows you what the user is looking at), then give one clear final answer. You are displayed on AR glasses: keep answers short and scannable.', { council: false }),
   ];
   return {
     v: 1, providers, agents, customSkills: [], disabledSkills: [], webhooks: [], memory: {},
@@ -210,10 +228,23 @@ function defaultState() {
       glasses: /rayneo|ffalcon|tcl/i.test(navigator.userAgent) || false, fontSize: 0, speakReplies: false, ttsRate: 1.0, voiceLang: '',
       autoSendVoice: true, confirmActions: true, maxSteps: 8, keepScreenOn: true, synthesizer: agents[4].id, maxTokens: 2048,
       server: { enabled: false, port: 8787, token: randToken(), defaultAgent: agents[4].id, showInChat: true },
+      ...extraSettingDefaults(agents),
     },
   };
 }
+// Settings used by the pro skills (files, vision, OCR, translation, maps...). Merged into older saves.
+function extraSettingDefaults(agents) {
+  const claude = agents.find(a => a.name === 'Claude') || agents[0];
+  return {
+    visionAgent: claude.id, ocrEngine: 'local', ocrLang: 'eng',
+    translateEngine: 'agent', translateAgent: '', translateMine: 'English', translateTheirs: 'Spanish', translateSpeak: true,
+    libreUrl: 'https://libretranslate.com', imageProvider: 'openai', imageModel: 'gpt-image-1',
+    cameraCountdown: 3, mapsApp: 'apple',
+  };
+}
 let S = (() => { const s = parseJSON(localStorage.getItem('nexus_state'), null); return s && s.v === 1 ? s : defaultState(); })();
+S.settings = { ...extraSettingDefaults(S.agents), ...S.settings };
+S.autoApprove = S.autoApprove || [];
 let _saveT; function save() { clearTimeout(_saveT); _saveT = setTimeout(() => { try { localStorage.setItem('nexus_state', JSON.stringify(S)); } catch (e) { toast('Save failed: ' + e.message); } }, 250); }
 
 const getKey = pid => (N ? N.storeGet('key_' + pid) : localStorage.getItem('nexus_key_' + pid)) || '';
@@ -300,7 +331,7 @@ let runToken = 0; // bumps on Stop; in-flight runs check it between steps
  * Runs one agent with its tool loop.
  * history: [{role, content, agent?}] (text only). Returns {text, steps:[{name,args,result}]}.
  */
-async function runAgent(agent, userText, { history = [], onStep = () => {}, depth = 0, token = runToken, origin = 'chat' } = {}) {
+async function runAgent(agent, userText, { history = [], onStep = () => {}, depth = 0, token = runToken, origin = 'chat', images = [] } = {}) {
   const p = providerById(agent.providerId);
   if (!p) throw new Error(`Agent "${agent.name}" has no provider configured`);
   const key = getKey(p.id);
@@ -310,6 +341,13 @@ async function runAgent(agent, userText, { history = [], onStep = () => {}, dept
   const sys = buildSystem(agent);
   const hist = normalize([...history.map(h => ({ role: h.role, content: h.role === 'assistant' && h.agent && h.agent !== agent.name ? `[${h.agent}]: ${h.content}` : h.content })), { role: 'user', content: userText }]);
   const conv = ad.start(sys, hist);
+  if (images.length) {
+    // Vision input: attach images to the latest user turn in the provider's format.
+    const last = conv[conv.length - 1];
+    last.content = p.type === 'anthropic'
+      ? [...images.map(i => ({ type: 'image', source: { type: 'base64', media_type: i.mime, data: i.b64 } })), { type: 'text', text: last.content }]
+      : [{ type: 'text', text: last.content }, ...images.map(i => ({ type: 'image_url', image_url: { url: `data:${i.mime};base64,${i.b64}` } }))];
+  }
   const steps = [];
   const max = Math.max(1, Number(S.settings.maxSteps) || 8);
   for (let i = 0; i <= max; i++) {
@@ -468,7 +506,7 @@ function skillsFor(agent, depth) {
 async function execSkill(name, args, ctx) {
   const s = allSkills().find(x => x.name === name);
   if (!s || S.disabledSkills.includes(name)) return `Unknown or disabled skill: ${name}`;
-  if (s.risky && S.settings.confirmActions) {
+  if (s.risky && S.settings.confirmActions && !S.autoApprove.includes(name)) {
     const ok = await confirmBox(`<b>${esc(ctx.agent.name)}</b> wants to run <b>${esc(name)}</b>` + (ctx.origin === 'webhook' ? ' (from a webhook)' : '') + `<code class="block">${esc(clip(JSON.stringify(args, null, 1), 1200))}</code>`, 60000);
     if (!ok) return 'The user declined this action.';
   }
@@ -501,12 +539,7 @@ async function listen() {
     let text;
     listening = true; mic.classList.add('on');
     if (N) {
-      if (!N.hasMicPermission()) {
-        N.requestMicPermission();
-        const granted = await new Promise(res => { const h = p => { res(p.granted); }; onNative('mic_permission', h); setTimeout(() => res(false), 30000); });
-        eventHandlers.mic_permission = [];
-        if (!granted) toast('Microphone permission denied — using system voice input');
-      }
+      if (!(await ensurePermission('android.permission.RECORD_AUDIO'))) toast('Microphone permission denied — using system voice input');
       text = (await nativeAsync('listen', S.settings.voiceLang || '')).text;
     } else {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -532,16 +565,17 @@ function renderMessages() {
     const steps = (m.steps || []).map(s => `<div>⚙ ${esc(s.name)}(${esc(clip(JSON.stringify(s.args || {}), 160))}) → ${esc(clip(s.result, 240))}</div>`).join('');
     const think = m.role === 'assistant' ? (String(m.content || '').match(/<think>([\s\S]*?)<\/think>/) || [])[1] : '';
     const body = m.role === 'user' || m.role === 'system' ? esc(m.content).replace(/\n/g, '<br>') : (think ? `<details class="steps"><summary tabindex="0">reasoning</summary>${esc(think.trim()).replace(/\n/g, '<br>')}</details>` : '') + md(stripThink(m.content));
-    return `<div class="msg ${m.role}${m.error ? ' error' : ''}" tabindex="0" data-i="${i}"><div class="who"><span>${esc(m.role === 'user' ? (m.origin === 'webhook' ? 'Webhook' : 'You') : (m.agent || m.role))}${m.pending ? ' …thinking' : ''}</span><span class="t">${m.ts ? new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span></div>${body}${steps ? `<div class="steps">${steps}</div>` : ''}</div>`;
+    const att = (m.attachments || []).length ? `<div class="thumbs">${m.attachments.map(a => isImagePath(a) ? `<img src="${esc(wsUrl(a))}" alt="">` : `<span>📄 ${esc(a)}</span>`).join('')}</div>` : '';
+    return `<div class="msg ${m.role}${m.error ? ' error' : ''}" tabindex="0" data-i="${i}"><div class="who"><span>${esc(m.role === 'user' ? (m.origin === 'webhook' ? 'Webhook' : 'You') : (m.agent || m.role))}${m.pending ? ' …thinking' : ''}</span><span class="t">${m.ts ? new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span></div>${body}${att}${steps ? `<div class="steps">${steps}</div>` : ''}</div>`;
   }).join('');
   box.scrollTop = box.scrollHeight;
 }
 function historyForRun() { return S.chat.filter(m => !m.pending && !m.error && (m.role === 'user' || m.role === 'assistant')).slice(-24); }
 
-async function runWithBubble(agent, prompt, history, origin, token) {
+async function runWithBubble(agent, prompt, history, origin, token, images = []) {
   const m = addMsg({ role: 'assistant', agent: agent.name, content: '', pending: true, steps: [], ts: Date.now() });
   try {
-    const r = await runAgent(agent, prompt, { history, token, origin, onStep: s => { if (s.done) { m.steps = m.steps.filter(x => x.result !== '…' || x.name !== s.name); m.steps.push(s); } else m.steps.push(s); renderMessages(); } });
+    const r = await runAgent(agent, prompt, { history, token, origin, images, onStep: s => { if (s.done) { m.steps = m.steps.filter(x => x.result !== '…' || x.name !== s.name); m.steps.push(s); } else m.steps.push(s); renderMessages(); } });
     m.content = r.text; m.steps = r.steps; m.pending = false; save(); renderMessages();
     return r.text;
   } catch (e) {
@@ -551,19 +585,29 @@ async function runWithBubble(agent, prompt, history, origin, token) {
 }
 
 /** Core dispatcher used by the chat UI, deep links and incoming webhooks. Returns final text. */
-async function dispatch(prompt, { mode = S.mode, agentId = S.current, origin = 'chat', showInChat = true } = {}) {
+async function dispatch(prompt, { mode = S.mode, agentId = S.current, origin = 'chat', showInChat = true, attachments = [] } = {}) {
   const token = runToken;
   const history = historyForRun();
   const agent = agentById(agentId) || S.agents[0];
+  const images = attachments.length ? await loadImagesForModel(attachments.filter(isImagePath)) : [];
+  const fullPrompt = attachments.length ? `${prompt}\n\n[Attached workspace files: ${attachments.join(', ')}${images.length ? ' — images are included above' : ''}. Use file/PDF/zip/video/OCR skills on them by path.]` : prompt;
   if (!showInChat) {
-    if (mode === 'solo') return { agent: agent.name, text: (await runAgent(agent, prompt, { history: [], token, origin })).text };
+    if (mode === 'solo') return { agent: agent.name, text: (await runAgent(agent, fullPrompt, { history: [], token, origin, images })).text };
   }
-  addMsg({ role: 'user', content: prompt, ts: Date.now(), origin });
+  addMsg({ role: 'user', content: prompt, ts: Date.now(), origin, attachments });
   let final = '', finalAgent = agent.name;
+  if (mode === 'translate') {
+    const t = translatorAgent();
+    final = await runWithBubble(t, translatePrompt(prompt), [], origin, token); finalAgent = t.name;
+    if (S.settings.translateSpeak) speak(final);
+    notifyReplyHooks(finalAgent, prompt, final, origin);
+    return { agent: finalAgent, text: final };
+  }
+  prompt = fullPrompt;
   if (mode === 'council') {
     const members = S.agents.filter(a => a.council);
     if (!members.length) throw new Error('No agents are marked "In council" (Agents tab).');
-    const answers = await Promise.all(members.map(a => runWithBubble(a, prompt, history, origin, token).then(t => ({ a, t })).catch(e => ({ a, t: null, e }))));
+    const answers = await Promise.all(members.map(a => runWithBubble(a, prompt, history, origin, token, images).then(t => ({ a, t })).catch(e => ({ a, t: null, e }))));
     const good = answers.filter(x => x.t);
     const synth = agentById(S.settings.synthesizer);
     if (synth && good.length > 1) {
@@ -576,11 +620,11 @@ async function dispatch(prompt, { mode = S.mode, agentId = S.current, origin = '
     let carry = '';
     for (const a of members) {
       const p = carry ? `Original request: """${prompt}"""\n\nThe previous agent produced:\n"""${stripThink(carry)}"""\n\nImprove, correct and extend it. Return the complete improved result.` : prompt;
-      carry = await runWithBubble(a, p, carry ? [] : history, origin, token); finalAgent = a.name;
+      carry = await runWithBubble(a, p, carry ? [] : history, origin, token, carry ? [] : images); finalAgent = a.name;
     }
     final = carry;
   } else {
-    final = await runWithBubble(agent, prompt, history, origin, token);
+    final = await runWithBubble(agent, prompt, history, origin, token, images);
   }
   if (S.settings.speakReplies && origin !== 'webhook') speak(final);
   notifyReplyHooks(finalAgent, prompt, final, origin);
@@ -588,11 +632,13 @@ async function dispatch(prompt, { mode = S.mode, agentId = S.current, origin = '
 }
 
 async function send() {
-  const input = $('#input'); const text = input.value.trim();
-  if (!text || busy) return;
+  const input = $('#input'); let text = input.value.trim();
+  const attachments = pendingAttachments.splice(0); renderChips();
+  if ((!text && !attachments.length) || busy) { pendingAttachments.push(...attachments); renderChips(); return; }
+  if (!text) text = 'Please look at the attached file(s).';
   input.value = ''; autoGrow();
   setBusy(true);
-  try { await dispatch(text); } catch (e) { if (e.message !== 'Stopped' && !S.chat.some(m => m.error && m.content.endsWith(e.message))) addMsg({ role: 'system', content: e.message, error: true, ts: Date.now() }); }
+  try { await dispatch(text, { attachments }); } catch (e) { if (e.message !== 'Stopped' && !S.chat.some(m => m.error && m.content.endsWith(e.message))) addMsg({ role: 'system', content: e.message, error: true, ts: Date.now() }); }
   finally { setBusy(false); }
 }
 function setBusy(b) { busy = b; $('#send').style.display = b ? 'none' : ''; $('#stop').style.display = b ? '' : 'none'; if (!b && S.settings.glasses) $('#mic').focus(); }
@@ -604,6 +650,7 @@ function renderChatBar() {
   $('#modeSel').value = S.mode;
   $('#agentSel').style.display = S.mode === 'solo' ? '' : 'none';
   const members = S.agents.filter(a => a.council).map(a => a.name);
+  if (S.mode === 'translate') { $('#modeInfo').textContent = `Live translate: ${S.settings.translateMine} ⇄ ${S.settings.translateTheirs} (Settings)`; return; }
   $('#modeInfo').textContent = S.mode === 'solo' ? '' : (S.mode === 'council' ? 'Council: ' : 'Chain: ') + (members.join(S.mode === 'chain' ? ' → ' : ', ') || 'none — tick "In council" in Agents');
 }
 
@@ -646,7 +693,7 @@ function showTab(tab) {
   currentTab = tab;
   $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + tab));
-  ({ chat: () => { renderChatBar(); renderMessages(); }, agents: renderAgents, providers: renderProviders, skills: renderSkills, hooks: renderHooks, settings: renderSettings })[tab]();
+  ({ chat: () => { renderChatBar(); renderMessages(); }, agents: renderAgents, providers: renderProviders, files: renderFiles, skills: renderSkills, hooks: renderHooks, settings: renderSettings })[tab]();
 }
 
 /* ====================================================================== UI: agents */
@@ -740,12 +787,13 @@ function renderSkills() {
   const groups = {};
   allSkills().forEach(s => (groups[s.group] = groups[s.group] || []).push(s));
   v.innerHTML = `<h2>Skills</h2><p class="hint">Tools agents can call. <span class="pill risky">confirm</span> skills ask before running (toggle in Settings). Turn a skill off here to disable it for every agent.</p>
-    ${Object.entries(groups).map(([g, list]) => `<div class="card"><h3>${esc(g)}</h3>${list.map(s => `<label class="inline"><input type="checkbox" data-sk="${esc(s.name)}" ${S.disabledSkills.includes(s.name) ? '' : 'checked'}><span><b>${esc(s.name)}</b>${s.risky ? '<span class="pill risky">confirm</span>' : ''} <span class="hint">${esc(s.description)}</span></span></label>`).join('')}</div>`).join('')}
+    ${Object.entries(groups).map(([g, list]) => `<div class="card"><h3>${esc(g)}</h3>${list.map(s => `<label class="inline"><input type="checkbox" data-sk="${esc(s.name)}" ${S.disabledSkills.includes(s.name) ? '' : 'checked'}><span><b>${esc(s.name)}</b>${s.risky ? `<span class="pill risky">confirm</span> <span class="nogrow" style="white-space:nowrap"><input type="checkbox" data-auto="${esc(s.name)}" ${S.autoApprove.includes(s.name) ? 'checked' : ''}><span class="hint">always allow</span></span>` : ''} <span class="hint">${esc(s.description)}</span></span></label>`).join('')}</div>`).join('')}
     <h2>Custom skills</h2>
     <p class="hint"><b>HTTP skill</b>: the agent calls your endpoint (Home Assistant, n8n, your own server…). Use <code>{{param}}</code> in URL/headers/body. <b>Prompt skill</b>: reusable instructions added to the agent's system prompt.</p>
     <div id="custList"></div>
     <div class="row"><button class="primary nogrow" id="addHttpSkill">+ HTTP skill</button><button class="nogrow" id="addPromptSkill">+ Prompt skill</button></div>`;
   $$('[data-sk]', v).forEach(cb => cb.addEventListener('change', () => { const n = cb.dataset.sk; S.disabledSkills = S.disabledSkills.filter(x => x !== n); if (!cb.checked) S.disabledSkills.push(n); save(); }));
+  $$('[data-auto]', v).forEach(cb => { cb.addEventListener('click', e => e.stopPropagation()); cb.addEventListener('change', () => { const n = cb.dataset.auto; S.autoApprove = S.autoApprove.filter(x => x !== n); if (cb.checked) S.autoApprove.push(n); save(); }); });
   const list = $('#custList');
   S.customSkills.forEach(s => {
     const card = document.createElement('div'); card.className = 'card';
@@ -850,7 +898,7 @@ onNative('webhook', async ev => {
     if (!prompt) return reply(400, { error: 'missing prompt' });
     const agent = agentName ? agentByName(agentName) : agentById(S.settings.server.defaultAgent);
     if (!agent) return reply(404, { error: 'unknown agent', agents: S.agents.map(a => a.name) });
-    if (!['solo', 'council', 'chain'].includes(mode)) mode = 'solo';
+    if (!['solo', 'council', 'chain', 'translate'].includes(mode)) mode = 'solo';
     const r = await dispatch(prompt, { mode, agentId: agent.id, origin: 'webhook', showInChat: S.settings.server.showInChat || mode !== 'solo' });
     if (b.speak) speak(r.text);
     reply(200, { agent: r.agent, reply: stripThink(r.text) });
@@ -890,6 +938,7 @@ function renderSettings() {
       <div><label>Max output tokens</label><input data-k="maxTokens" data-t="num" type="number" min="128" max="64000"></div>
       <div><label>Council synthesizer</label><select data-k="synthesizer"><option value="">(none — show each answer)</option>${S.agents.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></div></div>
     </div>
+    ${renderProSettings()}
     <div class="card"><h3>Memory (${mem.length})</h3>
       ${mem.length ? mem.map(([k, val]) => `<div class="hint"><b>${esc(k)}</b>: ${esc(clip(val, 200))}</div>`).join('') : '<p class="hint">Agents save facts here with memory_save.</p>'}
       <div class="row"><button class="small danger nogrow" id="clearMem">Clear memory</button></div></div>
@@ -897,6 +946,7 @@ function renderSettings() {
       <div class="row"><button class="nogrow" id="exp">Export config</button><button class="nogrow" id="expKeys">Export with keys</button><button class="nogrow" id="imp">Import…</button><button class="danger nogrow" id="reset">Factory reset</button></div>
       <p class="hint">Device: ${esc(deviceLabel())}${N ? ' · native bridge ✓' : ' · browser preview'}</p></div>`;
   bind(v, st, k => { applySettings(); if (k === 'glasses') renderSettings(); });
+  bindProSettings(v);
   $('#clearMem').onclick = async () => { if (await confirmBox('Clear all long-term memory?')) { S.memory = {}; save(); renderSettings(); } };
   const showJSON = c => { const s = JSON.stringify(c, null, 1); if (N) N.shareText(s); else infoBox(`<code class="block">${esc(s)}</code>`); };
   $('#exp').onclick = () => showJSON(exportConfig(false));
@@ -959,12 +1009,13 @@ onNative('deeplink', p => {
   try {
     const u = new URL(p.url); const q = u.searchParams.get('q') || u.searchParams.get('prompt');
     const ag = u.searchParams.get('agent'); if (ag && agentByName(ag)) { S.current = agentByName(ag).id; S.mode = 'solo'; }
-    const m = u.searchParams.get('mode'); if (['solo', 'council', 'chain'].includes(m)) S.mode = m;
+    const m = u.searchParams.get('mode'); if (['solo', 'council', 'chain', 'translate'].includes(m)) S.mode = m;
     showTab('chat'); if (q) { $('#input').value = q; send(); }
   } catch (e) { toast('Bad link'); }
 });
 
 /* ====================================================================== boot */
+function boot() {
 $$('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 $('#send').onclick = send; $('#stop').onclick = stopRun; $('#mic').onclick = listen;
 $('#input').addEventListener('input', autoGrow);
@@ -977,7 +1028,13 @@ applySettings();
 applyServer();
 showTab('chat');
 if (S.settings.glasses) $('#mic').focus();
-window.Nexus = { S, dispatch, runAgent, execSkill, exportConfig, importConfig }; // for debugging / tests
+$('#cam').onclick = () => takePhoto({ attach: true }).catch(e => toast(e.message));
+$('#attach').onclick = () => importFiles().then(files => { pendingAttachments.push(...files); renderChips(); }).catch(e => toast(e.message));
+window.Nexus = { S, dispatch, runAgent, execSkill, exportConfig, importConfig, allSkills }; // for debugging / tests
+}
+// Boot after every script (including js/skills-pro.js) has loaded.
+document.addEventListener('DOMContentLoaded', boot);
 </script>
+<script src="js/skills-pro.js"></script>
 </body>
 </html>

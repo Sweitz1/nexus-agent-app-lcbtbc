@@ -4,10 +4,11 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
 
 - **Multiple agents, multiple models.** Venice AI (including the `venice-uncensored` model), Anthropic Claude, xAI Grok, OpenAI, Google Gemini, OpenRouter and Groq, plus any OpenAI-compatible endpoint.
 - **Local and private.** You can point an agent at Ollama, LM Studio, llama.cpp or vLLM running on your own phone, PC or home server over Wi-Fi. No cloud is involved, and the agent needs no API key.
-- **Three modes:**
+- **Four modes:**
   - **Solo:** one agent answers.
   - **Council:** every council agent answers at once, then a synthesizer agent merges the answers.
   - **Chain:** each agent improves the previous agent's answer.
+  - **Translate:** live two-way interpreting (for example English ⇄ Spanish), read aloud. Useful for conversations while wearing the glasses.
 - **Agents can delegate.** The `ask_agent` skill lets one agent hand a task to another. For example, the default *Nexus* orchestrator can ask Venice, Grok or Local for help.
 - **Skills (tools).** Built-in skills:
   - web search and web page fetch
@@ -20,6 +21,22 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   - share sheet, text-to-speech and device info
   - outgoing webhooks
   - delegation to other agents
+
+  **Pro skills** (64 skills in total; each one can be turned on or off per agent):
+
+  | Group | Skills |
+  |---|---|
+  | Files | `file_list`, `file_read`, `file_write`, `file_move`, `file_delete`, `file_download`, `file_import` (system picker), `file_open`, `file_share`, `file_export` |
+  | Coding | `run_javascript` (sandboxed worker with a timeout; reads and writes workspace files), `file_edit` (exact find/replace), `code_search` (grep), `github_get` (browse or download repo files) |
+  | Engineering | `unit_convert` (17 categories, including temperature), `engineering_math`: evaluate, linear systems, matrices (multiply / inverse / determinant / transpose), statistics, linear regression, polynomial roots, integration, derivatives, equation solving |
+  | Images | `camera_photo` (in-app camera: what you're looking at), `image_info`, `image_edit` (resize, crop, rotate, flip, grayscale, sepia, invert, brightness, contrast, saturation, hue, blur, sharpen, edges, threshold, text overlay), `image_convert`, `image_describe` (vision model), `image_generate` |
+  | PDF | `pdf_info`, `pdf_extract_text`, `pdf_to_images`, `pdf_create` (from Markdown and images), `pdf_merge`, `pdf_split` |
+  | OCR | `ocr` on images or scanned PDFs. **Offline Tesseract** (English bundled; other languages download once) or the vision model for handwriting, tables and mixed scripts |
+  | Zip | `zip_create`, `zip_extract` (protected against zip-slip and zip bombs), `zip_list` |
+  | Video | `video_info`, `video_frames`, `video_trim` (lossless), `video_extract_audio` / mute, `video_describe` (frames passed to the vision model) |
+  | Maps | `apple_maps_search`, `apple_maps_directions`, `apple_maps_open`, `get_location` |
+  | Phone | `contacts_search`, `phone_call` (opens the dialer, or calls directly), `send_sms` (prefilled message; you tap send) |
+  | Translation | `translate` (AI model, DeepL or LibreTranslate), `translate_image` (signs, menus), `translate_file` (text and PDF files) |
 
   You can also add your own **HTTP skills** (Home Assistant, n8n or your own API, with `{{param}}` templates) and **prompt skills**.
 - **Webhooks:**
@@ -103,6 +120,28 @@ LM Studio (`:1234/v1`) and llama.cpp or vLLM (`:8080/v1`) work the same way.
 
 Small local models often don't support tool calling. The app detects this and continues without skills.
 
+## Files, camera and attachments
+
+- **Files** tab: this is the agent's private workspace. It shows photos, imports, downloads and every file a skill creates. For each file you can attach it to a chat, view it, share it, save it to device storage or delete it.
+- 📷 takes a photo and 📎 attaches files to your next message. Images go directly to vision-capable models (Claude, GPT, Grok and Gemini vision models). Other files are passed by path so the agent can use its PDF, zip, video and OCR skills on them.
+- Sharing images, PDFs, zips or videos from any app to *Nexus Agent* attaches them automatically.
+
+### Notes on specific skills
+
+- **Apple Maps.** Android has no Apple Maps app, so `apple_maps_open` opens Apple Maps on the web (maps.apple.com).
+  - For Apple's own search, geocoding and directions, add an **Apple Maps Server API token** in *Settings → Pro skills*. You create it in your Apple Developer account under Maps IDs & keys.
+  - Without a token, search falls back to OpenStreetMap and driving/walking routes come from OSRM. Transit routing needs the token.
+  - You can switch the links to open in the Android maps app instead.
+- **Phone calls and SMS.** These need a device with a phone/dialer app (a phone, or glasses firmware that includes one).
+  - Calls open the dialer pre-filled. With `direct: true` the call is placed immediately, after you grant the Call permission.
+  - SMS opens the messaging app with the text filled in; you tap send.
+  - The RayNeo X3 Pro may not have a dialer of its own. In that case the skill says so.
+- **Video** uses the Android media framework, so it doesn't need FFmpeg. Trims copy the original data without re-encoding, which means cut points snap to the nearest keyframe.
+- **OCR.** Local Tesseract runs fully offline. The first OCR in a language other than English downloads that language's model (about 2–10 MB) from jsDelivr.
+- **Permissions.** Camera, location, contacts, call and microphone permissions are only requested the first time a skill needs them.
+- **Confirmation.** Risky skills ask before running. These are deleting files, calls, SMS, contacts, location, app launching, intents, raw HTTP and webhooks. In the **Skills** tab you can tick *always allow* on any of them.
+- **Upgrading from 1.0.0.** The app now runs from a secure local origin, which the camera, workers and WebAssembly need. Agents and settings saved in 1.0.0 don't carry over, but API keys do. To keep your configuration, use *Settings → Export config* on 1.0.0 before upgrading, then import it on 1.1.0.
+
 ## Incoming webhook API
 
 All endpoints need the token, sent in one of three ways:
@@ -146,11 +185,17 @@ Other ways in:
 ```
 android/
   app/src/main/java/com/nexus/agent/
-    MainActivity.java   WebView host, immersive/glasses tuning, key and intent handling
-    NativeBridge.java   window.NexusNative: CORS-free HTTP, key store, apps/intents, TTS, speech, server control
-    WebhookServer.java  LAN HTTP server: incoming webhooks + phone remote console
+    MainActivity.java      WebView host on a secure local origin, glasses tuning, keys/intents, permissions
+    NativeBridge.java      window.NexusNative: HTTP, key store, workspace files, apps/intents, TTS, speech,
+                           camera, location, contacts, calls/SMS, downloads, server control
+    Workspace.java         sandboxed private file workspace
+    WorkspaceProvider.java content:// provider for opening/sharing files and camera output
+    MediaTools.java        zip create/extract/list, video info/frames/trim/audio (framework only)
+    WebhookServer.java     LAN HTTP server: incoming webhooks + phone remote console
   app/src/main/assets/
-    index.html          the whole agent runtime and UI (providers, agents, skills, modes, webhooks)
+    index.html          core agent runtime and UI (providers, agents, modes, webhooks)
+    js/skills-pro.js    files, coding, engineering, image, PDF, OCR, zip, video, maps, phone, translation skills
+    lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console
 .github/workflows/build-apk.yml
 ```

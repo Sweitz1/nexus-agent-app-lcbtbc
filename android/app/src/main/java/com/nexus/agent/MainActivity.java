@@ -14,13 +14,20 @@ import android.webkit.ConsoleMessage;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * Hosts the Nexus Agent web UI (assets/index.html) in a WebView and exposes the
@@ -32,7 +39,17 @@ import java.util.ArrayList;
 public class MainActivity extends Activity {
 
     static final int REQ_SPEECH = 41;
-    static final int REQ_MIC_PERMISSION = 42;
+    static final int REQ_PICK = 43;
+    static final int REQ_EXPORT = 44;
+    static final int REQ_CAMERA = 45;
+
+    /**
+     * The UI is served from a virtual https origin (assets + the file workspace) instead of
+     * file://, so it is a secure context: camera (getUserMedia), Web Workers and WebAssembly
+     * (pdf.js, Tesseract OCR) all work.
+     */
+    static final String HOST = "appassets.androidplatform.net";
+    static final String ORIGIN = "https://" + HOST;
 
     WebView webView;
     NativeBridge bridge;
@@ -65,9 +82,16 @@ public class MainActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                Uri u = request.getUrl();
+                if (!"https".equals(u.getScheme()) || !HOST.equals(u.getHost())) return null;
+                return serveLocal(u.getPath());
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri u = request.getUrl();
-                if ("file".equals(u.getScheme())) return false;
+                if (HOST.equals(u.getHost())) return false;
                 // Links clicked inside replies open in the system browser / matching app.
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, u));
@@ -93,11 +117,22 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPermissionRequest(PermissionRequest request) {
-                request.deny();
+                // Only the in-app camera is granted, and only after the Android CAMERA
+                // permission was given. Microphone goes through native speech recognition.
+                runOnUiThread(() -> {
+                    boolean wantsVideo = false;
+                    for (String r : request.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) wantsVideo = true;
+                    if (wantsVideo && HOST.equals(request.getOrigin().getHost())
+                            && checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        request.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+                    } else {
+                        request.deny();
+                    }
+                });
             }
         });
 
-        webView.loadUrl("file:///android_asset/index.html");
+        webView.loadUrl(ORIGIN + "/index.html");
         handleIntent(getIntent());
     }
 
@@ -111,7 +146,32 @@ public class MainActivity extends Activity {
     private void handleIntent(Intent intent) {
         if (intent == null) return;
         try {
-            if (Intent.ACTION_SEND.equals(intent.getAction())) {
+            String action = intent.getAction();
+            if (Intent.ACTION_SEND.equals(action) || Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+                ArrayList<Uri> streams = new ArrayList<>();
+                if (Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+                    ArrayList<Uri> l = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+                    if (l != null) streams.addAll(l);
+                } else {
+                    Uri u = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+                    if (u != null) streams.add(u);
+                }
+                if (!streams.isEmpty()) {
+                    final String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
+                    new Thread(() -> {
+                        try {
+                            org.json.JSONArray arr = new org.json.JSONArray();
+                            for (Uri u : streams) arr.put(bridge.importUri(u));
+                            JSONObject o = new JSONObject();
+                            o.put("files", arr);
+                            if (sharedText != null) o.put("text", sharedText);
+                            emit("shared_files", o.toString());
+                        } catch (Exception ignored) { }
+                    }).start();
+                    return;
+                }
+            }
+            if (Intent.ACTION_SEND.equals(action)) {
                 String text = intent.getStringExtra(Intent.EXTRA_TEXT);
                 if (text != null) {
                     JSONObject o = new JSONObject();
@@ -124,6 +184,58 @@ public class MainActivity extends Activity {
                 emit("deeplink", o.toString());
             }
         } catch (Exception ignored) { }
+    }
+
+    private static final Map<String, String> MIME = new HashMap<>();
+    static {
+        String[][] m = {{"html", "text/html"}, {"js", "application/javascript"}, {"mjs", "application/javascript"},
+                {"css", "text/css"}, {"json", "application/json"}, {"wasm", "application/wasm"}, {"txt", "text/plain"},
+                {"md", "text/markdown"}, {"csv", "text/csv"}, {"xml", "application/xml"}, {"svg", "image/svg+xml"},
+                {"png", "image/png"}, {"jpg", "image/jpeg"}, {"jpeg", "image/jpeg"}, {"webp", "image/webp"},
+                {"gif", "image/gif"}, {"bmp", "image/bmp"}, {"pdf", "application/pdf"}, {"zip", "application/zip"},
+                {"mp4", "video/mp4"}, {"webm", "video/webm"}, {"m4a", "audio/mp4"}, {"mp3", "audio/mpeg"},
+                {"wav", "audio/wav"}, {"gz", "application/gzip"}};
+        for (String[] e : m) MIME.put(e[0], e[1]);
+    }
+
+    static String mimeFor(String name) {
+        int dot = name.lastIndexOf('.');
+        String ext = dot >= 0 ? name.substring(dot + 1).toLowerCase(Locale.ROOT) : "";
+        String t = MIME.get(ext);
+        return t != null ? t : "application/octet-stream";
+    }
+
+    /** Serves /workspace/... from the private file workspace and everything else from assets. */
+    private WebResourceResponse serveLocal(String path) {
+        try {
+            if (path == null || path.equals("/")) path = "/index.html";
+            InputStream in;
+            if (path.startsWith("/workspace/")) {
+                File f = bridge.workspace.resolve(Uri.decode(path.substring("/workspace/".length())));
+                if (!f.isFile()) return notFound();
+                in = new FileInputStream(f);
+            } else {
+                String asset = path.substring(1);
+                if (asset.contains("..")) return notFound();
+                in = getAssets().open(asset);
+            }
+            String mime = mimeFor(path);
+            String enc = mime.startsWith("text/") || mime.endsWith("javascript") || mime.endsWith("json") ? "utf-8" : null;
+            WebResourceResponse r = new WebResourceResponse(mime, enc, in);
+            Map<String, String> h = new HashMap<>();
+            h.put("Cache-Control", "no-cache");
+            h.put("Access-Control-Allow-Origin", ORIGIN);
+            r.setResponseHeaders(h);
+            return r;
+        } catch (Exception e) {
+            return notFound();
+        }
+    }
+
+    private static WebResourceResponse notFound() {
+        WebResourceResponse r = new WebResourceResponse("text/plain", "utf-8", new java.io.ByteArrayInputStream(new byte[0]));
+        r.setStatusCodeAndReasonPhrase(404, "Not Found");
+        return r;
     }
 
     /** Sends an event to the web layer: window.__nexusEvent(type, payloadObject). */
@@ -205,20 +317,32 @@ public class MainActivity extends Activity {
         runOnUiThread(() -> moveTaskToBack(true));
     }
 
-    boolean hasMicPermission() {
-        return checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+    boolean hasPermission(String perm) {
+        return checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED;
     }
 
-    void requestMicPermission() {
-        runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC_PERMISSION));
+    boolean hasMicPermission() { return hasPermission(Manifest.permission.RECORD_AUDIO); }
+
+    private int nextPermCode = 100;
+    private final Map<Integer, String> permCallbacks = new HashMap<>();
+
+    /** Requests one runtime permission; resolves the JS callback with {granted}. */
+    void requestPermission(String callbackId, String perm) {
+        runOnUiThread(() -> {
+            if (hasPermission(perm)) { callback(callbackId, true, "{\"granted\":true}"); return; }
+            int code = nextPermCode++;
+            permCallbacks.put(code, callbackId);
+            requestPermissions(new String[]{perm}, code);
+        });
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQ_MIC_PERMISSION) {
+        String id = permCallbacks.remove(requestCode);
+        if (id != null) {
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
-            emit("mic_permission", "{\"granted\":" + granted + "}");
+            callback(id, true, "{\"granted\":" + granted + "}");
         }
     }
 
@@ -232,6 +356,8 @@ public class MainActivity extends Activity {
                 if (r != null && !r.isEmpty()) text = r.get(0);
             }
             bridge.onSpeechActivityResult(text);
+        } else if (requestCode == REQ_PICK || requestCode == REQ_EXPORT || requestCode == REQ_CAMERA) {
+            bridge.onActivityResult(requestCode, resultCode, data);
         }
     }
 

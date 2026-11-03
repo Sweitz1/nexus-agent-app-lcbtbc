@@ -6,7 +6,14 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.database.Cursor;
+import android.location.Location;
+import android.location.LocationManager;
 import android.net.Uri;
+import android.provider.ContactsContract;
+import android.provider.MediaStore;
+import android.provider.OpenableColumns;
+import android.util.Base64;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
@@ -22,6 +29,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -58,9 +68,15 @@ public class NativeBridge {
     private SpeechRecognizer recognizer;
     private String speechCallbackId;
     private WebhookServer server;
+    final Workspace workspace;
+    private final MediaTools media;
+    private String pickCallbackId, exportCallbackId, exportPath, cameraCallbackId;
+    private File cameraFile;
 
     NativeBridge(MainActivity activity) {
         this.activity = activity;
+        this.workspace = new Workspace(activity);
+        this.media = new MediaTools(workspace);
         this.prefs = activity.getSharedPreferences("nexus_secure", Context.MODE_PRIVATE);
         tts = new TextToSpeech(activity, status -> {
             ttsReady = status == TextToSpeech.SUCCESS;
@@ -323,8 +339,12 @@ public class NativeBridge {
     @JavascriptInterface
     public boolean hasMicPermission() { return activity.hasMicPermission(); }
 
+    /** perm is a full Android permission name, e.g. android.permission.CAMERA */
     @JavascriptInterface
-    public void requestMicPermission() { activity.requestMicPermission(); }
+    public boolean hasPermission(String perm) { return activity.hasPermission(perm); }
+
+    @JavascriptInterface
+    public void requestPermission(String id, String perm) { activity.requestPermission(id, perm); }
 
     /**
      * Speech-to-text. Uses the in-app SpeechRecognizer when the device has one, otherwise
@@ -424,6 +444,418 @@ public class NativeBridge {
     @JavascriptInterface
     public void serverRespond(String reqId, int status, String contentType, String body) {
         if (server != null) server.respond(reqId, status, contentType, body);
+    }
+
+
+    // ------------------------------------------------------------------ file workspace
+
+    private interface Job { String run() throws Exception; }
+
+    private void async(String id, Job job) {
+        pool.execute(() -> {
+            try { activity.callback(id, true, job.run()); }
+            catch (Exception e) { activity.callback(id, false, errorJson(e)); }
+        });
+    }
+
+    private static String ok(String key, String value) {
+        try { JSONObject o = new JSONObject(); o.put(key, value); return o.toString(); } catch (Exception e) { return "{}"; }
+    }
+
+    @JavascriptInterface
+    public String fsList(String dir, boolean recursive) {
+        try { return workspace.list(dir, recursive); } catch (Exception e) { return errorJson(e); }
+    }
+
+    @JavascriptInterface
+    public String fsStat(String path) {
+        try { return workspace.stat(path); } catch (Exception e) { return errorJson(e); }
+    }
+
+    @JavascriptInterface
+    public void fsReadText(String id, String path) { async(id, () -> ok("text", workspace.readText(path))); }
+
+    @JavascriptInterface
+    public void fsReadB64(String id, String path) { async(id, () -> ok("b64", workspace.readB64(path))); }
+
+    @JavascriptInterface
+    public void fsWriteText(String id, String path, String text) {
+        async(id, () -> ok("path", workspace.write(path, text.getBytes(StandardCharsets.UTF_8))));
+    }
+
+    @JavascriptInterface
+    public void fsWriteB64(String id, String path, String b64) {
+        async(id, () -> ok("path", workspace.write(path, Base64.decode(b64, Base64.DEFAULT))));
+    }
+
+    @JavascriptInterface
+    public String fsDelete(String path) {
+        try { return workspace.delete(path) ? "{\"ok\":true}" : "{\"error\":\"not deleted\"}"; } catch (Exception e) { return errorJson(e); }
+    }
+
+    @JavascriptInterface
+    public String fsMove(String from, String to) {
+        try { return ok("path", workspace.move(from, to)); } catch (Exception e) { return errorJson(e); }
+    }
+
+    @JavascriptInterface
+    public String fsMkdir(String path) {
+        try { //noinspection ResultOfMethodCallIgnored
+            workspace.resolve(path).mkdirs(); return ok("path", path); } catch (Exception e) { return errorJson(e); }
+    }
+
+    /** System file picker; picked files are copied into workspace/imports. Resolves {files:[paths]}. */
+    @JavascriptInterface
+    public void pickFiles(String id, String mime) {
+        activity.runOnUiThread(() -> {
+            pickCallbackId = id;
+            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType(mime == null || mime.isEmpty() ? "*/*" : mime);
+            i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+            try {
+                activity.startActivityForResult(i, MainActivity.REQ_PICK);
+            } catch (ActivityNotFoundException e) {
+                Intent g = new Intent(Intent.ACTION_GET_CONTENT);
+                g.addCategory(Intent.CATEGORY_OPENABLE);
+                g.setType(i.getType());
+                g.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                try { activity.startActivityForResult(g, MainActivity.REQ_PICK); }
+                catch (ActivityNotFoundException e2) { pickCallbackId = null; activity.callback(id, false, "{\"error\":\"No file picker on this device\"}"); }
+            }
+        });
+    }
+
+    /** "Save as" dialog that copies a workspace file to user-visible storage. */
+    @JavascriptInterface
+    public void exportFile(String id, String path) {
+        activity.runOnUiThread(() -> {
+            try {
+                File f = workspace.resolve(path);
+                exportCallbackId = id;
+                exportPath = path;
+                Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType(MainActivity.mimeFor(f.getName()));
+                i.putExtra(Intent.EXTRA_TITLE, f.getName());
+                activity.startActivityForResult(i, MainActivity.REQ_EXPORT);
+            } catch (Exception e) {
+                exportCallbackId = null;
+                activity.callback(id, false, errorJson(e));
+            }
+        });
+    }
+
+    /** Fallback still photo through the system camera app (in-app camera is preferred). */
+    @JavascriptInterface
+    public void capturePhoto(String id, String path) {
+        activity.runOnUiThread(() -> {
+            try {
+                cameraFile = workspace.unique(path == null || path.isEmpty() ? "camera/photo_" + System.currentTimeMillis() + ".jpg" : path);
+                File p = cameraFile.getParentFile();
+                if (p != null) //noinspection ResultOfMethodCallIgnored
+                    p.mkdirs();
+                Uri uri = WorkspaceProvider.uriFor(activity, cameraFile);
+                Intent i = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                i.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+                i.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                i.setClipData(android.content.ClipData.newRawUri("photo", uri));
+                cameraCallbackId = id;
+                activity.startActivityForResult(i, MainActivity.REQ_CAMERA);
+            } catch (Exception e) {
+                cameraCallbackId = null;
+                activity.callback(id, false, errorJson(e));
+            }
+        });
+    }
+
+    void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == MainActivity.REQ_PICK && pickCallbackId != null) {
+            String id = pickCallbackId;
+            pickCallbackId = null;
+            List<Uri> uris = new ArrayList<>();
+            if (resultCode == Activity_RESULT_OK && data != null) {
+                if (data.getClipData() != null)
+                    for (int i = 0; i < data.getClipData().getItemCount(); i++) uris.add(data.getClipData().getItemAt(i).getUri());
+                else if (data.getData() != null) uris.add(data.getData());
+            }
+            async(id, () -> {
+                JSONArray arr = new JSONArray();
+                for (Uri u : uris) arr.put(importUri(u));
+                JSONObject o = new JSONObject();
+                o.put("files", arr);
+                return o.toString();
+            });
+        } else if (requestCode == MainActivity.REQ_EXPORT && exportCallbackId != null) {
+            String id = exportCallbackId, path = exportPath;
+            exportCallbackId = null;
+            if (resultCode != Activity_RESULT_OK || data == null || data.getData() == null) { activity.callback(id, false, "{\"error\":\"cancelled\"}"); return; }
+            Uri dest = data.getData();
+            async(id, () -> {
+                try (InputStream in = new FileInputStream(workspace.resolve(path));
+                     OutputStream out = activity.getContentResolver().openOutputStream(dest)) {
+                    if (out == null) throw new java.io.IOException("cannot write destination");
+                    Workspace.copy(in, out);
+                }
+                return "{\"ok\":true}";
+            });
+        } else if (requestCode == MainActivity.REQ_CAMERA && cameraCallbackId != null) {
+            String id = cameraCallbackId;
+            cameraCallbackId = null;
+            if (resultCode == Activity_RESULT_OK && cameraFile != null && cameraFile.length() > 0) {
+                try { activity.callback(id, true, ok("path", workspace.rel(cameraFile))); }
+                catch (Exception e) { activity.callback(id, false, errorJson(e)); }
+            } else {
+                activity.callback(id, false, "{\"error\":\"No photo taken\"}");
+            }
+        }
+    }
+
+    private static final int Activity_RESULT_OK = android.app.Activity.RESULT_OK;
+
+    /** Copies a content:// document into workspace/imports and returns its relative path. */
+    String importUri(Uri u) throws Exception {
+        String name = "file_" + System.currentTimeMillis();
+        try (Cursor c = activity.getContentResolver().query(u, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (c != null && c.moveToFirst() && c.getString(0) != null) name = c.getString(0);
+        } catch (Exception ignored) { }
+        name = name.replaceAll("[\\\\/:*?\"<>|]", "_");
+        File dest = workspace.unique("imports/" + name);
+        File p = dest.getParentFile();
+        if (p != null) //noinspection ResultOfMethodCallIgnored
+            p.mkdirs();
+        try (InputStream in = activity.getContentResolver().openInputStream(u); OutputStream out = new FileOutputStream(dest)) {
+            if (in == null) throw new java.io.IOException("cannot read " + u);
+            Workspace.copy(in, out);
+        }
+        return workspace.rel(dest);
+    }
+
+    /** Opens a workspace file in another app (image viewer, PDF reader, video player...). */
+    @JavascriptInterface
+    public String openFile(String path) {
+        try {
+            File f = workspace.resolve(path);
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            i.setDataAndType(WorkspaceProvider.uriFor(activity, f), MainActivity.mimeFor(f.getName()));
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(i);
+            return "ok";
+        } catch (ActivityNotFoundException e) {
+            return "No app can open this file type";
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @JavascriptInterface
+    public String shareFile(String path) {
+        try {
+            File f = workspace.resolve(path);
+            Uri uri = WorkspaceProvider.uriFor(activity, f);
+            Intent i = new Intent(Intent.ACTION_SEND);
+            i.setType(MainActivity.mimeFor(f.getName()));
+            i.putExtra(Intent.EXTRA_STREAM, uri);
+            i.setClipData(android.content.ClipData.newRawUri(f.getName(), uri));
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Intent chooser = Intent.createChooser(i, "Share " + f.getName());
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            activity.startActivity(chooser);
+            return "ok";
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    /** Binary-safe download into the workspace. req = {url, headers, path}; resolves {path, size, mime, status}. */
+    @JavascriptInterface
+    public void download(String id, String reqJson) {
+        async(id, () -> {
+            JSONObject req = new JSONObject(reqJson);
+            URL url = new URL(req.getString("url"));
+            if (!"http".equals(url.getProtocol()) && !"https".equals(url.getProtocol())) throw new IllegalArgumentException("Only http/https");
+            HttpURLConnection c = (HttpURLConnection) url.openConnection();
+            try {
+                c.setConnectTimeout(20000);
+                c.setReadTimeout(120000);
+                c.setInstanceFollowRedirects(true);
+                c.setRequestProperty("User-Agent", "NexusAgent/1.0 (Android; RayNeo)");
+                JSONObject h = req.optJSONObject("headers");
+                if (h != null) { Iterator<String> it = h.keys(); while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.optString(k)); } }
+                int status = c.getResponseCode();
+                if (status >= 400) throw new java.io.IOException("HTTP " + status);
+                String path = req.optString("path", "");
+                if (path.isEmpty()) {
+                    String name = url.getPath().replaceAll(".*/", "");
+                    path = "downloads/" + (name.isEmpty() ? "download_" + System.currentTimeMillis() : name);
+                }
+                File dest = workspace.unique(path);
+                File p = dest.getParentFile();
+                if (p != null) //noinspection ResultOfMethodCallIgnored
+                    p.mkdirs();
+                long total = 0;
+                try (InputStream in = c.getInputStream(); OutputStream out = new FileOutputStream(dest)) {
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) {
+                        total += n;
+                        if (total > 500L * 1024 * 1024) throw new java.io.IOException("Download larger than 500 MB; stopped");
+                        out.write(buf, 0, n);
+                    }
+                }
+                JSONObject o = new JSONObject();
+                o.put("path", workspace.rel(dest));
+                o.put("size", total);
+                o.put("mime", c.getContentType());
+                o.put("status", status);
+                return o.toString();
+            } finally {
+                c.disconnect();
+            }
+        });
+    }
+
+    // ------------------------------------------------------------------ zip & video
+
+    /** spec {op:create|extract|list, ...}; see MediaTools. */
+    @JavascriptInterface
+    public void zip(String id, String specJson) { async(id, () -> media.zip(new JSONObject(specJson))); }
+
+    /** spec {op:info|frames|trim|audio|mute, path, ...}; see MediaTools. */
+    @JavascriptInterface
+    public void video(String id, String specJson) { async(id, () -> media.video(new JSONObject(specJson))); }
+
+    // ------------------------------------------------------------------ location
+
+    /** Resolves {lat, lon, accuracy, time, provider}. Requires a location permission. */
+    @JavascriptInterface
+    public void getLocation(String id) {
+        activity.runOnUiThread(() -> {
+            try {
+                if (!activity.hasPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                        && !activity.hasPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION))
+                    throw new SecurityException("Location permission not granted");
+                LocationManager lm = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
+                Location best = null;
+                for (String prov : lm.getProviders(true)) {
+                    @SuppressWarnings("MissingPermission") Location l = lm.getLastKnownLocation(prov);
+                    if (l != null && (best == null || l.getTime() > best.getTime())) best = l;
+                }
+                final Location last = best;
+                if (last != null && System.currentTimeMillis() - last.getTime() < 2 * 60 * 1000) {
+                    activity.callback(id, true, locJson(last));
+                    return;
+                }
+                String prov = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ? LocationManager.NETWORK_PROVIDER
+                        : lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ? LocationManager.GPS_PROVIDER : null;
+                if (prov == null) {
+                    if (last != null) activity.callback(id, true, locJson(last));
+                    else throw new IllegalStateException("Location is turned off");
+                    return;
+                }
+                final boolean[] done = {false};
+                android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
+                h.postDelayed(() -> {
+                    if (done[0]) return;
+                    done[0] = true;
+                    if (last != null) activity.callback(id, true, locJson(last));
+                    else activity.callback(id, false, "{\"error\":\"Location timeout\"}");
+                }, 20000);
+                if (Build.VERSION.SDK_INT >= 30) {
+                    //noinspection MissingPermission
+                    lm.getCurrentLocation(prov, null, activity.getMainExecutor(), l -> {
+                        if (done[0]) return;
+                        done[0] = true;
+                        if (l != null) activity.callback(id, true, locJson(l));
+                        else if (last != null) activity.callback(id, true, locJson(last));
+                        else activity.callback(id, false, "{\"error\":\"No location fix\"}");
+                    });
+                } else {
+                    //noinspection deprecation,MissingPermission
+                    lm.requestSingleUpdate(prov, new android.location.LocationListener() {
+                        public void onLocationChanged(Location l) {
+                            if (done[0]) return;
+                            done[0] = true;
+                            activity.callback(id, true, locJson(l));
+                        }
+                        public void onStatusChanged(String p, int s, Bundle b) { }
+                        public void onProviderEnabled(String p) { }
+                        public void onProviderDisabled(String p) { }
+                    }, android.os.Looper.getMainLooper());
+                }
+            } catch (Exception e) {
+                activity.callback(id, false, errorJson(e));
+            }
+        });
+    }
+
+    private static String locJson(Location l) {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("lat", l.getLatitude());
+            o.put("lon", l.getLongitude());
+            o.put("accuracy", l.getAccuracy());
+            o.put("time", l.getTime());
+            o.put("provider", l.getProvider());
+            return o.toString();
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+
+    // ------------------------------------------------------------------ contacts, calls, SMS
+
+    /** Resolves [{name, number, type}]. Requires READ_CONTACTS. */
+    @JavascriptInterface
+    public void contactsSearch(String id, String query) {
+        async(id, () -> {
+            if (!activity.hasPermission(android.Manifest.permission.READ_CONTACTS)) throw new SecurityException("Contacts permission not granted");
+            JSONArray arr = new JSONArray();
+            String[] proj = {ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER, ContactsContract.CommonDataKinds.Phone.TYPE};
+            String sel = ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ?";
+            try (Cursor c = activity.getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, proj, sel,
+                    new String[]{"%" + query + "%"}, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC")) {
+                while (c != null && c.moveToNext() && arr.length() < 25) {
+                    JSONObject o = new JSONObject();
+                    o.put("name", c.getString(0));
+                    o.put("number", c.getString(1));
+                    o.put("type", String.valueOf(ContactsContract.CommonDataKinds.Phone.getTypeLabel(activity.getResources(), c.getInt(2), "")));
+                    arr.put(o);
+                }
+            }
+            return arr.toString();
+        });
+    }
+
+    /** direct=true places the call (needs CALL_PHONE); otherwise opens the dialer pre-filled. */
+    @JavascriptInterface
+    public String phoneCall(String number, boolean direct) {
+        try {
+            Uri uri = Uri.fromParts("tel", number, null);
+            boolean canCall = direct && activity.hasPermission(android.Manifest.permission.CALL_PHONE);
+            Intent i = new Intent(canCall ? Intent.ACTION_CALL : Intent.ACTION_DIAL, uri);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(i);
+            return canCall ? "Calling " + number : "Dialer opened with " + number + " (tap call to connect)";
+        } catch (ActivityNotFoundException e) {
+            return "No phone/dialer app on this device. On RayNeo glasses, place calls from the paired phone.";
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    /** Opens the messaging app with recipient and text filled in (the user taps send). */
+    @JavascriptInterface
+    public String openSms(String number, String body) {
+        try {
+            Intent i = new Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + Uri.encode(number)));
+            i.putExtra("sms_body", body);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(i);
+            return "Messaging app opened";
+        } catch (ActivityNotFoundException e) {
+            return "No messaging app on this device";
+        }
     }
 
     // ------------------------------------------------------------------ helpers
