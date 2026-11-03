@@ -1,4 +1,4 @@
-package com.nexus.glasses;
+package com.nexus.rayneo;
 
 import android.app.Activity;
 import android.content.Context;
@@ -7,41 +7,50 @@ import android.graphics.Canvas;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 
 import org.json.JSONObject;
 
 /**
- * Binocular display + temple touchpad support for RayNeo X3 / X3 Pro style glasses, without the
- * vendor SDK.
+ * Binocular display + temple touchpad support for RayNeo X3 / X3 Pro glasses, shared by the
+ * Nexus phone/standalone app and the Nexus Glasses client.
  *
  * Mirror: those glasses expose both micro-LED panels as ONE wide logical screen (left eye | right
- * eye). A normal app is then split across the two eyes. {@link MirrorFrame} lays its content out
- * at half the width and draws it twice, once per eye, so each eye sees the whole UI (the same idea
- * as RayNeo's MirrorContainerView). Touches on either half map to the content.
+ * eye), so a normal app is split across the two eyes. Modes:
+ *   on  — {@link MirrorFrame}: content laid out at half width and drawn twice in the same frame;
+ *   sdk — RayNeo's MirroringView (Mercury SDK) copies the content into the right half;
+ *   off — normal single image;  auto — "on" when the device looks like such glasses.
  *
- * Temple: the temple touchpad delivers raw touch strokes (there is no touchscreen to aim at), so
- * {@link TempleInput} turns strokes into navigation keys: swipe forward/back = next/previous item,
- * swipe up/down = scroll, tap = select, double tap = back, long press = voice.
- *
- * Both default to "auto" (on only when the device looks like such glasses) and can be forced on or
- * off from the app's settings.
+ * Temple: the temple touchpad delivers raw strokes (there is nothing to aim at), so they become
+ * navigation keys: swipe forward/back = next/previous, swipe up/down = scroll, tap = select,
+ * double tap = back, long press = voice, triple tap = menu, pinch = select. With the Mercury SDK
+ * built in, RayNeo's own TouchDispatcher (X2/X3 specific) recognises the gestures; otherwise
+ * {@link TempleInput} does.
  */
-final class GlassesDisplay {
+public final class GlassesDisplay {
     private GlassesDisplay() { }
 
     static final String PREFS = "nexus_display";
 
+    /** A temple gesture source: raw events in, navigation keys out. */
+    public interface Temple {
+        boolean onTouch(MotionEvent e);
+        boolean onKey(KeyEvent e);
+    }
+
     static SharedPreferences prefs(Context c) { return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
 
-    static boolean looksLikeArGlasses() {
+    public static boolean looksLikeArGlasses() {
+        if (RayNeoSdk.isX3()) return true;
         String s = (Build.MANUFACTURER + " " + Build.BRAND + " " + Build.MODEL + " " + Build.DEVICE).toLowerCase();
-        return s.contains("rayneo") || s.contains("falcon") || s.contains("mercury");
+        return s.contains("rayneo") || s.contains("ffalcon") || s.contains("argf") || s.contains("mercury");
     }
 
     /** A single logical screen at least ~2.4:1 is almost certainly side-by-side panels. */
@@ -51,46 +60,83 @@ final class GlassesDisplay {
         return h > 0 && (float) w / h >= 2.4f;
     }
 
-    static boolean mirrorActive(Context c) {
+    /** Resolved mirror engine: "on", "sdk" or "off". */
+    static String mirrorEngine(Context c) {
         String mode = prefs(c).getString("mirror", "auto");
-        if ("on".equals(mode)) return true;
-        if ("off".equals(mode)) return false;
-        return looksSideBySide(c) && (looksLikeArGlasses() || !hasTouchscreenHint(c));
+        if ("sdk".equals(mode)) return RayNeoSdk.available() ? "sdk" : "on";
+        if ("on".equals(mode) || "off".equals(mode)) return mode;
+        boolean multitouch = c.getPackageManager().hasSystemFeature("android.hardware.touchscreen.multitouch");
+        return looksSideBySide(c) && (looksLikeArGlasses() || !multitouch) ? "on" : "off";
     }
 
-    static boolean templeActive(Context c) {
+    public static boolean mirrorActive(Context c) { return !"off".equals(mirrorEngine(c)); }
+
+    public static boolean templeActive(Context c) {
         String mode = prefs(c).getString("temple", "auto");
         if ("on".equals(mode)) return true;
         if ("off".equals(mode)) return false;
         return looksLikeArGlasses();
     }
 
-    private static boolean hasTouchscreenHint(Context c) {
-        return c.getPackageManager().hasSystemFeature("android.hardware.touchscreen.multitouch");
-    }
-
-    static String describe(Context c) {
+    public static String describe(Context c) {
         try {
             DisplayMetrics m = c.getResources().getDisplayMetrics();
             JSONObject o = new JSONObject();
             o.put("mirror", prefs(c).getString("mirror", "auto"));
             o.put("temple", prefs(c).getString("temple", "auto"));
             o.put("mirrorActive", mirrorActive(c));
+            o.put("mirrorEngine", mirrorEngine(c));
             o.put("templeActive", templeActive(c));
             o.put("width", m.widthPixels);
             o.put("height", m.heightPixels);
             o.put("sideBySide", looksSideBySide(c));
             o.put("arGlasses", looksLikeArGlasses());
+            o.put("rayneoSdk", RayNeoSdk.available());
+            o.put("x3", RayNeoSdk.isX3());
+            Boolean worn = RayNeoSdk.isWearing(c);
+            if (worn != null) o.put("wearing", worn.booleanValue());
             return o.toString();
         } catch (Exception e) { return "{}"; }
     }
 
-    /** mode: auto | on | off. Recreates the activity so the new layout applies. */
-    static void set(Activity a, String key, String mode) {
-        if (!"mirror".equals(key) && !"temple".equals(key)) return;
-        if (!"on".equals(mode) && !"off".equals(mode)) mode = "auto";
+    /** key: mirror (auto|on|sdk|off) or temple (auto|on|off). Recreates the activity so it applies. */
+    public static void set(Activity a, String key, String mode) {
+        if ("mirror".equals(key)) { if (!"on".equals(mode) && !"off".equals(mode) && !"sdk".equals(mode)) mode = "auto"; }
+        else if ("temple".equals(key)) { if (!"on".equals(mode) && !"off".equals(mode)) mode = "auto"; }
+        else return;
         prefs(a).edit().putString(key, mode).apply();
         a.runOnUiThread(a::recreate);
+    }
+
+    /** Wraps the activity's content view for the current mirror mode. */
+    public static View wrap(Activity a, View content) {
+        String engine = mirrorEngine(a);
+        if ("sdk".equals(engine)) {
+            View copy = RayNeoSdk.mirrorOf(a, content);
+            if (copy != null) {
+                LinearLayout row = new LinearLayout(a);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setBackgroundColor(0xFF000000);
+                row.addView(content, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
+                row.addView(copy, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
+                return row;
+            }
+            engine = "on";
+        }
+        return new MirrorFrame(a, content, "on".equals(engine));
+    }
+
+    /** The temple gesture source for this device, or null when temple mode is off. */
+    public static Temple temple(Activity a, boolean force) {
+        if (!force && !templeActive(a)) return null;
+        Temple t = RayNeoSdk.temple(a);
+        return t != null ? t : new TempleInput(a);
+    }
+
+    static void sendKey(Activity act, int code) {
+        long now = SystemClock.uptimeMillis();
+        act.dispatchKeyEvent(new KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0));
+        act.dispatchKeyEvent(new KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0));
     }
 
     /** Wraps the content view; draws it once per eye when mirroring. */
@@ -147,8 +193,8 @@ final class GlassesDisplay {
         }
     }
 
-    /** Converts temple touchpad strokes into key events sent to the activity. */
-    static final class TempleInput {
+    /** Fallback gesture recogniser (no SDK): converts touchpad strokes into key events. */
+    static final class TempleInput implements Temple {
         private final Activity act;
         private final Handler h = new Handler(Looper.getMainLooper());
         private final float slop;
@@ -156,16 +202,20 @@ final class GlassesDisplay {
         private long downT;
         private boolean tracking, longFired;
         private int taps;
-        private final Runnable longPress = () -> { longFired = true; key(KeyEvent.KEYCODE_VOICE_ASSIST); };
-        private final Runnable singleTap = () -> { taps = 0; key(KeyEvent.KEYCODE_ENTER); };
+        private final Runnable longPress = () -> { longFired = true; sendKey(act(), KeyEvent.KEYCODE_VOICE_ASSIST); };
+        private final Runnable singleTap = () -> { taps = 0; sendKey(act(), KeyEvent.KEYCODE_ENTER); };
 
         TempleInput(Activity a) {
             act = a;
             slop = 48 * a.getResources().getDisplayMetrics().density;
         }
 
-        /** Returns true when the event was consumed as a temple gesture. */
-        boolean onTouch(MotionEvent e) {
+        private Activity act() { return act; }
+
+        @Override public boolean onKey(KeyEvent e) { return false; }
+
+        @Override
+        public boolean onTouch(MotionEvent e) {
             if (e.isFromSource(InputDevice.SOURCE_MOUSE) || e.isFromSource(InputDevice.SOURCE_STYLUS)) return false;
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
@@ -186,23 +236,17 @@ final class GlassesDisplay {
                     float dx = e.getX() - downX, dy = e.getY() - downY;
                     if (Math.abs(dx) > slop || Math.abs(dy) > slop) {
                         taps = 0; h.removeCallbacks(singleTap);
-                        if (Math.abs(dx) >= Math.abs(dy)) key(dx > 0 ? KeyEvent.KEYCODE_DPAD_RIGHT : KeyEvent.KEYCODE_DPAD_LEFT);
-                        else key(dy > 0 ? KeyEvent.KEYCODE_DPAD_DOWN : KeyEvent.KEYCODE_DPAD_UP);
+                        if (Math.abs(dx) >= Math.abs(dy)) sendKey(act, dx > 0 ? KeyEvent.KEYCODE_DPAD_RIGHT : KeyEvent.KEYCODE_DPAD_LEFT);
+                        else sendKey(act, dy > 0 ? KeyEvent.KEYCODE_DPAD_DOWN : KeyEvent.KEYCODE_DPAD_UP);
                         return true;
                     }
                     if (e.getEventTime() - downT > 500) return true;
-                    if (++taps >= 2) { taps = 0; h.removeCallbacks(singleTap); key(KeyEvent.KEYCODE_BACK); }
+                    if (++taps >= 2) { taps = 0; h.removeCallbacks(singleTap); sendKey(act, KeyEvent.KEYCODE_BACK); }
                     else h.postDelayed(singleTap, 260);
                     return true;
                 default:
                     return true;
             }
-        }
-
-        private void key(int code) {
-            long now = android.os.SystemClock.uptimeMillis();
-            act.dispatchKeyEvent(new KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0));
-            act.dispatchKeyEvent(new KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0));
         }
     }
 }

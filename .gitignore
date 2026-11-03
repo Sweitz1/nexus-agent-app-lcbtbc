@@ -9,3 +9,6 @@ android/.idea/
 *.keystore
 .DS_Store
 node_modules/
+
+# RayNeo SDK binary (proprietary, see android/libs/rayneo/README.md)
+android/libs/rayneo/*.aar

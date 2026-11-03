@@ -18,6 +18,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import com.nexus.rayneo.GlassesDisplay;
+
 import org.json.JSONObject;
 
 import java.io.InputStream;
@@ -41,7 +43,7 @@ public class ClientActivity extends Activity {
     private final Map<Integer, String> permCallbacks = new HashMap<>();
     private int nextPerm = 200;
 
-    private GlassesDisplay.TempleInput temple;
+    private GlassesDisplay.Temple temple;
 
     /** On glasses the temple touchpad is the only touch surface: its strokes become navigation keys. */
     @Override
@@ -54,7 +56,7 @@ public class ClientActivity extends Activity {
     @Override
     public boolean dispatchGenericMotionEvent(android.view.MotionEvent e) {
         if (e.isFromSource(android.view.InputDevice.SOURCE_TOUCH_NAVIGATION) || e.isFromSource(android.view.InputDevice.SOURCE_TOUCHPAD)) {
-            if (temple == null) temple = new GlassesDisplay.TempleInput(this);
+            if (temple == null) temple = GlassesDisplay.temple(this, true);
             if (temple.onTouch(e)) return true;
         }
         return super.dispatchGenericMotionEvent(e);
@@ -67,8 +69,8 @@ public class ClientActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         web = new WebView(this);
         web.setBackgroundColor(0xFF000000);
-        setContentView(new GlassesDisplay.MirrorFrame(this, web, GlassesDisplay.mirrorActive(this)));
-        if (GlassesDisplay.templeActive(this)) temple = new GlassesDisplay.TempleInput(this);
+        setContentView(GlassesDisplay.wrap(this, web));
+        temple = GlassesDisplay.temple(this, false);
         web.setFocusable(true);
         web.setFocusableInTouchMode(true);
         web.requestFocus();
@@ -162,6 +164,7 @@ public class ClientActivity extends Activity {
     /** Touchpad: arrows/enter go to the page; back and assistant/menu keys become events. */
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
+        if (temple != null && temple.onKey(e)) return true;   // RayNeo X3 pinch key
         if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) {
             switch (e.getKeyCode()) {
                 case KeyEvent.KEYCODE_BACK: emit("back", "{}"); return true;

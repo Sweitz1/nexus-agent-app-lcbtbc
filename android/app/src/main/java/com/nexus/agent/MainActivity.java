@@ -19,6 +19,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import com.nexus.rayneo.GlassesDisplay;
+
 import org.json.JSONObject;
 
 import java.io.File;
@@ -57,7 +59,7 @@ public class MainActivity extends Activity {
     private boolean pageReady = false;
     private final ArrayList<String> pendingEvents = new ArrayList<>();
 
-    private GlassesDisplay.TempleInput temple;
+    private GlassesDisplay.Temple temple;
 
     /** On glasses the temple touchpad is the only touch surface: its strokes become navigation keys. */
     @Override
@@ -70,7 +72,7 @@ public class MainActivity extends Activity {
     @Override
     public boolean dispatchGenericMotionEvent(android.view.MotionEvent e) {
         if (e.isFromSource(android.view.InputDevice.SOURCE_TOUCH_NAVIGATION) || e.isFromSource(android.view.InputDevice.SOURCE_TOUCHPAD)) {
-            if (temple == null) temple = new GlassesDisplay.TempleInput(this);
+            if (temple == null) temple = GlassesDisplay.temple(this, true);
             if (temple.onTouch(e)) return true;
         }
         return super.dispatchGenericMotionEvent(e);
@@ -85,8 +87,8 @@ public class MainActivity extends Activity {
         webView.setBackgroundColor(0xFF000000);
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
-        setContentView(new GlassesDisplay.MirrorFrame(this, webView, GlassesDisplay.mirrorActive(this)));
-        if (GlassesDisplay.templeActive(this)) temple = new GlassesDisplay.TempleInput(this);
+        setContentView(GlassesDisplay.wrap(this, webView));
+        temple = GlassesDisplay.temple(this, false);
 
         WebSettings ws = webView.getSettings();
         ws.setJavaScriptEnabled(true);
@@ -431,6 +433,7 @@ public class MainActivity extends Activity {
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (temple != null && temple.onKey(event)) return true;   // RayNeo X3 pinch key
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
             emit("back", "{}");
             return true;

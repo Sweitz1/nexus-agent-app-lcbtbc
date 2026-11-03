@@ -167,6 +167,13 @@ The X3 and X3 Pro show both eye panels as one wide logical screen. A normal Andr
 
 Both are set to **Auto**. They turn on when the device looks like RayNeo glasses or the screen is a side-by-side ratio (2.4:1 or wider). You can force them on or off in *Settings → Display & voice* (phone app) or *☰ → Settings* (glasses client). Changing a setting reloads the screen.
 
+**RayNeo Mercury Android SDK (optional):** if the SDK is built in, both apps use RayNeo's own pieces:
+- its temple-gesture dispatcher, which has separate X2 and X3 versions and also handles the X3 pinch key and triple and two-finger taps;
+- its X3 detection (model `ARGF20`) and the "glasses worn" state;
+- a third mirror mode, **RayNeo SDK mirror** (`MirroringView`).
+
+The SDK is RayNeo's proprietary software and this repository is public, so the AAR is not committed. See [`android/libs/rayneo/README.md`](android/libs/rayneo/README.md) for how to add it locally or in CI. Without it, the built-in mirror and gesture code is used.
+
 Nexus does not use Brilliant Labs' Halo/Frame SDK. That SDK is for a different, Bluetooth-based device and doesn't work with RayNeo glasses.
 
 ## First-time setup (about 2 minutes)
@@ -491,7 +498,6 @@ android/
     AxmlParser.java        binary AndroidManifest.xml parser (components, intent filters, deep links)
     WebhookServer.java     LAN HTTP server: incoming webhooks, phone remote console, glasses client API
     ServerKeepAliveService.java  foreground service that keeps the server alive while glasses are served
-    GlassesDisplay.java    binocular mirror (one copy per eye) + temple touchpad gestures (also in the glasses client)
   app/src/main/assets/
     index.html          core agent runtime and UI (providers, agents, modes, webhooks)
     js/skills-pro.js    files, coding, engineering, image, PDF, OCR, zip, video, maps, phone, translation skills
@@ -508,6 +514,10 @@ android/
     hud.html            HUD shown on external display glasses
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console
+  shared/                 code used by both APKs (shared/rayneo.gradle)
+    java/com/nexus/rayneo/GlassesDisplay.java  binocular mirror + temple touchpad gestures
+    sdk/ | nosdk/          RayNeoSdk bridge: with / without the RayNeo Mercury SDK
+  libs/rayneo/            place for the optional RayNeo SDK AAR (git-ignored)
   glasses/                Nexus Glasses client APK (com.nexus.agent.glasses)
     src/main/java/com/nexus/glasses/
       ClientActivity.java  WebView host, glasses keys (assistant/camera/menu/back), permissions

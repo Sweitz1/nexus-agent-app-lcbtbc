@@ -1,0 +1,29 @@
+// Shared glasses code for both APKs, plus the optional RayNeo Mercury Android SDK.
+//
+// The SDK is proprietary and is NOT committed to this (public) repository. Put the AAR at
+// android/libs/rayneo/MercuryAndroidSDK.aar (CI writes it there from the RAYNEO_SDK_AAR_BASE64
+// secret). Without it the apps build with Nexus' own mirror and temple-gesture code.
+def rayneoAar = rootProject.file('libs/rayneo/MercuryAndroidSDK.aar')
+def withRayneo = rayneoAar.exists()
+println("Nexus: RayNeo Mercury SDK ${withRayneo ? 'found — using RayNeo gestures/mirroring' : 'not present — using built-in fallback'} (${project.name})")
+
+android {
+    sourceSets {
+        main {
+            java.srcDirs += [rootProject.file('shared/java'), rootProject.file(withRayneo ? 'shared/sdk/java' : 'shared/nosdk/java')]
+        }
+    }
+}
+
+dependencies {
+    if (withRayneo) {
+        implementation files(rayneoAar)
+        // The AAR ships without a POM; these are the libraries it is compiled against.
+        implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+        implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+        implementation 'androidx.appcompat:appcompat:1.6.1'
+        implementation 'androidx.recyclerview:recyclerview:1.3.2'
+        implementation 'androidx.lifecycle:lifecycle-viewmodel:2.6.2'
+        implementation 'androidx.databinding:viewbinding:8.5.2'
+    }
+}

@@ -46,6 +46,22 @@ jobs:
             echo "NEXUS_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
           fi
 
+      - name: RayNeo Mercury SDK (optional)
+        # The SDK is proprietary, so it is never committed in plain form. Either commit it
+        # encrypted (android/libs/rayneo/MercuryAndroidSDK.aar.gpg, passphrase in the
+        # RAYNEO_SDK_PASSPHRASE secret) or put a private download link in RAYNEO_SDK_URL.
+        env:
+          RAYNEO_SDK_PASSPHRASE: ${{ secrets.RAYNEO_SDK_PASSPHRASE }}
+          RAYNEO_SDK_URL: ${{ secrets.RAYNEO_SDK_URL }}
+        run: |
+          OUT=android/libs/rayneo/MercuryAndroidSDK.aar
+          if [ -n "$RAYNEO_SDK_PASSPHRASE" ] && [ -f "$OUT.gpg" ]; then
+            gpg --batch --quiet --pinentry-mode loopback --passphrase "$RAYNEO_SDK_PASSPHRASE" -o "$OUT" -d "$OUT.gpg"
+          elif [ -n "$RAYNEO_SDK_URL" ]; then
+            curl -fsSL -o "$OUT" "$RAYNEO_SDK_URL"
+          fi
+          if [ -f "$OUT" ]; then unzip -tq "$OUT" && echo "RayNeo SDK: included"; else echo "RayNeo SDK: not configured (built-in fallback)"; fi
+
       - name: Build APKs
         working-directory: android
         env:

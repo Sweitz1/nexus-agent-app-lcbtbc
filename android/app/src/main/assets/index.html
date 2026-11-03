@@ -960,10 +960,11 @@ function importConfig(c) {
    once per eye; temple mode turns touchpad strokes into navigation. Stored natively (applies on change). */
 function displayModeHtml() {
   if (!N || !N.displayMode) return '';
-  const d = parseJSON(N.displayMode(), {}); const opt = k => ['auto', 'on', 'off'].map(m => `<option value="${m}"${d[k] === m ? ' selected' : ''}>${m === 'auto' ? 'Auto (detect glasses)' : m === 'on' ? 'On' : 'Off'}</option>`).join('');
+  const d = parseJSON(N.displayMode(), {}); const label = { auto: 'Auto (detect glasses)', on: 'On', sdk: 'On — RayNeo SDK mirror', off: 'Off' };
+  const opt = k => (k === 'mirror' && d.rayneoSdk ? ['auto', 'on', 'sdk', 'off'] : ['auto', 'on', 'off']).map(m => `<option value="${m}"${d[k] === m ? ' selected' : ''}>${label[m]}</option>`).join('');
   return `<div class="row"><div><label>Binocular mirror (one copy per eye)</label><select id="dmMirror">${opt('mirror')}</select></div>
     <div><label>Temple touchpad gestures</label><select id="dmTemple">${opt('temple')}</select></div></div>
-    <p class="hint">Now: mirror ${d.mirrorActive ? 'on' : 'off'} · temple ${d.templeActive ? 'on' : 'off'} · screen ${d.width}×${d.height}. Temple: swipe forward/back = next/previous, swipe up/down = scroll, tap = select, double tap = back, long press = voice.</p>`;
+    <p class="hint">Now: mirror ${d.mirrorActive ? 'on' + (d.mirrorEngine === 'sdk' ? ' (RayNeo SDK)' : '') : 'off'} · temple ${d.templeActive ? 'on' + (d.rayneoSdk && d.arGlasses ? ' (RayNeo SDK)' : '') : 'off'} · screen ${d.width}×${d.height}${d.x3 ? ' · RayNeo X3 detected' : ''}${d.wearing != null ? ` · ${d.wearing ? 'worn' : 'not worn'}` : ''}. Temple: swipe forward/back = next/previous, swipe up/down = scroll, tap = select, double tap = back, long press = voice.</p>`;
 }
 function bindDisplayMode(v) {
   for (const [id, key] of [['#dmMirror', 'mirror'], ['#dmTemple', 'temple']]) { const el = $(id, v); if (el) el.onchange = () => N.setDisplayMode(key, el.value); }

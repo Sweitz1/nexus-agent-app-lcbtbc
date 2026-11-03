@@ -223,7 +223,7 @@ $('#more').onclick = () => {
 };
 function settings() {
   const dm = N && N.displayMode ? JSON.parse(N.displayMode() || '{}') : null;
-  const next = m => ({ auto: 'on', on: 'off', off: 'auto' })[m] || 'auto';
+  const next = m => (dm.rayneoSdk ? { auto: 'on', on: 'sdk', sdk: 'off', off: 'auto' } : { auto: 'on', on: 'off', off: 'auto' })[m] || 'auto';
   overlay(`<h3 style="margin:.1em 0">Settings</h3>
     <div class="row"><button class="f" id="sSpeak">${cfg.speak ? '🔊 Speak answers: on' : '🔇 Speak answers: off'}</button><button class="f" id="sEv">${cfg.speakEvents ? '🔔 Speak notifications: on' : '🔕 Speak notifications: off'}</button></div>
     <div class="row"><button class="f" id="sBig">A+</button><button class="f" id="sSmall">A−</button></div>

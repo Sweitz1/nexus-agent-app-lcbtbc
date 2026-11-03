@@ -27,6 +27,8 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.webkit.JavascriptInterface;
 
+import com.nexus.rayneo.GlassesDisplay;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
