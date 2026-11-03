@@ -2,6 +2,8 @@ name: Build Release
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ccr-ea3a135c-yzo362]
 
 jobs:
   android:
