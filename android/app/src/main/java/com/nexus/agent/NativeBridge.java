@@ -59,6 +59,7 @@ import java.util.concurrent.Executors;
 public class NativeBridge {
 
     private static final int MAX_BODY_BYTES = 8 * 1024 * 1024;
+    private static final java.util.Set<String> STD_METHODS = new java.util.HashSet<>(java.util.Arrays.asList("GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"));
 
     private final MainActivity activity;
     private final SharedPreferences prefs;
@@ -70,6 +71,8 @@ public class NativeBridge {
     private WebhookServer server;
     final Workspace workspace;
     private final MediaTools media;
+    private final EmailClient email;
+    private final CalendarTools calendar;
     private String pickCallbackId, exportCallbackId, exportPath, cameraCallbackId;
     private File cameraFile;
 
@@ -77,6 +80,8 @@ public class NativeBridge {
         this.activity = activity;
         this.workspace = new Workspace(activity);
         this.media = new MediaTools(workspace);
+        this.email = new EmailClient(workspace);
+        this.calendar = new CalendarTools(activity);
         this.prefs = activity.getSharedPreferences("nexus_secure", Context.MODE_PRIVATE);
         tts = new TextToSpeech(activity, status -> {
             ttsReady = status == TextToSpeech.SUCCESS;
@@ -150,6 +155,12 @@ public class NativeBridge {
             try {
                 JSONObject req = new JSONObject(reqJson);
                 String method = req.optString("method", "GET").toUpperCase(Locale.ROOT);
+                if (!STD_METHODS.contains(method)) {
+                    // WebDAV/CalDAV verbs and PATCH: HttpURLConnection refuses them.
+                    String b = req.has("body") && !req.isNull("body") ? req.optString("body") : null;
+                    activity.callback(id, true, RawHttp.request(method, req.getString("url"), req.optJSONObject("headers"), b, req.optInt("timeoutMs", 120000)).toString());
+                    return;
+                }
                 URL url = new URL(req.getString("url"));
                 String scheme = url.getProtocol();
                 if (!"http".equals(scheme) && !"https".equals(scheme)) throw new IllegalArgumentException("Only http/https URLs are allowed");
@@ -724,6 +735,97 @@ public class NativeBridge {
     /** spec {op:info|frames|trim|audio|mute, path, ...}; see MediaTools. */
     @JavascriptInterface
     public void video(String id, String specJson) { async(id, () -> media.video(new JSONObject(specJson))); }
+
+    // ------------------------------------------------------------------ email & calendar
+
+    /** IMAP/SMTP; spec {op: test|folders|list|read|modify|send, account:{...}, ...}. See EmailClient. */
+    @JavascriptInterface
+    public void email(String id, String specJson) { async(id, () -> email.run(new JSONObject(specJson))); }
+
+    /** Opens the user's mail app with a draft (they review and tap send). Attachments are workspace paths. */
+    @JavascriptInterface
+    public String composeEmail(String specJson) {
+        try {
+            JSONObject s = new JSONObject(specJson);
+            JSONArray atts = s.optJSONArray("attachments");
+            Intent i;
+            if (atts != null && atts.length() > 0) {
+                ArrayList<Uri> uris = new ArrayList<>();
+                for (int k = 0; k < atts.length(); k++) uris.add(WorkspaceProvider.uriFor(activity, workspace.resolve(atts.getString(k))));
+                i = new Intent(uris.size() == 1 ? Intent.ACTION_SEND : Intent.ACTION_SEND_MULTIPLE);
+                i.setType("message/rfc822");
+                if (uris.size() == 1) i.putExtra(Intent.EXTRA_STREAM, uris.get(0));
+                else i.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                android.content.ClipData clip = android.content.ClipData.newRawUri("attachment", uris.get(0));
+                for (int k = 1; k < uris.size(); k++) clip.addItem(new android.content.ClipData.Item(uris.get(k)));
+                i.setClipData(clip);
+                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } else {
+                i = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:"));
+            }
+            i.putExtra(Intent.EXTRA_EMAIL, split(s.optString("to")));
+            i.putExtra(Intent.EXTRA_CC, split(s.optString("cc")));
+            i.putExtra(Intent.EXTRA_BCC, split(s.optString("bcc")));
+            i.putExtra(Intent.EXTRA_SUBJECT, s.optString("subject"));
+            i.putExtra(Intent.EXTRA_TEXT, s.optString("body"));
+            Intent chooser = Intent.createChooser(i, "Send email");
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            activity.startActivity(chooser);
+            return "Email draft opened in the mail app";
+        } catch (ActivityNotFoundException e) {
+            return "No email app on this device. Add an email account in Nexus settings to send directly.";
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    private static String[] split(String list) {
+        if (list == null || list.trim().isEmpty()) return new String[0];
+        String[] p = list.split("[,;]");
+        for (int i = 0; i < p.length; i++) p[i] = p[i].trim();
+        return p;
+    }
+
+    /** Android device calendars; spec {op: calendars|events|create|update|delete, ...}. Needs calendar permissions. */
+    @JavascriptInterface
+    public void calendar(String id, String specJson) {
+        async(id, () -> {
+            JSONObject s = new JSONObject(specJson);
+            boolean write = !s.optString("op").equals("calendars") && !s.optString("op").equals("events");
+            String perm = write ? android.Manifest.permission.WRITE_CALENDAR : android.Manifest.permission.READ_CALENDAR;
+            if (!activity.hasPermission(perm)) throw new SecurityException("Calendar permission not granted");
+            return calendar.run(s);
+        });
+    }
+
+    /** Opens the calendar app's "new event" screen pre-filled (no permission needed). */
+    @JavascriptInterface
+    public String calendarInsertIntent(String eventJson) {
+        try {
+            JSONObject e = new JSONObject(eventJson);
+            Intent i = new Intent(Intent.ACTION_INSERT).setData(android.provider.CalendarContract.Events.CONTENT_URI);
+            i.putExtra(android.provider.CalendarContract.Events.TITLE, e.optString("title"));
+            i.putExtra(android.provider.CalendarContract.Events.DESCRIPTION, e.optString("description"));
+            i.putExtra(android.provider.CalendarContract.Events.EVENT_LOCATION, e.optString("location"));
+            if (e.has("startMs")) i.putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, e.getLong("startMs"));
+            if (e.has("endMs")) i.putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, e.getLong("endMs"));
+            i.putExtra(android.provider.CalendarContract.EXTRA_EVENT_ALL_DAY, e.optBoolean("allDay"));
+            if (!e.optString("rrule").isEmpty()) i.putExtra(android.provider.CalendarContract.Events.RRULE, e.optString("rrule"));
+            JSONArray att = e.optJSONArray("attendees");
+            if (att != null && att.length() > 0) {
+                StringBuilder sb = new StringBuilder();
+                for (int k = 0; k < att.length(); k++) { if (k > 0) sb.append(','); sb.append(att.getString(k)); }
+                i.putExtra(Intent.EXTRA_EMAIL, sb.toString());
+            }
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(i);
+            return "Calendar app opened with the event filled in (tap save)";
+        } catch (ActivityNotFoundException e) {
+            return "No calendar app on this device";
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
 
     // ------------------------------------------------------------------ location
 

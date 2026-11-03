@@ -22,7 +22,7 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   - outgoing webhooks
   - delegation to other agents
 
-  **Pro skills** (64 skills in total; each one can be turned on or off per agent):
+  **Pro skills** (79 skills in total; each one can be turned on or off per agent):
 
   | Group | Skills |
   |---|---|
@@ -37,6 +37,8 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   | Maps | `apple_maps_search`, `apple_maps_directions`, `apple_maps_open`, `get_location` |
   | Phone | `contacts_search`, `phone_call` (opens the dialer, or calls directly), `send_sms` (prefilled message; you tap send) |
   | Translation | `translate` (AI model, DeepL or LibreTranslate), `translate_image` (signs, menus), `translate_file` (text and PDF files) |
+  | Email | `email_list` (inbox, unread, search by text, sender or date), `email_read` (full text; saves attachments to the workspace), `email_send`, `email_reply` (threaded, with reply-all), `email_manage` (read/unread, flag, move, delete), `email_folders`, `email_compose` (opens your mail app with a draft; needs no account) |
+  | Calendar | `calendar_list_calendars`, `calendar_events` (today, this week, next N days, search), `calendar_create_event` (reminders, attendees, recurrence), `calendar_update_event`, `calendar_delete_event`, `calendar_find_free_time`, `calendar_export_ics` (invites to email), `calendar_import_ics` |
 
   You can also add your own **HTTP skills** (Home Assistant, n8n or your own API, with `{{param}}` templates) and **prompt skills**.
 - **Webhooks:**
@@ -142,6 +144,35 @@ Small local models often don't support tool calling. The app detects this and co
 - **Confirmation.** Risky skills ask before running. These are deleting files, calls, SMS, contacts, location, app launching, intents, raw HTTP and webhooks. In the **Skills** tab you can tick *always allow* on any of them.
 - **Upgrading from 1.0.0.** The app now runs from a secure local origin, which the camera, workers and WebAssembly need. Agents and settings saved in 1.0.0 don't carry over, but API keys do. To keep your configuration, use *Settings → Export config* on 1.0.0 before upgrading, then import it on 1.1.0.
 
+## Email and calendar setup
+
+Open *Settings → Email & calendar*. You can also paste the passwords from your phone using the remote console's **Set API keys & passwords** section.
+
+**Email** uses IMAP to read mail and SMTP to send it. Pick a preset, enter your address, and paste an **app password**. Most providers no longer accept your normal password for apps like this.
+
+| Provider | Where to create the app password |
+|---|---|
+| Gmail | Google Account → Security → 2-Step Verification → App passwords |
+| iCloud Mail | appleid.apple.com → Sign-In and Security → App-Specific Passwords |
+| Yahoo / Fastmail / Zoho | Account security settings → App passwords |
+| Outlook / Microsoft 365 | Microsoft blocks password sign-in on many accounts. If **Test** fails, use `email_compose`, which drafts the message in the Outlook app |
+
+- Copies of mail you send are saved to your Sent folder. Gmail does this itself.
+- Without an account, agents can still draft emails in your mail app using `email_compose`, including attachments.
+
+**Calendar** can use two sources, and agents see both together:
+
+- **Android device calendars:** every calendar account synced on the device, such as Google, Exchange or Samsung. The app asks for calendar permission the first time.
+- **CalDAV accounts:** iCloud, Fastmail, Nextcloud, Yahoo, Zoho, or any CalDAV server, with an app password. Use this on the RayNeo X3 Pro if the glasses have no Google account. iCloud uses `https://caldav.icloud.com/` with your Apple ID email and an app-specific password.
+
+Choose the **default calendar** for new events with *Load calendars*, or ask the agent to use a specific calendar.
+
+Notes:
+
+- New events on device calendars can also go through the calendar app (`method: "app"`), so you confirm them on screen.
+- Whether attendee invitations are sent depends on the calendar service. For a guaranteed invite, the agent can create an `.ics` file and email it.
+- Sending email, replying, moving or deleting mail, and creating, changing or deleting events all ask for confirmation by default.
+
 ## Incoming webhook API
 
 All endpoints need the token, sent in one of three ways:
@@ -191,10 +222,14 @@ android/
     Workspace.java         sandboxed private file workspace
     WorkspaceProvider.java content:// provider for opening/sharing files and camera output
     MediaTools.java        zip create/extract/list, video info/frames/trim/audio (framework only)
+    EmailClient.java       IMAP/SMTP via JavaMail: list, search, read, attachments, flags, move, send
+    CalendarTools.java     Android CalendarContract: calendars, events (recurrences expanded), create/update/delete
+    RawHttp.java           HTTP/1.1 client for WebDAV/CalDAV verbs (PROPFIND, REPORT) and PATCH
     WebhookServer.java     LAN HTTP server: incoming webhooks + phone remote console
   app/src/main/assets/
     index.html          core agent runtime and UI (providers, agents, modes, webhooks)
     js/skills-pro.js    files, coding, engineering, image, PDF, OCR, zip, video, maps, phone, translation skills
+    js/skills-comms.js  email and calendar skills, CalDAV client, iCalendar parser/writer, account settings
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console
 .github/workflows/build-apk.yml

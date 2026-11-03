@@ -194,7 +194,7 @@ public class MainActivity extends Activity {
                 {"png", "image/png"}, {"jpg", "image/jpeg"}, {"jpeg", "image/jpeg"}, {"webp", "image/webp"},
                 {"gif", "image/gif"}, {"bmp", "image/bmp"}, {"pdf", "application/pdf"}, {"zip", "application/zip"},
                 {"mp4", "video/mp4"}, {"webm", "video/webm"}, {"m4a", "audio/mp4"}, {"mp3", "audio/mpeg"},
-                {"wav", "audio/wav"}, {"gz", "application/gzip"}};
+                {"wav", "audio/wav"}, {"gz", "application/gzip"}, {"ics", "text/calendar"}, {"eml", "message/rfc822"}};
         for (String[] e : m) MIME.put(e[0], e[1]);
     }
 

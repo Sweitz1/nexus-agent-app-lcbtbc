@@ -879,7 +879,8 @@ onNative('webhook', async ev => {
     if (path === '/notify') { addMsg({ role: 'system', content: '🔔 ' + (b.text || b.message || ev.body || q.text || ''), ts: Date.now() }); if (N) N.vibrate(80); return reply(200, { ok: true }); }
     if (path === '/config/keys' && ev.method === 'POST') {
       const done = [];
-      Object.entries(b).forEach(([pid, key]) => { if (providerById(pid) && typeof key === 'string' && key.trim()) { setKey(pid, key); done.push(pid); } });
+      const allowed = new Set(secretIds().map(x => x.id));
+      Object.entries(b).forEach(([pid, key]) => { if (allowed.has(pid) && typeof key === 'string' && key.trim()) { setKey(pid, key); done.push(pid); } });
       if (currentTab === 'providers') renderProviders();
       toast('Keys updated from phone: ' + (done.join(', ') || 'none'));
       return reply(200, { saved: done, providers: S.providers.map(p => ({ id: p.id, name: p.name, hasKey: !!getKey(p.id) })) });
@@ -890,7 +891,7 @@ onNative('webhook', async ev => {
       if (!ok) return reply(403, { error: 'declined on device' });
       importConfig(b); return reply(200, { ok: true });
     }
-    if (path === '/config/providers' && ev.method === 'GET') return reply(200, { providers: S.providers.map(p => ({ id: p.id, name: p.name, hasKey: !!getKey(p.id), local: p.local })) });
+    if (path === '/config/providers' && ev.method === 'GET') return reply(200, { providers: S.providers.map(p => ({ id: p.id, name: p.name, hasKey: !!getKey(p.id), local: p.local })), services: secretIds().filter(x => !providerById(x.id)).map(x => ({ ...x, hasKey: !!getKey(x.id) })) });
     let prompt, agentName = b.agent || q.agent, mode = b.mode || q.mode || 'solo';
     if (path === '/run' || path === '/ask' || path === '/api/run') prompt = b.prompt || b.text || b.message || b.q || q.q || q.prompt || (body ? '' : ev.body);
     else if (path.startsWith('/hook')) prompt = `An incoming webhook "${path.slice(6) || 'default'}" was received${ev.method ? ' (' + ev.method + ')' : ''}. Handle it appropriately (act with your skills if it asks for something), then summarize what you did.\n\nPayload:\n${clip(ev.body || JSON.stringify(q), 8000)}`;
@@ -907,13 +908,13 @@ onNative('webhook', async ev => {
 
 /* ====================================================================== UI: settings */
 function exportConfig(withKeys) {
-  const c = { nexus: 1, providers: S.providers, agents: S.agents, customSkills: S.customSkills, disabledSkills: S.disabledSkills, webhooks: S.webhooks, settings: { ...S.settings, server: { ...S.settings.server, token: undefined } } };
-  if (withKeys) c.keys = Object.fromEntries(S.providers.map(p => [p.id, getKey(p.id)]).filter(x => x[1]));
+  const c = { nexus: 1, providers: S.providers, agents: S.agents, customSkills: S.customSkills, disabledSkills: S.disabledSkills, webhooks: S.webhooks, emailAccounts: S.emailAccounts, caldavAccounts: S.caldavAccounts, autoApprove: S.autoApprove, settings: { ...S.settings, server: { ...S.settings.server, token: undefined } } };
+  if (withKeys) c.keys = Object.fromEntries(secretIds().map(x => [x.id, getKey(x.id)]).filter(x => x[1]));
   return c;
 }
 function importConfig(c) {
   if (!c || c.nexus !== 1) throw new Error('Not a Nexus config');
-  ['providers', 'agents', 'customSkills', 'disabledSkills', 'webhooks'].forEach(k => { if (Array.isArray(c[k])) S[k] = c[k]; });
+  ['providers', 'agents', 'customSkills', 'disabledSkills', 'webhooks', 'emailAccounts', 'caldavAccounts', 'autoApprove'].forEach(k => { if (Array.isArray(c[k])) S[k] = c[k]; });
   if (c.settings) { const tok = S.settings.server.token; S.settings = { ...S.settings, ...c.settings, server: { ...S.settings.server, ...(c.settings.server || {}), token: tok } }; }
   if (c.keys) Object.entries(c.keys).forEach(([k, v]) => setKey(k, v));
   if (!agentById(S.current)) S.current = S.agents[0].id;
@@ -1036,5 +1037,6 @@ window.Nexus = { S, dispatch, runAgent, execSkill, exportConfig, importConfig, a
 document.addEventListener('DOMContentLoaded', boot);
 </script>
 <script src="js/skills-pro.js"></script>
+<script src="js/skills-comms.js"></script>
 </body>
 </html>

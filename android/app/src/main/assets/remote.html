@@ -31,7 +31,7 @@ summary{cursor:pointer;color:var(--accent)}
 <div class="row"><label style="display:flex;align-items:center;gap:6px;margin:0"><input id="speak" type="checkbox" style="width:auto">Read reply aloud on glasses</label><button id="send">Send</button></div>
 <div id="out" class="out"></div>
 
-<details><summary>Set API keys</summary>
+<details><summary>Set API keys &amp; passwords</summary>
   <p class="hint">Keys are sent over your local Wi-Fi to the glasses and stored in app-private storage there.</p>
   <div id="keys"></div>
   <button id="saveKeys">Save keys to glasses</button>
@@ -61,7 +61,7 @@ async function load() {
     const a = await api('GET', '/agents');
     $('#agent').innerHTML = a.agents.map(x => `<option ${x.name === a.current ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
     const p = await api('GET', '/config/providers');
-    $('#keys').innerHTML = p.providers.map(x => `<label>${esc(x.name)} ${x.hasKey ? '✓ saved' : (x.local ? '(local, optional)' : '')}</label><input data-pid="${esc(x.id)}" type="password" autocomplete="off" placeholder="${x.hasKey ? 'leave empty to keep' : 'paste key'}">`).join('');
+    $('#keys').innerHTML = [...p.providers, ...(p.services || [])].map(x => `<label>${esc(x.name)} ${x.hasKey ? '✓ saved' : (x.local ? '(local, optional)' : '')}</label><input data-pid="${esc(x.id)}" type="password" autocomplete="off" placeholder="${x.hasKey ? 'leave empty to keep' : 'paste key'}">`).join('');
     $('#out').textContent = 'Connected.';
   } catch (e) { $('#out').textContent = 'Not connected: ' + e.message; }
 }
