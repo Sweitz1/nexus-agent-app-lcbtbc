@@ -18,7 +18,6 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.debug
         }
     }
 
@@ -29,3 +28,4 @@ android {
 }
 
 apply from: rootProject.file('shared/rayneo.gradle')
+apply from: rootProject.file('shared/signing.gradle')

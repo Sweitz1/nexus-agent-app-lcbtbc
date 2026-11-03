@@ -1,0 +1,39 @@
+// Release signing shared by both APKs (phone app and Nexus Glasses).
+//
+// Your release key is supplied by CI secrets (never committed): NEXUS_KEYSTORE_PATH (written from
+// NEXUS_KEYSTORE_BASE64), NEXUS_KEYSTORE_PASSWORD, NEXUS_KEY_ALIAS, NEXUS_KEY_PASSWORD.
+// Without them, everyday builds fall back to the debug key so they still install via adb; tagged
+// releases set NEXUS_REQUIRE_RELEASE_KEY=1 and refuse to build unsigned.
+def ks = System.getenv('NEXUS_KEYSTORE_PATH')
+def haveKey = ks != null && new File(ks).exists()
+if (!haveKey && System.getenv('NEXUS_REQUIRE_RELEASE_KEY') == '1') {
+    throw new GradleException('Release key missing: add the NEXUS_KEYSTORE_BASE64, NEXUS_KEYSTORE_PASSWORD, NEXUS_KEY_ALIAS and NEXUS_KEY_PASSWORD repository secrets')
+}
+
+android {
+    signingConfigs {
+        release {
+            if (haveKey) {
+                storeFile file(ks)
+                storePassword System.getenv('NEXUS_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('NEXUS_KEY_ALIAS')
+                keyPassword System.getenv('NEXUS_KEY_PASSWORD')
+            } else {
+                def dbg = signingConfigs.getByName('debug')
+                storeFile dbg.storeFile
+                storePassword dbg.storePassword
+                keyAlias dbg.keyAlias
+                keyPassword dbg.keyPassword
+            }
+            // v1 (JAR) for old installers, v2 + v3 (APK Signature Scheme; v3 allows key rotation).
+            enableV1Signing true
+            enableV2Signing true
+            enableV3Signing true
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}

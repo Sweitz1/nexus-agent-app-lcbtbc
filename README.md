@@ -101,9 +101,29 @@ gradle assembleRelease      # -> app/build/outputs/apk/release/app-release.apk
                             #    glasses/build/outputs/apk/release/glasses-release.apk
 ```
 
-### Optional: your own signing key
+### Release signing and publishing
 
-Without a key, the release APK is signed with the standard debug key. That is fine for sideloading. To use your own key, add these repository secrets: `NEXUS_KEYSTORE_BASE64` (a base64-encoded `.jks` file), `NEXUS_KEYSTORE_PASSWORD`, `NEXUS_KEY_ALIAS` and `NEXUS_KEY_PASSWORD`.
+Both APKs are signed with APK Signature Scheme v1, v2 and v3. With your release key in the repository secrets, every build is signed with it:
+
+| Secret | Value |
+|---|---|
+| `NEXUS_KEYSTORE_BASE64` | `base64 -w0 your-release.jks` |
+| `NEXUS_KEYSTORE_PASSWORD` | keystore password |
+| `NEXUS_KEY_ALIAS` | key alias |
+| `NEXUS_KEY_PASSWORD` | key password (the same as the keystore password for PKCS12) |
+
+Without the secrets, everyday builds use the debug key so they still install with `adb`.
+
+**Publishing a release:** push a version tag, for example `git tag v2.6.0 && git push origin v2.6.0`. The workflow then:
+
+1. refuses to build unless your release key is configured;
+2. builds both APKs and the Google Play bundles (`.aab`);
+3. verifies the signatures with `apksigner`;
+4. publishes a **GitHub Release** with the APKs, AABs, `SHA256SUMS.txt` and `SIGNING.txt` (the certificate's SHA-256 fingerprint).
+
+Keep the keystore and its password backed up. Updates only install over an existing app when they are signed with the same key. Switching from debug-signed builds to your key needs one uninstall and reinstall.
+
+**Google Play:** the `.aab` files are what you upload in the Play Console. That needs your own developer account, and you turn on Play App Signing there. Expect Google's policy reviews for these features: screen control (accessibility), all-apps visibility, installing APKs, calling, the overlay, and the special-use foreground service. Some may have to be removed or justified for a Play listing. Sideloading the GitHub release APKs works without any of that.
 
 ## Install on RayNeo X3 Pro
 

@@ -17,32 +17,11 @@ android {
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
     }
 
-    signingConfigs {
-        // Optional release signing from CI secrets; falls back to the debug key so the
-        // release APK is always installable via `adb install`.
-        release {
-            def ks = System.getenv('NEXUS_KEYSTORE_PATH')
-            if (ks != null && new File(ks).exists()) {
-                storeFile file(ks)
-                storePassword System.getenv('NEXUS_KEYSTORE_PASSWORD')
-                keyAlias System.getenv('NEXUS_KEY_ALIAS')
-                keyPassword System.getenv('NEXUS_KEY_PASSWORD')
-            } else {
-                def dbg = signingConfigs.getByName('debug')
-                storeFile dbg.storeFile
-                storePassword dbg.storePassword
-                keyAlias dbg.keyAlias
-                keyPassword dbg.keyPassword
-            }
-        }
-    }
-
     buildTypes {
         debug {
         }
         release {
             minifyEnabled false
-            signingConfig signingConfigs.release
         }
     }
 
@@ -69,3 +48,4 @@ dependencies {
 }
 
 apply from: rootProject.file('shared/rayneo.gradle')
+apply from: rootProject.file('shared/signing.gradle')
