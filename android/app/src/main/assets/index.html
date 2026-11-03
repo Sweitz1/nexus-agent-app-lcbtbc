@@ -607,7 +607,7 @@ function renderMessages() {
 function historyForRun() { return S.chat.filter(m => !m.pending && !m.error && (m.role === 'user' || m.role === 'assistant')).slice(-24); }
 
 async function runWithBubble(agent, prompt, history, origin, token, images = []) {
-  const m = addMsg({ role: 'assistant', agent: agent.name, content: '', pending: true, steps: [], ts: Date.now() });
+  const m = addMsg({ role: 'assistant', agent: agent.name, content: '', pending: true, steps: [], ts: Date.now(), origin });
   try {
     const r = await runAgent(agent, prompt, { history, token, origin, images, onStep: s => { if (s.done) { m.steps = m.steps.filter(x => x.result !== '…' || x.name !== s.name); m.steps.push(s); } else m.steps.push(s); renderMessages(); } });
     m.content = r.text; m.steps = r.steps; m.pending = false; save(); renderMessages();
@@ -660,7 +660,7 @@ async function dispatch(prompt, { mode = S.mode, agentId = S.current, origin = '
   } else {
     final = await runWithBubble(agent, prompt, history, origin, token, images);
   }
-  if (S.settings.speakReplies && origin !== 'webhook') speak(final);
+  if (S.settings.speakReplies && !['webhook', 'glasses'].includes(origin)) speak(final);
   notifyReplyHooks(finalAgent, prompt, final, origin);
   return { agent: finalAgent, text: final };
 }
@@ -903,6 +903,7 @@ GET  ${esc(url)}/agents</code>
 
 /** Handles requests arriving at the native LAN server. */
 onNative('webhook', async ev => {
+  if (String(ev.path || '').startsWith('/client/')) return; // handled by the glasses-client server (js/server-phone.js)
   const reply = (status, data, type = 'application/json') => N.serverRespond(ev.reqId, status, type, typeof data === 'string' ? data : JSON.stringify(data));
   try {
     const q = Object.fromEntries(new URLSearchParams(ev.query || ''));
@@ -1082,5 +1083,6 @@ document.addEventListener('DOMContentLoaded', boot);
 <script src="js/skills-dev.js"></script>
 <script src="js/skills-trust.js"></script>
 <script src="js/skills-auto.js"></script>
+<script src="js/server-phone.js"></script>
 </body>
 </html>

@@ -141,7 +141,10 @@ class WebhookServer extends Thread {
             }
             if (path.equals("/health")) { write(out, 200, "application/json", "{\"ok\":true,\"app\":\"nexus-agent\"}"); return; }
 
-            if (!token.isEmpty()) {
+            // Glasses-client pairing exchanges a short PIN for the token, so it is the one open path
+            // (the JS side rate-limits it and the PIN expires after a few minutes).
+            boolean open = path.equals("/client/pair") && method.equals("POST");
+            if (!token.isEmpty() && !open) {
                 String supplied = "";
                 String auth = headers.optString("authorization", "");
                 if (auth.toLowerCase(Locale.ROOT).startsWith("bearer ")) supplied = auth.substring(7).trim();

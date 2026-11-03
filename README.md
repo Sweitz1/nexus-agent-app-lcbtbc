@@ -86,9 +86,10 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
 GitHub Actions builds the APK on every push that touches `android/`:
 
 1. Open **Actions → Build Nexus Agent APK** and select the latest run. You can also start a run by hand with **Run workflow**.
-2. Download the **nexus-agent-apk** artifact and unzip it. It holds two files:
-   - `nexus-agent.apk` is the release build. Install this one.
-   - `nexus-agent-debug.apk` is the debuggable build.
+2. Download the **nexus-agent-apk** artifact and unzip it. It holds three files:
+   - `nexus-agent.apk` is the full app (release build). Install it on the glasses for standalone use, or on your phone as the **phone server**.
+   - `nexus-glasses.apk` is the lightweight **glasses client**. Install it on the glasses when the phone runs Nexus (see [Phone server + glasses client](#phone-server--glasses-client)).
+   - `nexus-agent-debug.apk` is the debuggable build of the full app.
 
 If you publish a GitHub Release, the workflow also attaches the APKs to it.
 
@@ -97,6 +98,7 @@ To build locally you need the Android SDK (platform 34), JDK 17 and Gradle 8.7 o
 ```bash
 cd android
 gradle assembleRelease      # -> app/build/outputs/apk/release/app-release.apk
+                            #    glasses/build/outputs/apk/release/glasses-release.apk
 ```
 
 ### Optional: your own signing key
@@ -125,6 +127,34 @@ The X3 Pro runs an Android-based OS, so the APK installs over ADB like on any ot
 If the app doesn't appear in the RayNeo launcher, open it with the `monkey` command above or with an app-list or launcher app.
 
 On a phone, copy the APK to the phone, open it, and allow "install unknown apps" when asked.
+
+## Phone server + glasses client
+
+You can run Nexus two ways:
+
+- **Standalone:** install `nexus-agent.apk` on the glasses. Everything runs on the glasses.
+- **Phone server + glasses client:** install `nexus-agent.apk` on your phone and `nexus-glasses.apk` (package `com.nexus.agent.glasses`, "Nexus Glasses") on the glasses. Models, API keys, skills, accounts, files and AutoGPT stay on the phone. The glasses only handle voice, the display, the camera, the touchpad and head gestures, so they use less battery and keep no secrets.
+
+**Pairing (once):**
+
+1. Put both devices on the same Wi-Fi, or connect the glasses to the phone's hotspot.
+2. On the phone, open *Settings → Nexus Glasses* and press **Pair glasses**. This turns on the local server, advertises it on the network (`_nexus._tcp`), and shows a 6-digit code and a QR code. The code is valid for 5 minutes, and 5 wrong tries cancel it.
+3. Open **Nexus Glasses** on the glasses. It finds the phone automatically. Then scan the QR code with the glasses camera, type the code, or say it. The phone's address can also be entered by hand (`192.168.x.x:8787`).
+
+The glasses then store the phone's access token, so later launches connect directly. Use *☰ → Settings → Forget phone* to unpair, and change the token on the phone to revoke access.
+
+**Using it:**
+
+| Control | What it does |
+|---|---|
+| 🎙 / assistant key | Ask by voice. The phone's current agent answers on the glasses display and speaks the reply through the glasses (not the phone) |
+| 👁 / camera key | Takes a photo with the glasses camera and asks the agent about it (you can also say a question) |
+| ⏯ ⏭ | Controls music playing on the phone |
+| ☰ | Now playing, today's calendar, AutoGPT status, notifications, stop the current run, settings |
+
+The phone also pushes live updates to the glasses: replies from other places (phone chat, AutoGPT reports, Telegram, webhooks, scheduled runs) and, if you allow it, phone notifications. When an agent needs your confirmation for a risky action, the question appears on the glasses: **nod** to allow, **shake** to deny, or tap a button. The phone dialog stays open too, and the first answer wins. The quick menu can only run a short list of read-only and music skills directly. For everything else you ask the agent, so the usual confirmations still apply.
+
+Keep Nexus running on the phone. While glasses are being served, a "Nexus is serving your glasses" notification keeps it alive in the background.
 
 ## First-time setup (about 2 minutes)
 
@@ -446,7 +476,8 @@ android/
     HudPresentation.java   HUD on external displays (Lenovo Legion Glasses / Glasses T1 and other display glasses)
     ApkTools.java          installed apps, APK extract/inspect/install/uninstall, integration discovery
     AxmlParser.java        binary AndroidManifest.xml parser (components, intent filters, deep links)
-    WebhookServer.java     LAN HTTP server: incoming webhooks + phone remote console
+    WebhookServer.java     LAN HTTP server: incoming webhooks, phone remote console, glasses client API
+    ServerKeepAliveService.java  foreground service that keeps the server alive while glasses are served
   app/src/main/assets/
     index.html          core agent runtime and UI (providers, agents, modes, webhooks)
     js/skills-pro.js    files, coding, engineering, image, PDF, OCR, zip, video, maps, phone, translation skills
@@ -459,8 +490,14 @@ android/
     js/skills-dev.js    APK services & app integrations, scraper, downloads, Python/code runner/templates/builds, GitHub
     js/skills-trust.js  Verizon Cloud, deepfake detection & provenance, consent-gated synthetic media of yourself
     js/skills-auto.js   AutoGPT: autonomous plan→act→review runs, budgets, scheduling, Auto tab, Agent Protocol client
+    js/server-phone.js  phone server for Nexus Glasses: pairing, /client/* API, event stream, confirmations on the glasses
     hud.html            HUD shown on external display glasses
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console
+  glasses/                Nexus Glasses client APK (com.nexus.agent.glasses)
+    src/main/java/com/nexus/glasses/
+      ClientActivity.java  WebView host, glasses keys (assistant/camera/menu/back), permissions
+      ClientBridge.java    window.NexusClient: HTTP, mDNS discovery, TTS, speech, head gestures, storage
+    src/main/assets/client.html  connect/pair screen and the glasses UI
 .github/workflows/build-apk.yml
 ```

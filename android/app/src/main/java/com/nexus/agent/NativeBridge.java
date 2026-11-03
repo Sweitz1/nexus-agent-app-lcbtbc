@@ -454,6 +454,11 @@ public class NativeBridge {
             stopServer();
             server = new WebhookServer(activity, port, token);
             server.start();
+            advertise(port);
+            try {
+                Intent ka = new Intent(activity, ServerKeepAliveService.class);
+                if (Build.VERSION.SDK_INT >= 26) activity.startForegroundService(ka); else activity.startService(ka);
+            } catch (Exception ignored) { }
             JSONObject o = new JSONObject();
             o.put("running", true);
             o.put("port", port);
@@ -467,10 +472,39 @@ public class NativeBridge {
 
     @JavascriptInterface
     public void stopServer() {
+        unadvertise();
+        try { activity.stopService(new Intent(activity, ServerKeepAliveService.class)); } catch (Exception ignored) { }
         if (server != null) {
             server.shutdown();
             server = null;
         }
+    }
+
+    // Announce the server on the LAN (mDNS/NSD) so the glasses client finds the phone automatically.
+    private android.net.nsd.NsdManager.RegistrationListener nsdListener;
+
+    private void advertise(int port) {
+        try {
+            android.net.nsd.NsdManager nsd = (android.net.nsd.NsdManager) activity.getSystemService(Context.NSD_SERVICE);
+            android.net.nsd.NsdServiceInfo info = new android.net.nsd.NsdServiceInfo();
+            info.setServiceName("Nexus " + Build.MODEL);
+            info.setServiceType("_nexus._tcp");
+            info.setPort(port);
+            nsdListener = new android.net.nsd.NsdManager.RegistrationListener() {
+                public void onServiceRegistered(android.net.nsd.NsdServiceInfo i) { }
+                public void onRegistrationFailed(android.net.nsd.NsdServiceInfo i, int e) { }
+                public void onServiceUnregistered(android.net.nsd.NsdServiceInfo i) { }
+                public void onUnregistrationFailed(android.net.nsd.NsdServiceInfo i, int e) { }
+            };
+            nsd.registerService(info, android.net.nsd.NsdManager.PROTOCOL_DNS_SD, nsdListener);
+        } catch (Exception ignored) { }
+    }
+
+    private void unadvertise() {
+        try {
+            if (nsdListener != null) ((android.net.nsd.NsdManager) activity.getSystemService(Context.NSD_SERVICE)).unregisterService(nsdListener);
+        } catch (Exception ignored) { }
+        nsdListener = null;
     }
 
     @JavascriptInterface

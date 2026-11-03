@@ -1,0 +1,29 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Nexus Glasses: lightweight client for AR glasses. Talks to the Nexus phone app over Wi-Fi.
+android {
+    namespace 'com.nexus.glasses'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.nexus.agent.glasses'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
