@@ -137,6 +137,7 @@ public class MainActivity extends Activity {
         });
 
         webView.loadUrl(ORIGIN + "/index.html");
+        watchDisplays();
         handleIntent(getIntent());
     }
 
@@ -217,6 +218,54 @@ public class MainActivity extends Activity {
         String ext = dot >= 0 ? name.substring(dot + 1).toLowerCase(Locale.ROOT) : "";
         String t = MIME.get(ext);
         return t != null ? t : "application/octet-stream";
+    }
+
+    WebResourceResponse serveLocalPublic(String path, Map<String, String> headers) { return serveLocal(path, headers); }
+
+    // ---------------------------------------------------------------- external display HUD
+
+    HudPresentation hud;
+    private android.hardware.display.DisplayManager.DisplayListener displayListener;
+
+    android.view.Display externalDisplay() {
+        android.hardware.display.DisplayManager dm = (android.hardware.display.DisplayManager) getSystemService(DISPLAY_SERVICE);
+        android.view.Display[] ds = dm.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION);
+        return ds.length > 0 ? ds[0] : null;
+    }
+
+    String hudStart() {
+        android.view.Display d = externalDisplay();
+        if (d == null) return "{\"error\":\"No external display connected (plug in your display glasses via USB-C)\"}";
+        final String[] out = {null};
+        java.util.concurrent.CountDownLatch l = new java.util.concurrent.CountDownLatch(1);
+        runOnUiThread(() -> {
+            try {
+                if (hud == null || !hud.isShowing() || hud.getDisplay().getDisplayId() != d.getDisplayId()) {
+                    if (hud != null) hud.dismiss();
+                    hud = new HudPresentation(this, d);
+                    hud.setOnDismissListener(x -> { hud = null; emit("display", "{\"hud\":false}"); });
+                    hud.show();
+                }
+                out[0] = hud.info();
+            } catch (Exception e) { out[0] = NativeBridge.errorJson(e); }
+            l.countDown();
+        });
+        try { l.await(3, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException ignored) { }
+        return out[0] == null ? "{}" : out[0];
+    }
+
+    void hudStop() { runOnUiThread(() -> { if (hud != null) { hud.dismiss(); hud = null; } }); }
+
+    void hudPost(String json) { runOnUiThread(() -> { if (hud != null) hud.post(json); }); }
+
+    private void watchDisplays() {
+        android.hardware.display.DisplayManager dm = (android.hardware.display.DisplayManager) getSystemService(DISPLAY_SERVICE);
+        displayListener = new android.hardware.display.DisplayManager.DisplayListener() {
+            @Override public void onDisplayAdded(int id) { emit("display", "{\"connected\":true}"); }
+            @Override public void onDisplayRemoved(int id) { if (externalDisplay() == null) { hudStop(); emit("display", "{\"connected\":false}"); } }
+            @Override public void onDisplayChanged(int id) { }
+        };
+        dm.registerDisplayListener(displayListener, null);
     }
 
     /** Serves /workspace/... from the private file workspace and everything else from assets. */
@@ -439,6 +488,8 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (hud != null) hud.dismiss();
+        if (displayListener != null) ((android.hardware.display.DisplayManager) getSystemService(DISPLAY_SERVICE)).unregisterDisplayListener(displayListener);
         if (bridge != null) bridge.shutdown();
         super.onDestroy();
     }

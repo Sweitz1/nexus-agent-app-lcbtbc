@@ -22,6 +22,7 @@ import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
+import android.view.KeyEvent;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
 
@@ -74,6 +75,9 @@ public class NativeBridge {
     private final EmailClient email;
     private final CalendarTools calendar;
     private final GlassesTools glasses;
+    private final MusicTools music;
+    private android.media.session.MediaSession tapSession;
+    private android.media.AudioTrack silentTrack;
     private final java.util.Map<String, java.util.concurrent.CountDownLatch> ttsDone = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.Map<String, Boolean> ttsOk = new java.util.concurrent.ConcurrentHashMap<>();
     private String pickCallbackId, exportCallbackId, exportPath, cameraCallbackId;
@@ -86,6 +90,7 @@ public class NativeBridge {
         this.email = new EmailClient(workspace);
         this.calendar = new CalendarTools(activity);
         this.glasses = new GlassesTools(activity);
+        this.music = new MusicTools(activity);
         NexusNotificationListener.sink = n -> activity.emit("notification", n.toString());
         WakeWordService.sink = e -> activity.emit("wake", e.toString());
         NexusAccessibilityService.sink = (t, d) -> { try { d.put("type", t); } catch (Exception ignored) { } activity.emit("screen", d.toString()); };
@@ -1106,6 +1111,182 @@ public class NativeBridge {
             }
             s.settle(sp.optInt("settleMs", 2500));
             return ok("result", r);
+        });
+    }
+
+    // ------------------------------------------------------------------ music (any app's media session)
+
+    @JavascriptInterface
+    public String mediaSessions() {
+        try { return music.list(); } catch (SecurityException e) { return "{\"error\":\"Notification access needed to see what is playing\"}"; } catch (Exception e) { return errorJson(e); }
+    }
+
+    @JavascriptInterface
+    public String mediaControl(String pkg, String action, double value) {
+        try { return music.control(pkg, action, (long) value); } catch (SecurityException e) { return mediaKey(action.equals("toggle") ? "play_pause" : action); } catch (Exception e) { return "Error: " + e.getMessage(); }
+    }
+
+    // ------------------------------------------------------------------ external display HUD (Lenovo & other display glasses)
+
+    @JavascriptInterface
+    public String externalDisplay() {
+        android.view.Display d = activity.externalDisplay();
+        if (d == null) return "{\"connected\":false}";
+        android.util.DisplayMetrics m = new android.util.DisplayMetrics();
+        d.getRealMetrics(m);
+        return "{\"connected\":true,\"name\":" + JSONObject.quote(d.getName()) + ",\"width\":" + m.widthPixels + ",\"height\":" + m.heightPixels + ",\"refreshHz\":" + Math.round(d.getRefreshRate()) + ",\"hud\":" + (activity.hud != null) + "}";
+    }
+
+    @JavascriptInterface
+    public String hudStart() { return activity.hudStart(); }
+
+    @JavascriptInterface
+    public void hudStop() { activity.hudStop(); }
+
+    @JavascriptInterface
+    public void hudPost(String json) { activity.hudPost(json); }
+
+    // ------------------------------------------------------------------ Bluetooth audio glasses (Meta Ray-Ban & co.)
+
+    /** Connected Bluetooth audio devices (no permission needed via AudioManager). */
+    @JavascriptInterface
+    public String btAudioDevices() {
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) activity.getSystemService(Context.AUDIO_SERVICE);
+            JSONArray arr = new JSONArray();
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (android.media.AudioDeviceInfo d : am.getDevices(android.media.AudioManager.GET_DEVICES_ALL)) {
+                int t = d.getType();
+                boolean bt = t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                        || (Build.VERSION.SDK_INT >= 31 && (t == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET || t == android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER));
+                if (!bt) continue;
+                String key = d.getProductName() + "|" + t + "|" + d.isSource();
+                if (!seen.add(key)) continue;
+                JSONObject o = new JSONObject();
+                o.put("name", String.valueOf(d.getProductName()));
+                o.put("kind", t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ? "audio (A2DP)" : t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ? "call/mic (SCO)" : "LE audio");
+                o.put("input", d.isSource());
+                arr.put(o);
+            }
+            JSONObject res = new JSONObject();
+            res.put("devices", arr);
+            res.put("voiceRoute", Build.VERSION.SDK_INT >= 31 ? am.getCommunicationDevice() != null && am.getCommunicationDevice().getType() == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO : am.isBluetoothScoOn());
+            res.put("tapToTalk", tapSession != null);
+            return res.toString();
+        } catch (Exception e) {
+            return errorJson(e);
+        }
+    }
+
+    /** Routes the microphone to a Bluetooth headset/glasses so voice input uses the glasses' mics. */
+    @JavascriptInterface
+    public String btVoiceRoute(boolean on) {
+        android.media.AudioManager am = (android.media.AudioManager) activity.getSystemService(Context.AUDIO_SERVICE);
+        try {
+            if (Build.VERSION.SDK_INT >= 31) {
+                if (!on) { am.clearCommunicationDevice(); am.setMode(android.media.AudioManager.MODE_NORMAL); return "Voice back on the phone microphone"; }
+                for (android.media.AudioDeviceInfo d : am.getAvailableCommunicationDevices()) {
+                    if (d.getType() == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO || d.getType() == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET) {
+                        am.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION);
+                        return am.setCommunicationDevice(d) ? "Voice routed to " + d.getProductName() : "Could not route voice to " + d.getProductName();
+                    }
+                }
+                return "No Bluetooth headset/glasses with a microphone is connected";
+            }
+            if (on) { am.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION); am.startBluetoothSco(); am.setBluetoothScoOn(true); return "Voice routed to the Bluetooth headset"; }
+            am.setBluetoothScoOn(false); am.stopBluetoothSco(); am.setMode(android.media.AudioManager.MODE_NORMAL); return "Voice back on the phone microphone";
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    /**
+     * "Tap the glasses to talk": owns the media-button route with a silent media session, so a
+     * tap on the glasses (play/pause) opens Nexus voice input instead of pausing music.
+     */
+    @JavascriptInterface
+    public String tapToTalk(boolean on) {
+        activity.runOnUiThread(() -> {
+            if (!on) {
+                if (tapSession != null) { tapSession.setActive(false); tapSession.release(); tapSession = null; }
+                if (silentTrack != null) { try { silentTrack.stop(); } catch (Exception ignored) { } silentTrack.release(); silentTrack = null; }
+                return;
+            }
+            if (tapSession != null) return;
+            tapSession = new android.media.session.MediaSession(activity, "NexusTapToTalk");
+            tapSession.setCallback(new android.media.session.MediaSession.Callback() {
+                @Override public boolean onMediaButtonEvent(Intent i) {
+                    KeyEvent k = i.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+                    if (k != null && k.getAction() == KeyEvent.ACTION_DOWN) {
+                        String name = k.getKeyCode() == KeyEvent.KEYCODE_MEDIA_NEXT ? "media_next" : k.getKeyCode() == KeyEvent.KEYCODE_MEDIA_PREVIOUS ? "media_previous" : "voice";
+                        activity.emit("hwkey", "{\"key\":\"" + name + "\",\"source\":\"bluetooth\"}");
+                    }
+                    return true;
+                }
+            });
+            tapSession.setPlaybackState(new android.media.session.PlaybackState.Builder()
+                    .setActions(android.media.session.PlaybackState.ACTION_PLAY_PAUSE | android.media.session.PlaybackState.ACTION_PLAY | android.media.session.PlaybackState.ACTION_PAUSE
+                            | android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT | android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
+                    .setState(android.media.session.PlaybackState.STATE_PLAYING, 0, 1f).build());
+            tapSession.setActive(true);
+            // A short silent track makes this the most recent media app, so buttons route here.
+            int rate = 8000;
+            silentTrack = new android.media.AudioTrack.Builder()
+                    .setAudioAttributes(new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_MEDIA).setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC).build())
+                    .setAudioFormat(new android.media.AudioFormat.Builder().setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO).build())
+                    .setTransferMode(android.media.AudioTrack.MODE_STATIC).setBufferSizeInBytes(rate * 2).build();
+            silentTrack.write(new short[rate], 0, rate);
+            silentTrack.play();
+        });
+        return on ? "Tap-to-talk on: tap your glasses (play/pause) to talk to Nexus" : "Tap-to-talk off";
+    }
+
+    // ------------------------------------------------------------------ photos/videos from the gallery (e.g. Meta glasses captures)
+
+    /** spec {count, type: photo|video|any, sinceMs, folderHint} — newest first. */
+    @JavascriptInterface
+    public void recentMedia(String id, String specJson) {
+        async(id, () -> {
+            String perm = Build.VERSION.SDK_INT >= 33 ? android.Manifest.permission.READ_MEDIA_IMAGES : android.Manifest.permission.READ_EXTERNAL_STORAGE;
+            if (!activity.hasPermission(perm)) throw new SecurityException("Photo library permission not granted");
+            JSONObject s = new JSONObject(specJson);
+            String type = s.optString("type", "any");
+            String hint = s.optString("folderHint", "").toLowerCase(Locale.ROOT);
+            Uri base = android.provider.MediaStore.Files.getContentUri("external");
+            String[] proj = {android.provider.MediaStore.MediaColumns._ID, android.provider.MediaStore.MediaColumns.DISPLAY_NAME, android.provider.MediaStore.MediaColumns.MIME_TYPE,
+                    android.provider.MediaStore.MediaColumns.DATE_ADDED, android.provider.MediaStore.MediaColumns.BUCKET_DISPLAY_NAME, android.provider.MediaStore.MediaColumns.SIZE,
+                    android.provider.MediaStore.Files.FileColumns.MEDIA_TYPE};
+            String sel = android.provider.MediaStore.Files.FileColumns.MEDIA_TYPE + (type.equals("photo") ? "=1" : type.equals("video") ? "=3" : " IN (1,3)")
+                    + " AND " + android.provider.MediaStore.MediaColumns.DATE_ADDED + ">=?";
+            JSONArray arr = new JSONArray();
+            int want = Math.max(1, Math.min(s.optInt("count", 5), 50));
+            try (Cursor c = activity.getContentResolver().query(base, proj, sel, new String[]{String.valueOf(s.optLong("sinceMs", 0) / 1000)},
+                    android.provider.MediaStore.MediaColumns.DATE_ADDED + " DESC")) {
+                while (c != null && c.moveToNext() && arr.length() < want) {
+                    String bucket = c.getString(4) == null ? "" : c.getString(4);
+                    if (!hint.isEmpty() && !java.util.regex.Pattern.compile(hint).matcher(bucket.toLowerCase(Locale.ROOT) + " " + c.getString(1).toLowerCase(Locale.ROOT)).find()) continue;
+                    boolean video = c.getInt(6) == 3;
+                    Uri u = android.content.ContentUris.withAppendedId(video ? android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI : android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, c.getLong(0));
+                    JSONObject o = new JSONObject();
+                    o.put("uri", u.toString());
+                    o.put("name", c.getString(1));
+                    o.put("mime", c.getString(2));
+                    o.put("time", c.getLong(3) * 1000);
+                    o.put("album", bucket);
+                    o.put("size", c.getLong(5));
+                    arr.put(o);
+                }
+            }
+            return arr.toString();
+        });
+    }
+
+    /** Copies a gallery item (content:// from recentMedia) into the workspace; resolves {path}. */
+    @JavascriptInterface
+    public void importMedia(String id, String uri) {
+        async(id, () -> {
+            if (!uri.startsWith("content://media/")) throw new IllegalArgumentException("Only gallery items can be imported");
+            return ok("path", importUri(Uri.parse(uri)));
         });
     }
 

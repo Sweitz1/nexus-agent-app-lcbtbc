@@ -22,7 +22,7 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   - outgoing webhooks
   - delegation to other agents
 
-  **Pro skills** (140 skills in total; each one can be turned on or off per agent):
+  **Pro skills** (162 skills in total; each one can be turned on or off per agent):
 
   | Group | Skills |
   |---|---|
@@ -39,6 +39,11 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   | Translation | `translate` (AI model, DeepL or LibreTranslate), `translate_image` (signs, menus), `translate_file` (text and PDF files) |
   | Email | `email_list` (inbox, unread, search by text, sender or date), `email_read` (full text; saves attachments to the workspace), `email_send`, `email_reply` (threaded, with reply-all), `email_manage` (read/unread, flag, move, delete), `email_folders`, `email_compose` (opens your mail app with a draft; needs no account) |
   | Glasses (native RayNeo X3 Pro) | `glasses_status` (battery, charging, temperature, network, storage, sensors), `glasses_volume`, `glasses_brightness`, `media_control` (Spotify and other players: play, pause, next…), `glasses_settings`, `head_pose`, `ask_yes_no` (**nod = yes, shake = no**), `notifications_read` / `notifications_dismiss`, `camera_record_video` (point-of-view clips with sound) |
+  | Music | `music_now_playing` (any app: Spotify, YouTube Music, Plex, podcasts…), `music_control` (control a specific app), `music_play` (routes to your music service), `music_lyrics` (**synced lyrics** on screen and on the glasses HUD) |
+  | Spotify | `spotify_search`, `spotify_play` (tracks, albums, playlists, artists; shuffle; device), `spotify_control`, `spotify_now_playing`, `spotify_queue`, `spotify_devices` (Spotify Connect transfer), `spotify_playlists` (list, show, **create from song names**, add), `spotify_library` (like, recent, top tracks and artists) |
+  | YouTube Music | `ytmusic_search`, `ytmusic_play` (opens in the YouTube Music app with an automatic radio mix), `ytmusic_open` (home, explore, library, liked) |
+  | Display glasses (Lenovo & others) | `hud_control`: a heads-up display on USB-C display glasses (**Lenovo Legion Glasses, Lenovo Glasses T1**, XREAL, Viture, Rokid, RayNeo Air…). Shows a clock, agent replies, teleprompter, now playing, synced lyrics and notification toasts |
+  | Meta glasses | `meta_glasses_status`, `meta_glasses_voice` (glasses microphones for voice and "Hey Nexus"), `glasses_tap_to_talk`, `meta_glasses_media` (photos and videos you took with the glasses), `meta_glasses_look` (**"what am I looking at?"** using your latest capture), `meta_ai_app` |
   | Screen control | `screen_open_app`, `screen_read` (UI elements of the app in front), `screen_tap`, `screen_type`, `screen_scroll`, `screen_swipe`, `screen_nav` (back, home, recents, notifications), `screen_wait`, `screen_screenshot` (screenshot passed to the vision model), `screen_return`. Agents operate other apps for you, for example *"reorder my usual from DoorDash"* |
   | Shopping | `shop_search` (compares Amazon and Walmart: prices, ratings, Prime, pickup), `shop_product`, `shop_add_to_cart` (opens the store's add-to-cart page; **you check out yourself**), `shop_open` (search, cart, orders and tracking, deals, buy again), `shopping_list`, `shopping_list_to_cart` (whole list into the cart in one step) |
   | Plex | `plex_search`, `plex_browse` (libraries, on deck, recently added), `plex_details`, `plex_play` (plays on the glasses, resumes from your progress, picks up a show at the next unwatched episode, plays albums and playlists as a queue, or opens the item in the Plex app), `plex_mark` |
@@ -168,6 +173,37 @@ Turn it on in *Settings → "Hey Nexus" wake word*, or ask an agent to call `wak
 - Say **"stop"** or **"cancel"** to interrupt a reply.
 - The app pauses the wake word while it is speaking, so it doesn't hear itself.
 - Models for German, French, Spanish, Italian, Portuguese, Dutch, Russian, Chinese and Japanese are available. With these, set a custom phrase in that language.
+
+## Music, display glasses and Meta glasses
+
+**Spotify** (full control through the Spotify Web API):
+
+1. Go to [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) and create an app (free).
+2. Add the redirect URI `nexusagent://spotify-callback`.
+3. Paste the **Client ID** in *Settings → Music → Connect Spotify*, then approve the sign-in.
+
+Sign-in uses PKCE, so no client secret is stored. Search, playlists and your library work on any account. **Spotify only allows remote playback control with Premium**; on free accounts, songs open in the Spotify app instead. If no Spotify device is active, Nexus starts the Spotify app and plays there.
+
+**YouTube Music:** Google offers no public playback API, so:
+
+- Agents search YouTube (a free YouTube Data API key makes search more reliable).
+- Songs play in the YouTube Music app, continuing with a radio mix of similar songs.
+- Playback is controlled through Android media sessions.
+
+**Any music app:** with notification access granted, agents can see what is playing in Spotify, YouTube Music, Plex, Pandora, podcast apps and others, and can control a specific app. `music_lyrics` shows time-synced lyrics from [LRCLIB](https://lrclib.net) that follow the song.
+
+**Lenovo Legion Glasses / Lenovo Glasses T1** (and XREAL, Viture, Rokid, RayNeo Air and other USB-C display glasses):
+
+- These glasses are external monitors without their own apps. Plug them into a phone with USB-C video output and Nexus puts **its own HUD** on them while your phone screen stays free.
+- The HUD shows a clock, live agent replies ("🎙 your question" followed by the answer), teleprompter, now playing, synced lyrics and notification toasts. The background is black, which looks see-through in the glasses.
+- In Settings you can make it start automatically when the glasses connect, and adjust the font size and edge margin.
+- Lenovo ThinkReality A3 needs Lenovo's own enterprise software and is not supported.
+
+**Meta Ray-Ban / Oakley Meta:** Meta's glasses platform is closed to third-party apps; Meta's developer toolkit is only in limited preview. Nexus uses what works today:
+
+- **Voice through the glasses.** Answers play on the glasses speakers. *Use the glasses microphones* routes Nexus voice input, and the "Hey Nexus" wake word, through the glasses' mics.
+- **Tap to talk.** Tapping the glasses' touchpad (play/pause) starts Nexus listening instead of pausing music. Swipe forward and back still skip tracks.
+- **Your captures.** Photos and videos you take with "Hey Meta, take a photo" sync to the phone gallery once importing is turned on in the Meta AI app. `meta_glasses_look` then answers questions about the latest one: read a sign, translate a menu, identify a product, summarise a video.
 
 ## Screen control (accessibility)
 
@@ -311,6 +347,8 @@ android/
     NexusNotificationListener.java  notification access (read, announce, dismiss)
     WakeWordService.java   offline "Hey Nexus" wake word (Vosk) as a microphone foreground service
     NexusAccessibilityService.java  screen control: UI tree, tap/type/scroll/swipe/gestures, screenshots, stop pill, app block list
+    MusicTools.java        media sessions of all apps: now playing + per-app transport controls
+    HudPresentation.java   HUD on external displays (Lenovo Legion Glasses / Glasses T1 and other display glasses)
     WebhookServer.java     LAN HTTP server: incoming webhooks + phone remote console
   app/src/main/assets/
     index.html          core agent runtime and UI (providers, agents, modes, webhooks)
@@ -319,6 +357,8 @@ android/
     js/skills-media.js  scanner, Telegram, Kino, audiobooks, text-to-audio, glasses skills, Media tab, player, RayNeo agent
     js/skills-shop.js   wake word control, Amazon/Walmart shopping + list, Plex, fast food & delivery
     js/skills-screen.js screen-control skills, consent and sensitive-action guard, settings
+    js/skills-music.js  Spotify, YouTube Music, media sessions, lyrics, display-glasses HUD, Meta glasses
+    hud.html            HUD shown on external display glasses
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console
 .github/workflows/build-apk.yml
