@@ -96,16 +96,20 @@ jobs:
 
       - name: Verify signatures
         run: |
+          shopt -s nullglob
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           : > out/SIGNING.txt
           for f in out/nexus-agent.apk out/nexus-glasses.apk; do
-            echo "== $(basename "$f")" | tee -a out/SIGNING.txt
-            "$APKSIGNER" verify --verbose --print-certs "$f" | grep -E "Verified using|Signer #1 certificate (DN|SHA-256)" | tee -a out/SIGNING.txt
+            echo "== $(basename "$f")" >> out/SIGNING.txt
+            "$APKSIGNER" verify --verbose --print-certs "$f" > verify.log   # fails the step if the signature is invalid
+            grep -E "Verified using v(2|3) scheme" verify.log >> out/SIGNING.txt || true
+            grep -iE "certificate (DN|SHA-256 digest)" verify.log | sort -u >> out/SIGNING.txt || true
           done
+          cat out/SIGNING.txt
           if grep -q "CN=Android Debug" out/SIGNING.txt; then
             echo "::warning::Signed with the DEBUG key — add the NEXUS_KEYSTORE_* secrets for real release signing"
           fi
-          (cd out && sha256sum *.apk *.aab 2>/dev/null > SHA256SUMS.txt; cat SHA256SUMS.txt)
+          cd out && sha256sum *.apk *.aab > SHA256SUMS.txt && cat SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
         with:
