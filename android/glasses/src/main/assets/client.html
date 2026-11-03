@@ -90,6 +90,18 @@ async function req(method, url, body, timeoutMs = 30000, headers = {}) {
 }
 const base = () => `http://${conn.host}:${conn.port}`;
 const DEVICE = (() => { try { return JSON.parse(N ? N.deviceInfo() : '{}').model || 'glasses'; } catch { return 'glasses'; } })();
+// The phone may be reachable at several addresses (Wi-Fi, hotspot, VPN such as Tailscale when the
+// glasses are on their own eSIM). Try them in turn and remember the one that answers.
+async function firstReachable(hosts) {
+  const tries = hosts.map(hp => req('GET', `http://${hp}/client/ping`, null, 4000).then(r => (r.status ? hp : Promise.reject())));
+  try { return await Promise.any(tries); } catch { return null; }
+}
+async function reconnect() {
+  const list = (conn && conn.hosts) || []; if (list.length < 2) return false;
+  const hp = await firstReachable(list); if (!hp) return false;
+  const [h, p] = hp.split(':'); if (h === conn.host && Number(p) === conn.port) return true;
+  conn.host = h; conn.port = Number(p) || 8787; store.set('conn', conn); add('ev', `↪ Reconnected via ${hp}`); return true;
+}
 async function api(path, body, { method = 'POST', timeoutMs = 60000 } = {}) {
   const r = await req(method, base() + path, method === 'GET' ? null : { device: DEVICE, ...(body || {}) }, timeoutMs, { Authorization: 'Bearer ' + conn.token });
   if (r.status === 401) { setOnline(false); throw new Error('Pairing expired — pair again'); }
@@ -108,12 +120,12 @@ async function search() {
   if (list.length === 1) $('#addr').value = `${list[0].host}:${list[0].port}`;
   focusFirst();
 }
-async function pair(host, port, pin) {
+async function pair(host, port, pin, extraHosts) {
   $('#cstatus').textContent = 'Pairing…';
   try {
     const r = await req('POST', `http://${host}:${port}/client/pair`, { pin: String(pin).replace(/\D/g, ''), device: DEVICE }, 15000);
     if (r.status !== 200) throw new Error(r.data.error || 'HTTP ' + r.status);
-    conn = { host, port: Number(port), token: r.data.token, name: r.data.name }; store.set('conn', conn);
+    conn = { host, port: Number(port), token: r.data.token, name: r.data.name, hosts: [...new Set([`${host}:${Number(port)}`, ...(extraHosts || []), ...(r.data.hosts || [])])] }; store.set('conn', conn);
     if (N) N.vibrate(60); start();
   } catch (e) { $('#cstatus').textContent = '✗ ' + e.message; }
 }
@@ -123,8 +135,10 @@ $('#pinVoice').onclick = async () => { try { const t = await hear(); $('#pin').v
 $('#scan').onclick = async () => {
   try {
     const t = await scanQR(); const j = JSON.parse(t);
-    if (!j.nexus || !j.host || !j.pin) throw new Error('Not a Nexus pairing code');
-    pair(j.host, j.port || 8787, j.pin);
+    if (!j.nexus || !j.pin || !(j.host || (j.hosts || []).length)) throw new Error('Not a Nexus pairing code');
+    const hosts = j.hosts || []; if (j.host) hosts.unshift(`${j.host}:${j.port || 8787}`);
+    const first = await firstReachable(hosts) || hosts[0]; const [h, pt] = first.split(':');
+    pair(h, pt || 8787, j.pin, hosts);
   } catch (e) { toast(e.message); }
 };
 
@@ -208,11 +222,14 @@ $('#more').onclick = () => {
   });
 };
 function settings() {
+  const dm = N && N.displayMode ? JSON.parse(N.displayMode() || '{}') : null;
+  const next = m => ({ auto: 'on', on: 'off', off: 'auto' })[m] || 'auto';
   overlay(`<h3 style="margin:.1em 0">Settings</h3>
     <div class="row"><button class="f" id="sSpeak">${cfg.speak ? '🔊 Speak answers: on' : '🔇 Speak answers: off'}</button><button class="f" id="sEv">${cfg.speakEvents ? '🔔 Speak notifications: on' : '🔕 Speak notifications: off'}</button></div>
     <div class="row"><button class="f" id="sBig">A+</button><button class="f" id="sSmall">A−</button></div>
     <div class="row"><button class="f" id="sNod">Calibrate nod</button><button class="f" id="sShake">Calibrate shake</button></div>
-    <p class="hint">Phone: ${esc(conn ? conn.name + ' · ' + conn.host + ':' + conn.port : '—')} · nod ${cfg.nodAxis} / shake ${cfg.shakeAxis}</p>
+    ${dm ? `<div class="row"><button class="f" id="sMir">👓 Mirror per eye: ${dm.mirror}${dm.mirror === 'auto' ? (dm.mirrorActive ? ' (on)' : ' (off)') : ''}</button><button class="f" id="sTmp">👆 Temple gestures: ${dm.temple}${dm.temple === 'auto' ? (dm.templeActive ? ' (on)' : ' (off)') : ''}</button></div>` : ''}
+    <p class="hint">Phone: ${esc(conn ? conn.name + ' · ' + conn.host + ':' + conn.port + ((conn.hosts || []).length > 1 ? ` (+${conn.hosts.length - 1} more)` : '') : '—')} · nod ${cfg.nodAxis} / shake ${cfg.shakeAxis}</p>
     <div class="row"><button class="f" id="sForget">Forget phone</button><button class="primary f" id="sClose">Done</button></div>`);
   $('#sSpeak').onclick = () => { cfg.speak = !cfg.speak; saveCfg(); settings(); };
   $('#sEv').onclick = () => { cfg.speakEvents = !cfg.speakEvents; saveCfg(); settings(); };
@@ -222,6 +239,7 @@ function settings() {
   $('#sNod').onclick = () => cal('nodAxis'); $('#sShake').onclick = () => cal('shakeAxis');
   $('#sForget').onclick = () => { store.set('conn', null); conn = null; closeOverlay(); show('connect'); search(); };
   $('#sClose').onclick = closeOverlay;
+  if (dm) { $('#sMir').onclick = () => N.setDisplayMode('mirror', next(dm.mirror)); $('#sTmp').onclick = () => N.setDisplayMode('temple', next(dm.temple)); }
 }
 
 /* ------------------------------------------------------------ events from the phone */
@@ -233,7 +251,7 @@ async function poll() {
       const r = await api(`/client/events?since=${seq}&device=${encodeURIComponent(DEVICE)}`, null, { method: 'GET', timeoutMs: 35000 }); setOnline(true);
       for (const e of r.events || []) { seq = Math.max(seq, e.seq); handleEvent(e); }
       seq = Math.max(seq, r.seq || 0);
-    } catch (e) { setOnline(false); await sleep(4000); }
+    } catch (e) { setOnline(false); if (!/Pairing expired/.test(e.message)) await reconnect().catch(() => {}); await sleep(4000); }
   }
   polling = false;
 }
@@ -271,8 +289,8 @@ setInterval(() => { $('#clock').textContent = new Date().toLocaleTimeString([], 
 /* ------------------------------------------------------------ start */
 async function start() {
   show('main'); $('#phone').textContent = conn.name || conn.host; $('#clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  try { const h = await api('/client/hello', {}, { timeoutMs: 8000 }); setOnline(true); seq = h.seq || 0; $('#phone').textContent = h.name; add('ev', `Connected to ${h.name} · agent ${h.current || '?'}${h.battery ? ` · phone 🔋${h.battery.percent}%` : ''}`); }
-  catch (e) { setOnline(false); add('ev', '⚠ Phone not reachable: ' + e.message + ' — is Nexus open on the phone and on the same Wi-Fi?'); }
+  try { const h = await api('/client/hello', {}, { timeoutMs: 8000 }).catch(async e => { if (await reconnect()) return api('/client/hello', {}, { timeoutMs: 8000 }); throw e; }); setOnline(true); seq = h.seq || 0; $('#phone').textContent = h.name; add('ev', `Connected to ${h.name} · agent ${h.current || '?'}${h.battery ? ` · phone 🔋${h.battery.percent}%` : ''}`); }
+  catch (e) { setOnline(false); add('ev', '⚠ Phone not reachable: ' + e.message + ' — is Nexus open on the phone, and is it on the same Wi-Fi or VPN?'); }
   poll();
 }
 window.NexusGlassesClient = { ask, pair, start, handleEvent, get conn() { return conn; } };

@@ -6,7 +6,15 @@
  * (_nexus._tcp). Pairing: a 6-digit PIN (shown as text + QR) is exchanged for the token. */
 'use strict';
 (() => {
-  S.settings = { glassesServer: false, glassesForwardNotifications: true, ...S.settings };
+  S.settings = { glassesServer: false, glassesForwardNotifications: true, glassesRemoteAddr: '', ...S.settings };
+  // Every address the glasses may use to reach this phone: Wi-Fi/hotspot IPs, VPN (e.g. Tailscale 100.x)
+  // and an optional remote address for glasses on their own eSIM / mobile data.
+  function phoneAddrs() {
+    const port = Number(S.settings.server.port) || 8787; const info = parseJSON(N.deviceInfo(), {});
+    const ips = [...new Set([info.ip, ...(info.ips || [])].filter(Boolean))].map(ip => `${ip}:${port}`);
+    const extra = String(S.settings.glassesRemoteAddr || '').split(/[\s,]+/).filter(Boolean).map(a => /:\d+$/.test(a) ? a : `${a}:${port}`);
+    return [...new Set([...ips, ...extra])];
+  }
   const reply = (ev, status, data) => N.serverRespond(ev.reqId, status, 'application/json', JSON.stringify(data));
 
   /* ---------------------------------------------------------------- event stream (long-poll) */
@@ -67,7 +75,7 @@
         if (String(b.pin || '').trim() !== pin) { pinFails++; return reply(ev, 401, { error: 'Wrong code' }); }
         pin = null; seen(b.device); toast(`Glasses paired: ${b.device || 'client'}`);
         if ($('#modal').classList.contains('show') && modalClose) modalClose();
-        return reply(ev, 200, { token: S.settings.server.token, name: deviceLabel() });
+        return reply(ev, 200, { token: S.settings.server.token, name: deviceLabel(), hosts: phoneAddrs() });
       }
       seen(b.device || (new URLSearchParams(ev.query || '')).get('device'));
       if (path === '/client/hello') {
@@ -108,7 +116,7 @@
   async function pairUI() {
     needNative('Glasses pairing'); ensureServer();
     const info = parseJSON(N.deviceInfo(), {}); const p = newPin();
-    const payload = JSON.stringify({ nexus: 1, host: info.ip, port: Number(S.settings.server.port) || 8787, pin: p });
+    const payload = JSON.stringify({ nexus: 1, host: info.ip, port: Number(S.settings.server.port) || 8787, pin: p, hosts: phoneAddrs() });
     let qr = ''; try { qr = await NexusMedia.qrDataUrl(payload); } catch { /* optional */ }
     $('#modalBox').innerHTML = `<h3>Pair Nexus Glasses</h3><p>Open <b>Nexus Glasses</b> on your glasses (same Wi-Fi). It finds this phone automatically — then scan this code with the glasses camera, or enter the code:</p>
       <div style="font-size:2.4em;letter-spacing:.25em;text-align:center;color:var(--accent);font-weight:700">${p}</div>
@@ -122,6 +130,8 @@
     <p>${online() ? `<span class="status-dot on"></span>Connected: <b>${esc(clientName || 'glasses')}</b>` : '<span class="status-dot"></span>No glasses connected'}</p>
     <div class="row"><button class="primary nogrow" id="gsPair">Pair glasses</button></div>
     <label class="inline"><input type="checkbox" data-k="glassesForwardNotifications" data-t="bool">Forward phone notifications to the glasses</label>
+    <label>Remote address for glasses on mobile data / eSIM (optional)</label><input data-k="glassesRemoteAddr" placeholder="e.g. my-phone.tailnet.ts.net or 100.101.102.103">
+    <p class="hint">When the glasses use their own eSIM they are not on your Wi-Fi. Install <b>Tailscale</b> (or another private VPN) on both phone and glasses and pair once; the glasses then reach the phone over the VPN automatically. Don't expose the port to the open internet.</p>
     <p class="hint">Keep Nexus running on the phone (it can stay in the background). Both devices must be on the same Wi-Fi or the phone's hotspot.</p></div>`;
   bindProSettings = v => { coreBindPro(v); const c = $('#glassSrvCard', v); if (!c) return; bind(c, S.settings); $('#gsPair', c).onclick = () => pairUI().catch(e => toast(e.message)); };
 

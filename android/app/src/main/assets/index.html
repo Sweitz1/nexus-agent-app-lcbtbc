@@ -956,6 +956,18 @@ function importConfig(c) {
   if (!agentById(S.current)) S.current = S.agents[0].id;
   save(); applySettings(); showTab(currentTab); toast('Configuration imported');
 }
+/* Binocular glasses (RayNeo X3 / X3 Pro): both eye panels form one wide screen. Mirror draws the UI
+   once per eye; temple mode turns touchpad strokes into navigation. Stored natively (applies on change). */
+function displayModeHtml() {
+  if (!N || !N.displayMode) return '';
+  const d = parseJSON(N.displayMode(), {}); const opt = k => ['auto', 'on', 'off'].map(m => `<option value="${m}"${d[k] === m ? ' selected' : ''}>${m === 'auto' ? 'Auto (detect glasses)' : m === 'on' ? 'On' : 'Off'}</option>`).join('');
+  return `<div class="row"><div><label>Binocular mirror (one copy per eye)</label><select id="dmMirror">${opt('mirror')}</select></div>
+    <div><label>Temple touchpad gestures</label><select id="dmTemple">${opt('temple')}</select></div></div>
+    <p class="hint">Now: mirror ${d.mirrorActive ? 'on' : 'off'} · temple ${d.templeActive ? 'on' : 'off'} · screen ${d.width}×${d.height}. Temple: swipe forward/back = next/previous, swipe up/down = scroll, tap = select, double tap = back, long press = voice.</p>`;
+}
+function bindDisplayMode(v) {
+  for (const [id, key] of [['#dmMirror', 'mirror'], ['#dmTemple', 'temple']]) { const el = $(id, v); if (el) el.onchange = () => N.setDisplayMode(key, el.value); }
+}
 function renderSettings() {
   const v = $('#view-settings'); const st = S.settings;
   const mem = Object.entries(S.memory);
@@ -968,6 +980,7 @@ function renderSettings() {
       <label class="inline"><input type="checkbox" data-k="speakReplies" data-t="bool">Read replies aloud</label>
       <label class="inline"><input type="checkbox" data-k="autoSendVoice" data-t="bool">Send automatically after voice input</label>
       <label class="inline"><input type="checkbox" data-k="keepScreenOn" data-t="bool">Keep display on while the app is open</label>
+      ${displayModeHtml()}
     </div>
     <div class="card"><h3>Agent runtime</h3>
       <label class="inline"><input type="checkbox" data-k="confirmActions" data-t="bool">Ask before device / network actions (launch apps, intents, HTTP, webhooks)</label>
@@ -985,6 +998,7 @@ function renderSettings() {
       <p class="hint">Device: ${esc(deviceLabel())}${N ? ' · native bridge ✓' : ' · browser preview'}</p></div>`;
   bind(v, st, k => { applySettings(); if (k === 'glasses') renderSettings(); });
   bindProSettings(v);
+  bindDisplayMode(v);
   $('#clearMem').onclick = async () => { if (await confirmBox('Clear all long-term memory?')) { S.memory = {}; save(); renderSettings(); } };
   const showJSON = c => { const s = JSON.stringify(c, null, 1); if (N) N.shareText(s); else infoBox(`<code class="block">${esc(s)}</code>`); };
   $('#exp').onclick = () => showJSON(exportConfig(false));

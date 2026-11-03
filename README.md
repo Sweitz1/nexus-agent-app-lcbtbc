@@ -154,7 +154,20 @@ The glasses then store the phone's access token, so later launches connect direc
 
 The phone also pushes live updates to the glasses: replies from other places (phone chat, AutoGPT reports, Telegram, webhooks, scheduled runs) and, if you allow it, phone notifications. When an agent needs your confirmation for a risky action, the question appears on the glasses: **nod** to allow, **shake** to deny, or tap a button. The phone dialog stays open too, and the first answer wins. The quick menu can only run a short list of read-only and music skills directly. For everything else you ask the agent, so the usual confirmations still apply.
 
+**Glasses on their own eSIM (mobile data):** the glasses are then not on your Wi-Fi. Install [Tailscale](https://tailscale.com) (or another private VPN) on the phone and on the glasses, sign in to the same account, then pair once. The phone sends all of its addresses during pairing: Wi-Fi, hotspot, VPN, and an optional *Remote address* you can set under *Settings → Nexus Glasses*. When one address stops answering, the glasses switch to another one that works. Don't open the server port to the public internet: the connection is plain HTTP and is protected only by the token, while a VPN encrypts the link.
+
 Keep Nexus running on the phone. While glasses are being served, a "Nexus is serving your glasses" notification keeps it alive in the background.
+
+## Binocular display and temple touchpad (RayNeo X3 / X3 Pro)
+
+The X3 and X3 Pro show both eye panels as one wide logical screen. A normal Android app would be split across the two eyes. Both Nexus apps handle this themselves, without the RayNeo SDK:
+
+- **Mirror per eye:** the UI is laid out at half width and drawn once per eye, the same idea as RayNeo's `MirrorContainerView`.
+- **Temple gestures:** the temple touchpad is turned into navigation. Swipe forward or back moves to the next or previous item, swipe up or down scrolls, a tap selects, a double tap goes back, and a long press starts voice input.
+
+Both are set to **Auto**. They turn on when the device looks like RayNeo glasses or the screen is a side-by-side ratio (2.4:1 or wider). You can force them on or off in *Settings → Display & voice* (phone app) or *☰ → Settings* (glasses client). Changing a setting reloads the screen.
+
+Nexus does not use Brilliant Labs' Halo/Frame SDK. That SDK is for a different, Bluetooth-based device and doesn't work with RayNeo glasses.
 
 ## First-time setup (about 2 minutes)
 
@@ -478,6 +491,7 @@ android/
     AxmlParser.java        binary AndroidManifest.xml parser (components, intent filters, deep links)
     WebhookServer.java     LAN HTTP server: incoming webhooks, phone remote console, glasses client API
     ServerKeepAliveService.java  foreground service that keeps the server alive while glasses are served
+    GlassesDisplay.java    binocular mirror (one copy per eye) + temple touchpad gestures (also in the glasses client)
   app/src/main/assets/
     index.html          core agent runtime and UI (providers, agents, modes, webhooks)
     js/skills-pro.js    files, coding, engineering, image, PDF, OCR, zip, video, maps, phone, translation skills

@@ -57,6 +57,25 @@ public class MainActivity extends Activity {
     private boolean pageReady = false;
     private final ArrayList<String> pendingEvents = new ArrayList<>();
 
+    private GlassesDisplay.TempleInput temple;
+
+    /** On glasses the temple touchpad is the only touch surface: its strokes become navigation keys. */
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent e) {
+        if (temple != null && temple.onTouch(e)) return true;
+        return super.dispatchTouchEvent(e);
+    }
+
+    /** Touch-navigation pads (no pointer) report through generic motion; always treat them as temple strokes. */
+    @Override
+    public boolean dispatchGenericMotionEvent(android.view.MotionEvent e) {
+        if (e.isFromSource(android.view.InputDevice.SOURCE_TOUCH_NAVIGATION) || e.isFromSource(android.view.InputDevice.SOURCE_TOUCHPAD)) {
+            if (temple == null) temple = new GlassesDisplay.TempleInput(this);
+            if (temple.onTouch(e)) return true;
+        }
+        return super.dispatchGenericMotionEvent(e);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,7 +85,8 @@ public class MainActivity extends Activity {
         webView.setBackgroundColor(0xFF000000);
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
-        setContentView(webView);
+        setContentView(new GlassesDisplay.MirrorFrame(this, webView, GlassesDisplay.mirrorActive(this)));
+        if (GlassesDisplay.templeActive(this)) temple = new GlassesDisplay.TempleInput(this);
 
         WebSettings ws = webView.getSettings();
         ws.setJavaScriptEnabled(true);

@@ -93,6 +93,13 @@ public class ClientBridge {
         } catch (Exception e) { return "{}"; }
     }
 
+    @JavascriptInterface
+    public String displayMode() { return GlassesDisplay.describe(act); }
+
+    /** key: mirror | temple; mode: auto | on | off. */
+    @JavascriptInterface
+    public void setDisplayMode(String key, String mode) { GlassesDisplay.set(act, key, mode); }
+
     /** req {method, url, headers, body, timeoutMs} → {status, body}. Reaches the phone over plain LAN HTTP. */
     @JavascriptInterface
     public void http(String id, String reqJson) {

@@ -125,6 +125,7 @@ public class NativeBridge {
             o.put("sdk", Build.VERSION.SDK_INT);
             o.put("release", Build.VERSION.RELEASE);
             o.put("ip", localIp());
+            o.put("ips", new JSONArray(localIps()));
             o.put("version", BuildConfigCompat.versionName(activity));
             return o.toString();
         } catch (Exception e) {
@@ -1906,6 +1907,27 @@ public class NativeBridge {
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /** All non-loopback IPv4 addresses (Wi-Fi, hotspot, mobile data, VPNs such as Tailscale). */
+    static java.util.List<String> localIps() {
+        java.util.ArrayList<String> out = new java.util.ArrayList<>();
+        try {
+            for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                for (InetAddress a : Collections.list(ni.getInetAddresses())) {
+                    if (a instanceof Inet4Address && !a.isLoopbackAddress() && !out.contains(a.getHostAddress())) out.add(a.getHostAddress());
+                }
+            }
+        } catch (Exception ignored) { }
+        return out;
+    }
+
+    @JavascriptInterface
+    public String displayMode() { return GlassesDisplay.describe(activity); }
+
+    /** key: mirror | temple; mode: auto | on | off. */
+    @JavascriptInterface
+    public void setDisplayMode(String key, String mode) { GlassesDisplay.set(activity, key, mode); }
 
     static String localIp() {
         try {
