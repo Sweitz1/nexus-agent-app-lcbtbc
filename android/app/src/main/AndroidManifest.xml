@@ -15,12 +15,14 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.location" android:required="false" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
 
     <!-- Android 11+ package visibility: lets the "apps" skill list and launch launcher apps,
          and lets voice input / TTS find the system services. -->
@@ -115,6 +117,17 @@
                 <data android:scheme="nexusagent" />
             </intent-filter>
         </activity>
+
+        <!-- Optional: lets agents read/announce notifications after the user grants access. -->
+        <service
+            android:name=".NexusNotificationListener"
+            android:exported="true"
+            android:label="Nexus Agent"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
         <provider
             android:name=".WorkspaceProvider"

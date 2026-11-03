@@ -4,6 +4,7 @@ pdf.js 3.11.174 (Mozilla) - Apache License 2.0
 pdf-lib 1.17.1 (Andrew Dillon) - MIT License
 tesseract.js 5.1.1 / tesseract.js-core 5.1.1 (Naptha) - Apache License 2.0
 Tesseract OCR English traineddata (Google) - Apache License 2.0
+ZXing-js @zxing/library 0.21.3 - Apache License 2.0
 JavaMail for Android (com.sun.mail:android-mail / android-activation 1.6.7) - Eclipse Distribution License 1.0 (BSD-3-Clause), compiled into the app
 
 === pdf-lib MIT License ===

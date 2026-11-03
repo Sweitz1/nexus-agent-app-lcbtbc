@@ -337,8 +337,16 @@ async function runAgent(agent, userText, { history = [], onStep = () => {}, dept
   const key = getKey(p.id);
   if (!key && !p.local && !/localhost|127\.0\.0\.1|192\.168\.|10\.\d|\.local/.test(p.baseUrl)) throw new Error(`No API key for ${p.name}. Add it in Models (or from your phone via the remote console).`);
   const ad = Adapters[p.type] || Adapters.openai;
-  let tools = agent.tools ? skillsFor(agent, depth) : [];
-  const sys = buildSystem(agent);
+  // Skill loading: with many skills, agents start with a core set and load groups on demand
+  // (keeps requests small and under provider tool limits, e.g. 128 for OpenAI).
+  const allowed = agent.tools ? skillsFor(agent, depth) : [];
+  const mode = S.settings.skillLoading || 'auto';
+  const onDemand = allowed.length > 0 && (mode === 'ondemand' || (mode === 'auto' && allowed.length > 32));
+  const loaded = new Set(CORE_SKILL_GROUPS);
+  let noTools = false;
+  const pickTools = () => noTools ? [] : onDemand ? [...allowed.filter(t => loaded.has(t.group)), loadSkillsTool(allowed, loaded)] : allowed;
+  let tools = pickTools();
+  const sys = buildSystem(agent, { onDemand, allowed });
   const hist = normalize([...history.map(h => ({ role: h.role, content: h.role === 'assistant' && h.agent && h.agent !== agent.name ? `[${h.agent}]: ${h.content}` : h.content })), { role: 'user', content: userText }]);
   const conv = ad.start(sys, hist);
   if (images.length) {
@@ -358,7 +366,7 @@ async function runAgent(agent, userText, { history = [], onStep = () => {}, dept
     } catch (e) {
       // Many local / uncensored models do not support function calling: retry without tools.
       if (tools.length && e instanceof ApiError && e.status >= 400 && e.status < 500 && /tool|function/i.test(e.message + e.body)) {
-        tools = []; onStep({ name: 'note', args: {}, result: `${agent.model} rejected tools; continuing without skills` }); i--; continue;
+        noTools = true; tools = []; onStep({ name: 'note', args: {}, result: `${agent.model} rejected tools; continuing without skills` }); i--; continue;
       }
       throw e;
     }
@@ -368,7 +376,22 @@ async function runAgent(agent, userText, { history = [], onStep = () => {}, dept
       if (token !== runToken) throw new Error('Stopped');
       onStep({ name: c.name, args: c.args, result: '…' });
       let out;
-      try { out = await execSkill(c.name, c.args, { agent, depth, origin, token }); } catch (e) { out = 'Error: ' + e.message; }
+      try {
+        if (c.name === 'load_skills') {
+          const want = [].concat(c.args.groups || c.args.group || []).map(String);
+          const groups = [...new Set(allowed.map(t => t.group))];
+          const ok = want.map(w => groups.find(g => g.toLowerCase() === w.toLowerCase())).filter(Boolean);
+          ok.forEach(g => loaded.add(g)); tools = pickTools();
+          out = ok.length ? `Loaded ${ok.join(', ')}. Now available: ${allowed.filter(t => ok.includes(t.group)).map(t => t.name).join(', ')}` : `Unknown group(s). Groups: ${groups.join(', ')}`;
+        } else {
+          const def = allowed.find(t => t.name === c.name);
+          if (!def) out = `Skill ${c.name} is not available to this agent.`;
+          else {
+            if (onDemand && !loaded.has(def.group)) { loaded.add(def.group); tools = pickTools(); }
+            out = await execSkill(c.name, c.args, { agent, depth, origin, token });
+          }
+        }
+      } catch (e) { out = 'Error: ' + e.message; }
       out = typeof out === 'string' ? out : JSON.stringify(out);
       out = clip(out, 12000);
       steps.push({ name: c.name, args: c.args, result: out });
@@ -380,7 +403,7 @@ async function runAgent(agent, userText, { history = [], onStep = () => {}, dept
   return { text: '(stopped after max tool steps)', steps };
 }
 
-function buildSystem(agent) {
+function buildSystem(agent, opts = {}) {
   const now = new Date();
   const parts = [agent.system || 'You are a helpful assistant.'];
   const mem = Object.entries(S.memory || {});
@@ -390,6 +413,11 @@ function buildSystem(agent) {
   parts.push(`Context: current time ${now.toString()}. Device: ${deviceLabel()}.` + (S.settings.glasses ? ' Output is shown on small AR glasses and may be read aloud: prefer short paragraphs and bullet points.' : ''));
   const others = S.agents.filter(a => a.id !== agent.id).map(a => a.name);
   if (agent.tools && agentHasSkill(agent, 'ask_agent') && others.length) parts.push('Other agents you can consult with ask_agent: ' + others.join(', ') + '.');
+  if (opts.onDemand) {
+    const byGroup = {};
+    opts.allowed.filter(t => !CORE_SKILL_GROUPS.includes(t.group)).forEach(t => (byGroup[t.group] = byGroup[t.group] || []).push(t.name));
+    parts.push('More skills are available in groups. Call load_skills with the group name(s) before using them (or call a listed skill directly):\n' + Object.entries(byGroup).map(([g, n]) => `- ${g}: ${n.join(', ')}`).join('\n'));
+  }
   return parts.join('\n\n');
 }
 let _dev = null;
@@ -499,6 +527,11 @@ function customSkillDefs() {
   }));
 }
 function allSkills() { return [...BUILTIN_SKILLS, ...customSkillDefs()]; }
+const CORE_SKILL_GROUPS = ['Web', 'Utility', 'Memory', 'Agents'];
+function loadSkillsTool(allowed, loaded) {
+  const groups = [...new Set(allowed.map(t => t.group))].filter(g => !loaded.has(g));
+  return { name: 'load_skills', group: 'Core', description: 'Load more skill groups for this task. Not yet loaded: ' + (groups.join(', ') || 'none'), parameters: { type: 'object', properties: { groups: { type: 'array', items: { type: 'string' }, description: 'group names, e.g. ["PDF","Email"]' } }, required: ['groups'] } };
+}
 function agentHasSkill(agent, name) { return (agent.skills || []).includes('*') || (agent.skills || []).includes(name); }
 function skillsFor(agent, depth) {
   return allSkills().filter(s => !S.disabledSkills.includes(s.name) && agentHasSkill(agent, s.name) && !(s.name === 'ask_agent' && depth >= 2));
@@ -689,11 +722,12 @@ function bind(container, target, after) {
 }
 
 let currentTab = 'chat';
+const extraTabs = {}; // tabs registered by skill packs (e.g. Media)
 function showTab(tab) {
   currentTab = tab;
   $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + tab));
-  ({ chat: () => { renderChatBar(); renderMessages(); }, agents: renderAgents, providers: renderProviders, files: renderFiles, skills: renderSkills, hooks: renderHooks, settings: renderSettings })[tab]();
+  (({ chat: () => { renderChatBar(); renderMessages(); }, agents: renderAgents, providers: renderProviders, files: renderFiles, skills: renderSkills, hooks: renderHooks, settings: renderSettings })[tab] || extraTabs[tab])();
 }
 
 /* ====================================================================== UI: agents */
@@ -935,6 +969,7 @@ function renderSettings() {
     </div>
     <div class="card"><h3>Agent runtime</h3>
       <label class="inline"><input type="checkbox" data-k="confirmActions" data-t="bool">Ask before device / network actions (launch apps, intents, HTTP, webhooks)</label>
+      <div class="row"><div><label>Skill loading</label><select data-k="skillLoading"><option value="auto">Auto (on demand when an agent has many skills)</option><option value="ondemand">Always on demand (smallest requests)</option><option value="all">Send all skills every request</option></select></div></div>
       <div class="row"><div><label>Max tool steps per reply</label><input data-k="maxSteps" data-t="num" type="number" min="1" max="30"></div>
       <div><label>Max output tokens</label><input data-k="maxTokens" data-t="num" type="number" min="128" max="64000"></div>
       <div><label>Council synthesizer</label><select data-k="synthesizer"><option value="">(none — show each answer)</option>${S.agents.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></div></div>
@@ -1038,5 +1073,6 @@ document.addEventListener('DOMContentLoaded', boot);
 </script>
 <script src="js/skills-pro.js"></script>
 <script src="js/skills-comms.js"></script>
+<script src="js/skills-media.js"></script>
 </body>
 </html>

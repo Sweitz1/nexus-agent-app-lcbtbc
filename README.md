@@ -22,7 +22,7 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   - outgoing webhooks
   - delegation to other agents
 
-  **Pro skills** (79 skills in total; each one can be turned on or off per agent):
+  **Pro skills** (113 skills in total; each one can be turned on or off per agent):
 
   | Group | Skills |
   |---|---|
@@ -38,6 +38,12 @@ Nexus Agent is a private, multi-model agent app for Android. It is built for the
   | Phone | `contacts_search`, `phone_call` (opens the dialer, or calls directly), `send_sms` (prefilled message; you tap send) |
   | Translation | `translate` (AI model, DeepL or LibreTranslate), `translate_image` (signs, menus), `translate_file` (text and PDF files) |
   | Email | `email_list` (inbox, unread, search by text, sender or date), `email_read` (full text; saves attachments to the workspace), `email_send`, `email_reply` (threaded, with reply-all), `email_manage` (read/unread, flag, move, delete), `email_folders`, `email_compose` (opens your mail app with a draft; needs no account) |
+  | Glasses (native RayNeo X3 Pro) | `glasses_status` (battery, charging, temperature, network, storage, sensors), `glasses_volume`, `glasses_brightness`, `media_control` (Spotify and other players: play, pause, next…), `glasses_settings`, `head_pose`, `ask_yes_no` (**nod = yes, shake = no**), `notifications_read` / `notifications_dismiss`, `camera_record_video` (point-of-view clips with sound) |
+  | Scanner | `scan_code` (live camera or image: QR, EAN/UPC, Code 128/39, ITF, Data Matrix, PDF417, Aztec; recognises links, Wi-Fi, contacts, events and products), `qr_generate` (including Wi-Fi login codes), `product_lookup` (Open Food Facts, UPCitemdb) |
+  | Telegram | `telegram_send`, `telegram_send_file`, `telegram_read`, `telegram_chats`. Optionally, the bot can answer you from anywhere (text, photos, documents, transcribed voice notes) |
+  | Kino | `kino_search`, `kino_trending`, `kino_details` (cast, runtime, rating, trailer, **where to stream, rent or buy**), `kino_play` (trailers and videos in the in-app player), `kino_feed` (a scrolling poster feed in the Media tab) |
+  | Audiobooks | `audiobook_search` (free LibriVox titles via Internet Archive), `audiobook_play` (resumes where you stopped), `audiobook_control` (pause, skip, seek, speed, sleep timer), `audiobook_library`, `audiobook_download` (offline), `audiobook_create` (**turns an EPUB, PDF or text file into an audiobook** with read-along text) |
+  | Audio | `text_to_audio` (offline device voice to WAV, OpenAI/Venice voices to MP3, or ElevenLabs), `tts_voices`, `audio_transcribe` (Whisper via OpenAI or Groq), `audio_play`, `read_aloud` (reads text aloud while it scrolls and highlights), `teleprompter` (auto-scrolling; touchpad changes the speed) |
   | Calendar | `calendar_list_calendars`, `calendar_events` (today, this week, next N days, search), `calendar_create_event` (reminders, attendees, recurrence), `calendar_update_event`, `calendar_delete_event`, `calendar_find_free_time`, `calendar_export_ics` (invites to email), `calendar_import_ics` |
 
   You can also add your own **HTTP skills** (Home Assistant, n8n or your own API, with `{{param}}` templates) and **prompt skills**.
@@ -144,6 +150,36 @@ Small local models often don't support tool calling. The app detects this and co
 - **Confirmation.** Risky skills ask before running. These are deleting files, calls, SMS, contacts, location, app launching, intents, raw HTTP and webhooks. In the **Skills** tab you can tick *always allow* on any of them.
 - **Upgrading from 1.0.0.** The app now runs from a secure local origin, which the camera, workers and WebAssembly need. Agents and settings saved in 1.0.0 don't carry over, but API keys do. To keep your configuration, use *Settings → Export config* on 1.0.0 before upgrading, then import it on 1.1.0.
 
+## Native RayNeo agent, Media tab and on-demand skills
+
+- **RayNeo agent.** A dedicated agent preset for the glasses. It has every skill and short, display-friendly answers. On RayNeo/TCL hardware it becomes the default agent and glasses mode turns on automatically.
+- **Head gestures.** `ask_yes_no` puts a question on the display and reads it aloud. You answer by nodding or shaking your head, or by tapping.
+  - Optionally, every confirmation prompt can be answered the same way: *Settings → Media & audio → Confirm actions by nodding*.
+  - The sensor sits differently in each pair of glasses, so press **Calibrate nod** and **Calibrate shake** once.
+- **Notifications.** *Grant notification access* lets agents read and summarise notifications from your phone and apps. *Announce new notifications* reads them aloud as they arrive, optionally for chosen apps only.
+- **Media tab:**
+  - ▦ Scan code: live QR/barcode scanner with actions (open link, look up product, ask the agent).
+  - 📚 Audiobooks: search, library with progress, download.
+  - 🎬 Kino: a scrolling movie and TV feed with posters; tap a card for details, the trailer and where to watch.
+  - 📜 Teleprompter.
+  - A mini player bar (play/pause, previous, next, speed, read-along) stays at the bottom while audio plays.
+- **Kino data.**
+  - Without a key, the app uses Apple iTunes (movies and trailers) and TVmaze (TV).
+  - With a free [TMDB](https://www.themoviedb.org/settings/api) API key or read token, you get trending titles, ratings and *where to watch* (streaming, rent and buy, per region).
+  - YouTube trailers open in YouTube; other videos play in the app.
+- **Text to audio.**
+  - The device engine works offline and creates WAV files.
+  - *AI provider voices* use OpenAI (`gpt-4o-mini-tts` with voices like `alloy` or `nova`) or Venice (set the model to `tts-kokoro`).
+  - ElevenLabs needs its own API key.
+  - Long texts are split into chunks and joined automatically.
+- **Telegram.**
+  1. Create a bot with [@BotFather](https://t.me/BotFather) and paste its token in *Settings → Media & audio → Telegram*.
+  2. In Telegram, send `/pair <code>` to your bot. The code is shown in Settings.
+  3. Turn on *Answer messages sent to the bot*. The bot then forwards your messages, photos, files and voice notes to the chosen agent and sends back the answer.
+
+  This works while the app is open. It doesn't need the local network, so you can reach the glasses from anywhere. Only paired chats are answered. The bot can only message people who have started it, and it can't read your personal Telegram chats; Telegram doesn't allow that for bots.
+- **On-demand skill loading.** With more than 100 skills, sending every skill on every request would be slow, expensive, and over OpenAI's 128-tool limit. So agents start with a small core set (web, utility, memory, delegation) plus `load_skills`, and the system prompt lists every other group by name. The agent loads groups as needed, or a group loads automatically when the agent calls one of its skills directly. You can change this in *Settings → Agent runtime → Skill loading*.
+
 ## Email and calendar setup
 
 Open *Settings → Email & calendar*. You can also paste the passwords from your phone using the remote console's **Set API keys & passwords** section.
@@ -225,11 +261,14 @@ android/
     EmailClient.java       IMAP/SMTP via JavaMail: list, search, read, attachments, flags, move, send
     CalendarTools.java     Android CalendarContract: calendars, events (recurrences expanded), create/update/delete
     RawHttp.java           HTTP/1.1 client for WebDAV/CalDAV verbs (PROPFIND, REPORT) and PATCH
+    GlassesTools.java      battery/network/storage status, volume, media keys, settings panels, head pose, nod/shake detection
+    NexusNotificationListener.java  notification access (read, announce, dismiss)
     WebhookServer.java     LAN HTTP server: incoming webhooks + phone remote console
   app/src/main/assets/
     index.html          core agent runtime and UI (providers, agents, modes, webhooks)
     js/skills-pro.js    files, coding, engineering, image, PDF, OCR, zip, video, maps, phone, translation skills
     js/skills-comms.js  email and calendar skills, CalDAV client, iCalendar parser/writer, account settings
+    js/skills-media.js  scanner, Telegram, Kino, audiobooks, text-to-audio, glasses skills, Media tab, player, RayNeo agent
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console
 .github/workflows/build-apk.yml

@@ -434,8 +434,8 @@ BUILTIN_SKILLS.push(
 {
   const coreBuildSystem = buildSystem;
   // eslint-disable-next-line no-global-assign
-  buildSystem = function (agent) {
-    const base = coreBuildSystem(agent);
+  buildSystem = function (agent, opts) {
+    const base = coreBuildSystem(agent, opts);
     if (!agent.tools) return base;
     const bits = [];
     if (S.emailAccounts.length) bits.push('Email accounts: ' + S.emailAccounts.map((a, i) => `${a.name} <${a.email}>${i ? '' : ' (default)'}`).join(', ') + '.');

@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 Uri u = request.getUrl();
                 if (!"https".equals(u.getScheme()) || !HOST.equals(u.getHost())) return null;
-                return serveLocal(u.getPath());
+                return serveLocal(u.getPath(), request.getRequestHeaders());
             }
 
             @Override
@@ -120,14 +120,17 @@ public class MainActivity extends Activity {
                 // Only the in-app camera is granted, and only after the Android CAMERA
                 // permission was given. Microphone goes through native speech recognition.
                 runOnUiThread(() -> {
-                    boolean wantsVideo = false;
-                    for (String r : request.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) wantsVideo = true;
-                    if (wantsVideo && HOST.equals(request.getOrigin().getHost())
-                            && checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                        request.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
-                    } else {
-                        request.deny();
+                    // Camera (photos, scanning, video) and microphone (video recording) are granted
+                    // only to our own origin and only once the matching Android permission exists.
+                    ArrayList<String> grant = new ArrayList<>();
+                    boolean ours = HOST.equals(request.getOrigin().getHost());
+                    for (String r : request.getResources()) {
+                        if (!ours) break;
+                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r) && hasPermission(Manifest.permission.CAMERA)) grant.add(r);
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r) && hasPermission(Manifest.permission.RECORD_AUDIO)) grant.add(r);
                     }
+                    if (grant.isEmpty()) request.deny();
+                    else request.grant(grant.toArray(new String[0]));
                 });
             }
         });
@@ -194,7 +197,10 @@ public class MainActivity extends Activity {
                 {"png", "image/png"}, {"jpg", "image/jpeg"}, {"jpeg", "image/jpeg"}, {"webp", "image/webp"},
                 {"gif", "image/gif"}, {"bmp", "image/bmp"}, {"pdf", "application/pdf"}, {"zip", "application/zip"},
                 {"mp4", "video/mp4"}, {"webm", "video/webm"}, {"m4a", "audio/mp4"}, {"mp3", "audio/mpeg"},
-                {"wav", "audio/wav"}, {"gz", "application/gzip"}, {"ics", "text/calendar"}, {"eml", "message/rfc822"}};
+                {"wav", "audio/wav"}, {"gz", "application/gzip"}, {"ics", "text/calendar"}, {"eml", "message/rfc822"}, {"m4b", "audio/mp4"}, {"ogg", "audio/ogg"},
+                {"opus", "audio/ogg"}, {"aac", "audio/aac"}, {"flac", "audio/flac"}, {"mkv", "video/x-matroska"},
+                {"mov", "video/quicktime"}, {"m3u8", "application/vnd.apple.mpegurl"}, {"epub", "application/epub+zip"},
+                {"srt", "text/plain"}, {"vtt", "text/vtt"}};
         for (String[] e : m) MIME.put(e[0], e[1]);
     }
 
@@ -206,14 +212,25 @@ public class MainActivity extends Activity {
     }
 
     /** Serves /workspace/... from the private file workspace and everything else from assets. */
-    private WebResourceResponse serveLocal(String path) {
+    private WebResourceResponse serveLocal(String path, Map<String, String> reqHeaders) {
         try {
             if (path == null || path.equals("/")) path = "/index.html";
             InputStream in;
             if (path.startsWith("/workspace/")) {
                 File f = bridge.workspace.resolve(Uri.decode(path.substring("/workspace/".length())));
                 if (!f.isFile()) return notFound();
+                String range = null;
+                if (reqHeaders != null) for (Map.Entry<String, String> e : reqHeaders.entrySet())
+                    if ("range".equalsIgnoreCase(e.getKey())) range = e.getValue();
+                if (range != null && range.startsWith("bytes=")) return partial(f, range);
                 in = new FileInputStream(f);
+                WebResourceResponse r = new WebResourceResponse(mimeFor(path), null, in);
+                Map<String, String> h = new HashMap<>();
+                h.put("Cache-Control", "no-cache");
+                h.put("Accept-Ranges", "bytes");
+                h.put("Content-Length", String.valueOf(f.length()));
+                r.setResponseHeaders(h);
+                return r;
             } else {
                 String asset = path.substring(1);
                 if (asset.contains("..")) return notFound();
@@ -231,6 +248,57 @@ public class MainActivity extends Activity {
             return notFound();
         }
     }
+
+    /** HTTP Range support so audio/video players can seek in workspace files. */
+    private WebResourceResponse partial(File f, String range) throws java.io.IOException {
+        long len = f.length();
+        String spec = range.substring(6).split(",")[0].trim();
+        long start, end;
+        if (spec.startsWith("-")) { start = Math.max(0, len - Long.parseLong(spec.substring(1))); end = len - 1; }
+        else {
+            String[] p = spec.split("-");
+            start = Long.parseLong(p[0]);
+            end = p.length > 1 && !p[1].isEmpty() ? Math.min(Long.parseLong(p[1]), len - 1) : len - 1;
+        }
+        if (start >= len || start > end) {
+            WebResourceResponse r = new WebResourceResponse("text/plain", "utf-8", new java.io.ByteArrayInputStream(new byte[0]));
+            r.setStatusCodeAndReasonPhrase(416, "Range Not Satisfiable");
+            return r;
+        }
+        final long count = end - start + 1;
+        final java.io.RandomAccessFile raf = new java.io.RandomAccessFile(f, "r");
+        raf.seek(start);
+        InputStream in = new InputStream() {
+            long left = count;
+            @Override public int read() throws java.io.IOException { if (left <= 0) return -1; left--; return raf.read(); }
+            @Override public int read(byte[] b, int off, int l) throws java.io.IOException {
+                if (left <= 0) return -1;
+                int n = raf.read(b, off, (int) Math.min(l, left));
+                if (n > 0) left -= n;
+                return n;
+            }
+            @Override public void close() throws java.io.IOException { raf.close(); }
+        };
+        WebResourceResponse r = new WebResourceResponse(mimeFor(f.getName()), null, in);
+        r.setStatusCodeAndReasonPhrase(206, "Partial Content");
+        Map<String, String> h = new HashMap<>();
+        h.put("Content-Range", "bytes " + start + "-" + end + "/" + len);
+        h.put("Content-Length", String.valueOf(count));
+        h.put("Accept-Ranges", "bytes");
+        r.setResponseHeaders(h);
+        return r;
+    }
+
+    /** Window-level display brightness (0..1, or -1 for the system setting). No permission needed. */
+    void setWindowBrightness(float v) {
+        runOnUiThread(() -> {
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.screenBrightness = v < 0 ? WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE : Math.max(0.01f, Math.min(1f, v));
+            getWindow().setAttributes(lp);
+        });
+    }
+
+    float getWindowBrightness() { return getWindow().getAttributes().screenBrightness; }
 
     private static WebResourceResponse notFound() {
         WebResourceResponse r = new WebResourceResponse("text/plain", "utf-8", new java.io.ByteArrayInputStream(new byte[0]));

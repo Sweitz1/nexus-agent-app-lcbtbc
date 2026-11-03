@@ -73,6 +73,9 @@ public class NativeBridge {
     private final MediaTools media;
     private final EmailClient email;
     private final CalendarTools calendar;
+    private final GlassesTools glasses;
+    private final java.util.Map<String, java.util.concurrent.CountDownLatch> ttsDone = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<String, Boolean> ttsOk = new java.util.concurrent.ConcurrentHashMap<>();
     private String pickCallbackId, exportCallbackId, exportPath, cameraCallbackId;
     private File cameraFile;
 
@@ -82,10 +85,19 @@ public class NativeBridge {
         this.media = new MediaTools(workspace);
         this.email = new EmailClient(workspace);
         this.calendar = new CalendarTools(activity);
+        this.glasses = new GlassesTools(activity);
+        NexusNotificationListener.sink = n -> activity.emit("notification", n.toString());
         this.prefs = activity.getSharedPreferences("nexus_secure", Context.MODE_PRIVATE);
         tts = new TextToSpeech(activity, status -> {
             ttsReady = status == TextToSpeech.SUCCESS;
-            if (ttsReady) tts.setLanguage(Locale.getDefault());
+            if (ttsReady) {
+                tts.setLanguage(Locale.getDefault());
+                tts.setOnUtteranceProgressListener(new android.speech.tts.UtteranceProgressListener() {
+                    @Override public void onStart(String id) { if (id.startsWith("say")) activity.emit("tts_state", "{\"speaking\":true}"); }
+                    @Override public void onDone(String id) { finishUtterance(id, true); }
+                    @Override public void onError(String id) { finishUtterance(id, false); }
+                });
+            }
         });
     }
 
@@ -210,6 +222,10 @@ public class NativeBridge {
                 if (c != null) c.disconnect();
             }
         });
+    }
+
+    private static String readAllSafe(InputStream is) {
+        try { String t = readAll(is); return t.length() > 300 ? t.substring(0, 300) : t; } catch (Exception e) { return ""; }
     }
 
     private static String readAll(InputStream is) throws java.io.IOException {
@@ -341,7 +357,7 @@ public class NativeBridge {
     public void speak(String text, float rate) {
         if (!ttsReady) return;
         tts.setSpeechRate(rate <= 0 ? 1.0f : rate);
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "nexus");
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "say" + System.nanoTime());
     }
 
     @JavascriptInterface
@@ -693,8 +709,19 @@ public class NativeBridge {
                 c.setRequestProperty("User-Agent", "NexusAgent/1.0 (Android; RayNeo)");
                 JSONObject h = req.optJSONObject("headers");
                 if (h != null) { Iterator<String> it = h.keys(); while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.optString(k)); } }
+                String method = req.optString("method", "GET").toUpperCase(Locale.ROOT);
+                c.setRequestMethod(method);
+                if (req.has("body") && !req.isNull("body") && !method.equals("GET")) {
+                    byte[] bytes = req.getString("body").getBytes(StandardCharsets.UTF_8);
+                    c.setDoOutput(true);
+                    c.setFixedLengthStreamingMode(bytes.length);
+                    try (OutputStream os = c.getOutputStream()) { os.write(bytes); }
+                }
                 int status = c.getResponseCode();
-                if (status >= 400) throw new java.io.IOException("HTTP " + status);
+                if (status >= 400) {
+                    InputStream es = c.getErrorStream();
+                    throw new java.io.IOException("HTTP " + status + (es == null ? "" : ": " + readAllSafe(es)));
+                }
                 String path = req.optString("path", "");
                 if (path.isEmpty()) {
                     String name = url.getPath().replaceAll(".*/", "");
@@ -725,6 +752,226 @@ public class NativeBridge {
             }
         });
     }
+
+    /**
+     * multipart/form-data upload. spec = {url, headers, fields:{k:v}, files:[{field, path, name?, mime?}]}
+     * resolves {status, body}. Used for Telegram files and audio transcription.
+     */
+    @JavascriptInterface
+    public void upload(String id, String specJson) {
+        async(id, () -> {
+            JSONObject spec = new JSONObject(specJson);
+            URL url = new URL(spec.getString("url"));
+            if (!"https".equals(url.getProtocol()) && !"http".equals(url.getProtocol())) throw new IllegalArgumentException("Only http/https");
+            String boundary = "----nexus" + System.nanoTime();
+            HttpURLConnection c = (HttpURLConnection) url.openConnection();
+            try {
+                c.setConnectTimeout(20000);
+                c.setReadTimeout(300000);
+                c.setRequestMethod("POST");
+                c.setDoOutput(true);
+                c.setChunkedStreamingMode(65536);
+                c.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+                c.setRequestProperty("User-Agent", "NexusAgent/1.0 (Android; RayNeo)");
+                JSONObject h = spec.optJSONObject("headers");
+                if (h != null) { Iterator<String> it = h.keys(); while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.optString(k)); } }
+                try (OutputStream os = new java.io.BufferedOutputStream(c.getOutputStream())) {
+                    JSONObject fields = spec.optJSONObject("fields");
+                    if (fields != null) {
+                        Iterator<String> it = fields.keys();
+                        while (it.hasNext()) {
+                            String k = it.next();
+                            os.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"" + k + "\"\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                            os.write(fields.optString(k).getBytes(StandardCharsets.UTF_8));
+                            os.write("\r\n".getBytes(StandardCharsets.UTF_8));
+                        }
+                    }
+                    JSONArray files = spec.optJSONArray("files");
+                    if (files != null) for (int i = 0; i < files.length(); i++) {
+                        JSONObject f = files.getJSONObject(i);
+                        File file = workspace.resolve(f.getString("path"));
+                        String name = f.optString("name", file.getName()).replace("\"", "");
+                        String mime = f.optString("mime", MainActivity.mimeFor(file.getName()));
+                        os.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"" + f.getString("field") + "\"; filename=\"" + name + "\"\r\nContent-Type: " + mime + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                        try (InputStream in = new FileInputStream(file)) { Workspace.copy(in, os); }
+                        os.write("\r\n".getBytes(StandardCharsets.UTF_8));
+                    }
+                    os.write(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+                }
+                int status = c.getResponseCode();
+                InputStream is = status >= 400 ? c.getErrorStream() : c.getInputStream();
+                JSONObject o = new JSONObject();
+                o.put("status", status);
+                o.put("body", is == null ? "" : readAll(is));
+                return o.toString();
+            } finally {
+                c.disconnect();
+            }
+        });
+    }
+
+    // ------------------------------------------------------------------ text to audio file
+
+    private void finishUtterance(String id, boolean ok) {
+        java.util.concurrent.CountDownLatch l = ttsDone.get(id);
+        if (l != null) { ttsOk.put(id, ok); l.countDown(); }
+        if (id.startsWith("say")) activity.emit("tts_state", "{\"speaking\":false}");
+    }
+
+    @JavascriptInterface
+    public String ttsVoices() {
+        try {
+            JSONArray arr = new JSONArray();
+            if (ttsReady && tts.getVoices() != null) for (android.speech.tts.Voice v : tts.getVoices()) {
+                JSONObject o = new JSONObject();
+                o.put("name", v.getName());
+                o.put("locale", v.getLocale().toLanguageTag());
+                o.put("offline", !v.isNetworkConnectionRequired());
+                o.put("quality", v.getQuality());
+                arr.put(o);
+            }
+            return arr.toString();
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    /**
+     * Offline speech synthesis to a WAV file with the device TTS engine. Long text is split
+     * into chunks and the PCM data merged. spec {text, path, rate, pitch, voice, lang}
+     */
+    @JavascriptInterface
+    public void ttsToFile(String id, String specJson) {
+        async(id, () -> {
+            if (!ttsReady) throw new IllegalStateException("No text-to-speech engine on this device");
+            JSONObject s = new JSONObject(specJson);
+            String text = s.getString("text");
+            File out = workspace.unique(s.optString("path", "audio/speech_" + System.currentTimeMillis() + ".wav"));
+            File parent = out.getParentFile();
+            if (parent != null) //noinspection ResultOfMethodCallIgnored
+                parent.mkdirs();
+            synchronized (tts) {
+                if (!s.optString("lang").isEmpty()) tts.setLanguage(Locale.forLanguageTag(s.optString("lang")));
+                if (!s.optString("voice").isEmpty() && tts.getVoices() != null)
+                    for (android.speech.tts.Voice v : tts.getVoices()) if (v.getName().equals(s.optString("voice"))) tts.setVoice(v);
+                tts.setSpeechRate((float) s.optDouble("rate", 1.0));
+                tts.setPitch((float) s.optDouble("pitch", 1.0));
+                int max = Math.min(3500, TextToSpeech.getMaxSpeechInputLength() - 100);
+                List<String> chunks = chunkText(text, max);
+                List<File> parts = new ArrayList<>();
+                try {
+                    for (int i = 0; i < chunks.size(); i++) {
+                        File part = new File(activity.getCacheDir(), "tts_" + System.nanoTime() + ".wav");
+                        String uid = "file" + System.nanoTime();
+                        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+                        ttsDone.put(uid, latch);
+                        int r = tts.synthesizeToFile(chunks.get(i), new Bundle(), part, uid);
+                        if (r != TextToSpeech.SUCCESS) throw new IllegalStateException("TTS engine refused chunk " + (i + 1));
+                        if (!latch.await(180, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("TTS timeout");
+                        ttsDone.remove(uid);
+                        if (!Boolean.TRUE.equals(ttsOk.remove(uid))) throw new IllegalStateException("TTS failed on chunk " + (i + 1));
+                        parts.add(part);
+                        activity.emit("tts_progress", "{\"done\":" + (i + 1) + ",\"total\":" + chunks.size() + "}");
+                    }
+                    long ms = mergeWav(parts, out);
+                    JSONObject o = new JSONObject();
+                    o.put("path", workspace.rel(out));
+                    o.put("size", out.length());
+                    o.put("durationMs", ms);
+                    o.put("chunks", chunks.size());
+                    return o.toString();
+                } finally {
+                    for (File f : parts) //noinspection ResultOfMethodCallIgnored
+                        f.delete();
+                    tts.setSpeechRate(1.0f);
+                    tts.setPitch(1.0f);
+                }
+            }
+        });
+    }
+
+    static List<String> chunkText(String text, int max) {
+        List<String> out = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        for (String sentence : text.split("(?<=[.!?…。！？\\n])\\s+")) {
+            if (cur.length() + sentence.length() + 1 > max && cur.length() > 0) { out.add(cur.toString()); cur.setLength(0); }
+            while (sentence.length() > max) {
+                int cut = sentence.lastIndexOf(' ', max);
+                if (cut < max / 2) cut = max;
+                if (cur.length() > 0) { out.add(cur.toString()); cur.setLength(0); }
+                out.add(sentence.substring(0, cut).trim());
+                sentence = sentence.substring(cut).trim();
+            }
+            if (cur.length() > 0) cur.append(' ');
+            cur.append(sentence);
+        }
+        if (cur.toString().trim().length() > 0) out.add(cur.toString());
+        return out;
+    }
+
+    /** Concatenates PCM WAV files that share one format; returns duration in ms. */
+    static long mergeWav(List<File> parts, File out) throws java.io.IOException {
+        byte[] fmt = null;
+        java.io.ByteArrayOutputStream data = new java.io.ByteArrayOutputStream();
+        for (File f : parts) {
+            byte[] b = java.nio.file.Files.readAllBytes(f.toPath());
+            int pos = 12;
+            while (pos + 8 <= b.length) {
+                String id = new String(b, pos, 4, StandardCharsets.US_ASCII);
+                int len = (b[pos + 4] & 0xff) | (b[pos + 5] & 0xff) << 8 | (b[pos + 6] & 0xff) << 16 | (b[pos + 7] & 0xff) << 24;
+                if (len < 0 || pos + 8 + len > b.length) len = b.length - pos - 8;
+                if (id.equals("fmt ") && fmt == null) fmt = java.util.Arrays.copyOfRange(b, pos + 8, pos + 8 + len);
+                if (id.equals("data")) data.write(b, pos + 8, len);
+                pos += 8 + len + (len & 1);
+            }
+        }
+        if (fmt == null) throw new java.io.IOException("TTS produced no audio");
+        byte[] pcm = data.toByteArray();
+        java.nio.ByteBuffer hb = java.nio.ByteBuffer.allocate(12 + 8 + fmt.length + 8).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        hb.put("RIFF".getBytes(StandardCharsets.US_ASCII)).putInt(4 + 8 + fmt.length + 8 + pcm.length).put("WAVE".getBytes(StandardCharsets.US_ASCII));
+        hb.put("fmt ".getBytes(StandardCharsets.US_ASCII)).putInt(fmt.length).put(fmt);
+        hb.put("data".getBytes(StandardCharsets.US_ASCII)).putInt(pcm.length);
+        try (OutputStream os = new FileOutputStream(out)) { os.write(hb.array()); os.write(pcm); }
+        java.nio.ByteBuffer fb = java.nio.ByteBuffer.wrap(fmt).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        int byteRate = fmt.length >= 12 ? fb.getInt(8) : 0;
+        return byteRate > 0 ? pcm.length * 1000L / byteRate : 0;
+    }
+
+    // ------------------------------------------------------------------ glasses / device
+
+    @JavascriptInterface
+    public String deviceStatus() { try { return glasses.status(); } catch (Exception e) { return errorJson(e); } }
+
+    @JavascriptInterface
+    public String setVolume(int percent) { return glasses.setVolume(percent); }
+
+    @JavascriptInterface
+    public String mediaKey(String action) { return glasses.mediaKey(action); }
+
+    /** 0..1 for this app's display, -1 for the system setting. */
+    @JavascriptInterface
+    public String setBrightness(float v) { activity.setWindowBrightness(v); return v < 0 ? "brightness: system" : "brightness " + Math.round(v * 100) + "%"; }
+
+    @JavascriptInterface
+    public String openSettings(String panel) { return glasses.openSettings(panel); }
+
+    @JavascriptInterface
+    public void headPose(String id) { activity.runOnUiThread(() -> glasses.headPose((ok, j) -> activity.callback(id, ok, j))); }
+
+    @JavascriptInterface
+    public void headGesture(String id, int timeoutMs) { activity.runOnUiThread(() -> glasses.headGesture(timeoutMs, (ok, j) -> activity.callback(id, ok, j))); }
+
+    @JavascriptInterface
+    public boolean notificationAccess() {
+        String flat = android.provider.Settings.Secure.getString(activity.getContentResolver(), "enabled_notification_listeners");
+        return flat != null && flat.contains(activity.getPackageName());
+    }
+
+    @JavascriptInterface
+    public String notificationsList(int limit) { return NexusNotificationListener.list(Math.max(1, Math.min(limit, 150))); }
+
+    @JavascriptInterface
+    public boolean notificationDismiss(String key) { return NexusNotificationListener.dismiss(key); }
 
     // ------------------------------------------------------------------ zip & video
 
