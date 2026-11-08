@@ -77,6 +77,29 @@ With no API keys set, the app uses **Local LLM** by default. Open Providers → 
 
 ---
 
+## Arkon knowledge hub (optional, local)
+
+[Arkon](https://github.com/nduckmink/arkon) is a self-hosted wiki and MCP server. It compiles your documents into linked wiki pages. `arkon-local-setup.sh` (in the Linux download) runs it on your PC with **local Ollama models instead of paid APIs**:
+
+```bash
+./linux-local-ai-setup.sh      # Ollama first
+./arkon-local-setup.sh         # then Arkon (needs Docker with Compose 2.24.4+)
+./arkon-local-setup.sh --dry-run
+```
+
+What it does:
+- Downloads Arkon from its own repo into `~/arkon`. Arkon's licence (PolyForm Internal Use) allows running it for your own use but not redistributing it, so it isn't bundled here.
+- Makes Ollama reachable from Docker, with flash attention and a smaller long-context memory footprint.
+- Creates local models under the names Arkon expects: `gpt-4o-mini` (default `qwen3:30b`, 128k context) and `text-embedding-3-small` (default `qwen3-embedding:4b` at 1536 dimensions). Override them with `LLM_BASE`, `LLM_CTX` and `EMBED_BASE`.
+- Generates random passwords and secrets, keeps Arkon's ports on `127.0.0.1`, starts the 7 containers, switches Arkon to the local models and tests them.
+- Saves the admin login to `~/arkon/.nexus-arkon-credentials`.
+
+The script checks two things and warns if they fail: that the embedding model returns exactly 1536 numbers (if not, upload and search won't work), and that the chat model's trained context is long enough. Image captioning stays off.
+
+**Connect Nexus Agent:** go to Providers → **Arkon knowledge hub** and enter `http://127.0.0.1:5055` with the email and password from the credentials file, then tap **Save & test**. New tasks then get `arkon_search` and `arkon_read`.
+
+---
+
 ## Skills from GitHub
 
 The **Skills** page indexes any GitHub repo that holds `SKILL.md` folders (default: `anthropics/skills`). Add more as `owner/repo` or `owner/repo@branch`, one per line.

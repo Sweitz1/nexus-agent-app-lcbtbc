@@ -133,8 +133,8 @@ jobs:
           npm install --save-dev electron@33.2.1 electron-builder@25.1.8 --no-audit --no-fund
           npx electron-builder --linux AppImage deb --x64 --config electron-builder.json --publish never
 
-      - name: Add local AI setup script
-        run: cp scripts/linux-local-ai-setup.sh dist-electron/
+      - name: Add local AI setup scripts
+        run: cp scripts/linux-local-ai-setup.sh scripts/arkon-local-setup.sh dist-electron/
 
       - uses: actions/upload-artifact@v4
         with:
@@ -143,4 +143,5 @@ jobs:
             dist-electron/*.AppImage
             dist-electron/*.deb
             dist-electron/linux-local-ai-setup.sh
+            dist-electron/arkon-local-setup.sh
           retention-days: 90

@@ -513,7 +513,63 @@ const SKILLS = {
 // ────────────────────────────────────────────────────────────────────────────
 // TOOLS
 // ────────────────────────────────────────────────────────────────────────────
+const ARKON = {
+  token: null,
+  cfg() {
+    const s = DB.settings();
+    return { url: (s.arkonUrl || '').replace(/\/+$/, ''), email: s.arkonEmail || '', password: s.arkonPassword || '' };
+  },
+  async login() {
+    const c = this.cfg();
+    if (!c.url || !c.email || !c.password) throw new Error('Arkon is not set up. Add its URL, email and password in Providers.');
+    const r = await fetch(`${c.url}/api/auth/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: c.email, password: c.password })
+    });
+    if (!r.ok) throw new Error(`Arkon login failed (${r.status})`);
+    this.token = (await r.json()).access_token;
+    return this.token;
+  },
+  async get(path) {
+    const c = this.cfg();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (!this.token) await this.login();
+      let r;
+      try { r = await fetch(`${c.url}${path}`, { headers: { 'Authorization': `Bearer ${this.token}` } }); }
+      catch (e) { throw new Error(`Cannot reach Arkon at ${c.url}. Is it running?`); }
+      if (r.status === 401 && attempt === 0) { this.token = null; continue; }
+      if (!r.ok) throw new Error(`Arkon ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      return r.json();
+    }
+  }
+};
+
 const TOOLS = {
+  arkon_search: {
+    desc: 'Search the Arkon knowledge wiki (titles and summaries). Args: {"query": "keywords"}',
+    risky: false,
+    async run({ query = '' } = {}) {
+      const pages = await ARKON.get('/api/wiki/pages?limit=500');
+      const words = String(query).toLowerCase().split(/\s+/).filter(Boolean);
+      const scored = pages.map(p => {
+        const hay = `${p.title} ${p.summary} ${p.slug} ${(p.knowledge_type_slugs || []).join(' ')}`.toLowerCase();
+        return { p, score: words.reduce((n, w) => n + (hay.includes(w) ? 1 : 0), 0) };
+      }).filter(x => !words.length || x.score > 0).sort((a, b) => b.score - a.score);
+      return {
+        results: scored.slice(0, 10).map(({ p }) => ({ slug: p.slug, title: p.title, summary: p.summary, scope: p.scope_name || p.scope_type })),
+        total_pages: pages.length,
+        note: 'Use arkon_read with a slug to read a page.'
+      };
+    }
+  },
+  arkon_read: {
+    desc: 'Read one Arkon wiki page in full. Args: {"slug": "page-slug"}',
+    risky: false,
+    async run({ slug }) {
+      const d = await ARKON.get(`/api/wiki/pages/${String(slug).split('/').map(encodeURIComponent).join('/')}`);
+      return { slug: d.slug, title: d.title, content: (d.content_md || '').slice(0, 12000), truncated: (d.content_md || '').length > 12000, links: d.outlinks };
+    }
+  },
   skill_list: {
     desc: 'List available skills from GitHub skill libraries. Args: {"query": "optional keyword"}',
     risky: false,
@@ -926,8 +982,8 @@ const PAGES = {
 
   'new-task'() {
     const c = document.getElementById('content');
-    const TOOL_NAMES = ['skill_list','skill_load','skill_read_file','web_fetch','github_read','github_list','github_write','memory_search','memory_write'];
-    let selected = new Set(['skill_list','skill_load','skill_read_file','web_fetch','memory_search','memory_write']);
+    const TOOL_NAMES = ['skill_list','skill_load','skill_read_file','arkon_search','arkon_read','web_fetch','github_read','github_list','github_write','memory_search','memory_write'];
+    let selected = new Set(['skill_list','skill_load','skill_read_file','web_fetch','memory_search','memory_write', ...(DB.settings().arkonUrl ? ['arkon_search','arkon_read'] : [])]);
 
     const s = DB.settings();
     const providers = Object.entries(PROVIDERS)
@@ -1095,7 +1151,35 @@ const PAGES = {
         </div>
         <button class="btn btn-primary" onclick="window._saveGhToken()" style="margin-bottom:8px">Save GitHub Token</button>
       </div>
+      <div class="card" style="max-width:560px">
+        <div class="card-title">Arkon knowledge hub</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Self-hosted wiki from <code>arkon-local-setup.sh</code>. Lets the agent search and read it with the arkon_search / arkon_read tools.</div>
+        <div class="form-group"><label class="form-label">API URL</label>
+          <input class="form-input" id="ak-url" placeholder="http://127.0.0.1:5055" value="${s.arkonUrl||''}"/></div>
+        <div class="form-group"><label class="form-label">Email</label>
+          <input class="form-input" id="ak-email" placeholder="admin@arkon.local" value="${s.arkonEmail||''}"/></div>
+        <div class="form-group"><label class="form-label">Password</label>
+          <input class="form-input" id="ak-pass" type="password" value="${s.arkonPassword||''}"/></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-primary btn-sm" onclick="window._saveArkon()">Save &amp; test</button>
+          <span id="ak-status" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+      </div>
       <div id="prov-edit-area"></div>`;
+
+    window._saveArkon = async () => {
+      DB.saveSettings({ ...DB.settings(),
+        arkonUrl: document.getElementById('ak-url').value.trim(),
+        arkonEmail: document.getElementById('ak-email').value.trim(),
+        arkonPassword: document.getElementById('ak-pass').value });
+      ARKON.token = null;
+      const out = document.getElementById('ak-status');
+      out.textContent = 'Testing…';
+      try {
+        const pages = await ARKON.get('/api/wiki/pages?limit=500');
+        out.textContent = `Connected: ${pages.length} wiki page(s).`;
+      } catch (e) { out.textContent = e.message; }
+    };
 
     window._saveGhToken = () => {
       const token = document.getElementById('gh-token').value.trim();
