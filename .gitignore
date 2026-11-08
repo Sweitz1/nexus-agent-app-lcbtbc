@@ -32,3 +32,5 @@ yarn-error.*
 *.tsbuildinfo
 pnpm-lock.yaml
 package-lock.json
+stage/
+dist-electron/

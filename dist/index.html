@@ -174,6 +174,7 @@ select.form-input{cursor:pointer}
       <div class="nav-item" data-page="tasks"><span class="ico">⚡</span> Tasks <span class="badge" id="badge-running">0</span></div>
       <div class="nav-item" data-page="new-task"><span class="ico">＋</span> New Task</div>
       <div class="nav-item" data-page="memory"><span class="ico">◈</span> Memory</div>
+      <div class="nav-item" data-page="skills"><span class="ico">✦</span> Skills</div>
       <div class="nav-group">Config</div>
       <div class="nav-item" data-page="providers"><span class="ico">◎</span> Providers</div>
       <div class="nav-item" data-page="permissions"><span class="ico">🛡</span> Permissions</div>
@@ -302,7 +303,7 @@ const PROVIDERS = {
                note:'OpenAI-compatible. Paste the API base URL and model id from your SpicyAPI dashboard.' },
   local:     { label:'Local LLM (on-device / LAN)', keyField:'localKey', keyHint:'optional', modelField:'localModel',
                urlField:'localUrl', urlHint:'http://127.0.0.1:11434/v1', keyOptional:true,
-               models:['llama3.2','qwen2.5','mistral','dolphin-mistral','gemma2'],
+               models:['qwen3:8b','qwen3:14b','qwen3:30b-a3b','gemma3:12b','llama3.1:8b','dolphin3:8b','llama3.2'],
                note:'Any OpenAI-compatible server: Ollama (Termux or PC), LM Studio, llama.cpp server. Nothing leaves your network. For Ollama set OLLAMA_ORIGINS=* so the app can reach it.' },
 };
 function providerReady(id, s = DB.settings()) {
@@ -331,7 +332,7 @@ async function callOpenAICompat(label, baseUrl, key, model, messages, expectJson
 
 async function callLLM(messages, expectJson = true) {
   const s = DB.settings();
-  const provider = s.defaultProvider || 'openai';
+  const provider = s.defaultProvider || 'local';
 
   if (provider === 'venice') {
     if (!s.veniceKey) throw new Error('No Venice API key. Add it in Providers.');
@@ -422,9 +423,140 @@ async function callLLM(messages, expectJson = true) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// SKILLS — a "master skill" that indexes SKILL.md folders in GitHub repos and
+// loads a skill's full instructions only when the agent asks for it.
+// ────────────────────────────────────────────────────────────────────────────
+const SKILLS = {
+  DEFAULT_SOURCES: ['anthropics/skills'],
+  sources() {
+    const s = DB.settings();
+    return Array.isArray(s.skillSources) ? s.skillSources : this.DEFAULT_SOURCES;
+  },
+  index() { try { return JSON.parse(localStorage.getItem('nx_skill_index') || '{"skills":[]}'); } catch { return { skills: [] }; } },
+  saveIndex(ix) { try { localStorage.setItem('nx_skill_index', JSON.stringify(ix)); } catch {} },
+  parseSource(src) {
+    const m = String(src).trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').match(/^([\w.-]+)\/([\w.-]+)(?:@([\w./-]+))?$/);
+    if (!m) throw new Error(`Bad skill source "${src}". Use owner/repo or owner/repo@branch.`);
+    return { owner: m[1], repo: m[2], ref: m[3] || 'HEAD' };
+  },
+  ghHeaders() {
+    const t = DB.settings().githubToken;
+    return t ? { 'Authorization': `token ${t}`, 'Accept': 'application/vnd.github.v3+json' } : { 'Accept': 'application/vnd.github.v3+json' };
+  },
+  raw(owner, repo, ref, path) {
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${path.split('/').map(encodeURIComponent).join('/')}`;
+  },
+  frontmatter(text) {
+    const m = text.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/);
+    const meta = {};
+    if (m) {
+      const lines = m[1].split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const kv = lines[i].match(/^([A-Za-z_-]+):\s*(.*)$/);
+        if (!kv) continue;
+        let val = kv[2].trim();
+        if (/^[>|][+-]?$/.test(val)) {
+          const block = [];
+          while (i + 1 < lines.length && (/^\s+\S/.test(lines[i + 1]) || lines[i + 1].trim() === '')) block.push(lines[++i].trim());
+          val = block.join(val[0] === '>' ? ' ' : '\n').trim();
+        }
+        meta[kv[1]] = val.replace(/^["']|["']$/g, '').trim();
+      }
+    }
+    return { meta, body: m ? text.slice(m[0].length) : text };
+  },
+  async refresh(onProgress = () => {}) {
+    const skills = [], errors = [];
+    for (const src of this.sources()) {
+      try {
+        const { owner, repo, ref } = this.parseSource(src);
+        onProgress(`Indexing ${owner}/${repo}…`);
+        const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${ref}?recursive=1`, { headers: this.ghHeaders() });
+        if (!r.ok) throw new Error(`GitHub ${r.status}${r.status === 403 ? ' (rate limit: add a GitHub token in Providers)' : ''}`);
+        const tree = (await r.json()).tree || [];
+        const files = tree.filter(t => t.type === 'blob').map(t => t.path);
+        const skillFiles = files.filter(f => /(^|\/)SKILL\.md$/.test(f) && !/(^|\/)template\//.test(f));
+        await Promise.all(skillFiles.map(async path => {
+          const dir = path.replace(/\/?SKILL\.md$/, '');
+          const t = await (await fetch(this.raw(owner, repo, ref, path))).text();
+          const { meta } = this.frontmatter(t);
+          skills.push({
+            name: meta.name || dir.split('/').pop() || repo,
+            description: (meta.description || '').slice(0, 400),
+            source: `${owner}/${repo}`, ref, path, dir,
+            files: files.filter(f => dir ? f.startsWith(dir + '/') : !f.includes('/')).map(f => dir ? f.slice(dir.length + 1) : f).filter(f => f !== 'SKILL.md').slice(0, 60)
+          });
+        }));
+      } catch (e) { errors.push(`${src}: ${e.message}`); }
+    }
+    skills.sort((a, b) => a.name.localeCompare(b.name));
+    const ix = { skills, errors, updatedAt: Date.now() };
+    this.saveIndex(ix);
+    DB.addLog(errors.length ? 'warn' : 'info', `Skills indexed: ${skills.length}${errors.length ? ` (errors: ${errors.join('; ')})` : ''}`);
+    return ix;
+  },
+  async ensure() {
+    const ix = this.index();
+    if (ix.skills.length && Date.now() - (ix.updatedAt || 0) < 24 * 3600e3) return ix;
+    try { return await this.refresh(); } catch { return ix; }
+  },
+  find(name) {
+    const n = String(name || '').toLowerCase().trim();
+    const all = this.index().skills;
+    return all.find(s => s.name.toLowerCase() === n) || all.find(s => `${s.source}/${s.dir}`.toLowerCase() === n) || all.find(s => s.name.toLowerCase().includes(n));
+  },
+  catalog(max = 40) {
+    return this.index().skills.slice(0, max).map(s => `- ${s.name}: ${s.description.slice(0, 160)}`).join('\n');
+  }
+};
+
+// ────────────────────────────────────────────────────────────────────────────
 // TOOLS
 // ────────────────────────────────────────────────────────────────────────────
 const TOOLS = {
+  skill_list: {
+    desc: 'List available skills from GitHub skill libraries. Args: {"query": "optional keyword"}',
+    risky: false,
+    async run({ query = '' } = {}) {
+      await SKILLS.ensure();
+      const q = String(query).toLowerCase();
+      const hits = SKILLS.index().skills.filter(s => !q || `${s.name} ${s.description}`.toLowerCase().includes(q));
+      return { skills: hits.slice(0, 25).map(s => ({ name: s.name, description: s.description, source: s.source })), total: hits.length };
+    }
+  },
+  skill_load: {
+    desc: 'Load a skill\'s full instructions (SKILL.md) before doing a task it covers. Args: {"name": "skill name"}',
+    risky: false,
+    async run({ name }) {
+      await SKILLS.ensure();
+      const sk = SKILLS.find(name);
+      if (!sk) return { error: `No skill named "${name}". Call skill_list to see what exists.` };
+      const [owner, repo] = sk.source.split('/');
+      const text = await (await fetch(SKILLS.raw(owner, repo, sk.ref, sk.path))).text();
+      const { body } = SKILLS.frontmatter(text);
+      const LIMIT = 12000;
+      return {
+        name: sk.name, source: sk.source,
+        instructions: body.length > LIMIT ? body.slice(0, LIMIT) + `\n\n[…truncated ${body.length - LIMIT} chars]` : body,
+        files: sk.files,
+        note: sk.files.length ? 'Use skill_read_file to open any listed file the instructions refer to.' : undefined
+      };
+    }
+  },
+  skill_read_file: {
+    desc: 'Read a supporting file inside a skill folder. Args: {"name": "skill name", "file": "relative/path"}',
+    risky: false,
+    async run({ name, file }) {
+      await SKILLS.ensure();
+      const sk = SKILLS.find(name);
+      if (!sk) return { error: `No skill named "${name}".` };
+      const rel = String(file || '').replace(/^\/+/, '');
+      if (!sk.files.includes(rel)) return { error: `"${rel}" is not in ${sk.name}. Files: ${sk.files.join(', ')}` };
+      const [owner, repo] = sk.source.split('/');
+      const text = await (await fetch(SKILLS.raw(owner, repo, sk.ref, sk.dir ? `${sk.dir}/${rel}` : rel))).text();
+      return { file: rel, content: text.slice(0, 12000), truncated: text.length > 12000 };
+    }
+  },
   web_fetch: {
     desc: 'Fetch content from a URL',
     risky: false,
@@ -538,9 +670,16 @@ async function runAgent(taskId) {
 
   const toolList = allowedTools.map(t => `- ${t}: ${TOOLS[t].desc}`).join('\n');
 
+  let skillNote = '';
+  if (allowedTools.includes('skill_load')) {
+    await SKILLS.ensure();
+    const cat = SKILLS.catalog();
+    if (cat) skillNote = `\n\nSkills you can load with skill_load when the task matches one (load before acting, only when relevant):\n${cat}`;
+  }
+
   const messages = [
     { role: 'system', content: SYSTEM },
-    { role: 'user', content: `Task: ${task.goal}\n\nAvailable tools:\n${toolList}\n\nBegin.` }
+    { role: 'user', content: `Task: ${task.goal}\n\nAvailable tools:\n${toolList}${skillNote}\n\nBegin.` }
   ];
 
   DB.addStep(taskId, { stepType: 'start', content: task.goal });
@@ -662,7 +801,7 @@ function resumeTask(taskId, approved) {
 // ────────────────────────────────────────────────────────────────────────────
 const PAGE_TITLES = {
   home: 'Dashboard', tasks: 'Tasks', 'new-task': 'New Task',
-  memory: 'Memory', providers: 'Providers', permissions: 'Permissions', logs: 'Logs'
+  memory: 'Memory', skills: 'Skills', providers: 'Providers', permissions: 'Permissions', logs: 'Logs'
 };
 
 let currentPage = 'home';
@@ -787,8 +926,8 @@ const PAGES = {
 
   'new-task'() {
     const c = document.getElementById('content');
-    const TOOL_NAMES = ['web_fetch','github_read','github_list','github_write','memory_search','memory_write'];
-    let selected = new Set(['web_fetch','memory_search','memory_write']);
+    const TOOL_NAMES = ['skill_list','skill_load','skill_read_file','web_fetch','github_read','github_list','github_write','memory_search','memory_write'];
+    let selected = new Set(['skill_list','skill_load','skill_read_file','web_fetch','memory_search','memory_write']);
 
     const s = DB.settings();
     const providers = Object.entries(PROVIDERS)
@@ -806,7 +945,7 @@ const PAGES = {
         <div class="form-group">
           <label class="form-label">Provider</label>
           <select class="form-input" id="ni-provider">
-            ${providers.map(p => `<option value="${p.id}" ${(s.defaultProvider||'openai')===p.id?'selected':''}>${p.label} (${p.model})</option>`).join('')}
+            ${providers.map(p => `<option value="${p.id}" ${(s.defaultProvider||'local')===p.id?'selected':''}>${p.label} (${p.model})</option>`).join('')}
           </select>
         </div>` : `<div class="card" style="border-color:rgba(255,179,71,.3);background:rgba(255,179,71,.05);margin-bottom:14px">
           <div style="color:var(--warn);font-weight:600;margin-bottom:4px">No providers configured</div>
@@ -896,10 +1035,47 @@ const PAGES = {
     render();
   },
 
+  skills() {
+    const c = document.getElementById('content');
+    const esc = (t) => String(t).replace(/[&<>"]/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[ch]));
+    const draw = () => {
+      const ix = SKILLS.index();
+      c.innerHTML = `
+        <div class="card" style="max-width:720px">
+          <div class="card-title">Skill libraries (GitHub)</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Any public repo with <code>SKILL.md</code> folders works. One per line: <code>owner/repo</code> or <code>owner/repo@branch</code>. The agent sees each skill's name and description and loads the full instructions only when a task needs them.</div>
+          <textarea class="form-input" id="sk-sources" rows="3">${esc(SKILLS.sources().join('\n'))}</textarea>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-primary btn-sm" id="sk-save">Save &amp; refresh</button>
+            <span id="sk-status" style="font-size:12px;color:var(--muted);align-self:center">${ix.updatedAt ? `${ix.skills.length} skills · updated ${new Date(ix.updatedAt).toLocaleString()}` : 'Not indexed yet'}</span>
+          </div>
+          ${(ix.errors || []).length ? `<div style="color:var(--warn);font-size:12px;margin-top:8px">${ix.errors.map(esc).join('<br>')}</div>` : ''}
+        </div>
+        <div class="card" style="max-width:720px">
+          <div class="card-title">Indexed skills</div>
+          ${ix.skills.length ? ix.skills.map(s => `
+            <div class="toggle-row"><div class="toggle-info">
+              <div class="label">${esc(s.name)} <span style="font-size:11px;color:var(--muted)">${esc(s.source)}</span></div>
+              <div class="desc">${esc(s.description)}</div>
+            </div></div>`).join('') : '<div style="color:var(--muted);font-size:13px">No skills yet. Tap Save &amp; refresh.</div>'}
+        </div>`;
+      document.getElementById('sk-save').onclick = async () => {
+        const list = document.getElementById('sk-sources').value.split('\n').map(x => x.trim()).filter(Boolean);
+        try { list.forEach(x => SKILLS.parseSource(x)); } catch (e) { toast(e.message, 'var(--warn)'); return; }
+        DB.saveSettings({ ...DB.settings(), skillSources: list });
+        document.getElementById('sk-status').textContent = 'Refreshing…';
+        await SKILLS.refresh(m => { const el = document.getElementById('sk-status'); if (el) el.textContent = m; });
+        draw();
+        toast(`${SKILLS.index().skills.length} skills indexed.`);
+      };
+    };
+    draw();
+  },
+
   providers() {
     const c = document.getElementById('content');
     const s = DB.settings();
-    const active = s.defaultProvider || 'openai';
+    const active = s.defaultProvider || 'local';
 
     c.innerHTML = `
       <div class="card" style="max-width:560px">
@@ -946,6 +1122,7 @@ const PAGES = {
             <label class="form-label">Model</label>
             <input class="form-input" id="pe-model" list="pe-models" placeholder="model id" value="${s[p.modelField]||p.models[0]||''}"/>
             <datalist id="pe-models">${p.models.map(m=>`<option value="${m}">`).join('')}</datalist>
+            ${p.urlField ? `<button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="window._detectModels('${id}')">Detect installed models</button><span id="pe-detect" style="font-size:12px;color:var(--muted);margin-left:8px"></span>` : ''}
           </div>
           <div style="display:flex;gap:8px">
             <button class="btn btn-primary btn-sm" onclick="window._saveProv('${id}','${p.keyField}','${p.modelField}')">Save</button>
@@ -953,6 +1130,24 @@ const PAGES = {
             <button class="btn btn-ghost btn-sm" onclick="document.getElementById('prov-edit-area').innerHTML=''">Cancel</button>
           </div>
         </div>`;
+    };
+
+    window._detectModels = async (id) => {
+      const p = PROVIDERS[id];
+      const base = (document.getElementById('pe-url').value.trim() || p.urlHint || '').replace(/\/+$/, '');
+      const key = document.getElementById('pe-key').value.trim();
+      const out = document.getElementById('pe-detect');
+      out.textContent = 'Checking…';
+      try {
+        const r = await fetch(`${base}/models`, { headers: key ? { 'Authorization': `Bearer ${key}` } : {} });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const ids = ((await r.json()).data || []).map(m => m.id).filter(Boolean);
+        document.getElementById('pe-models').innerHTML = ids.map(m => `<option value="${m}">`).join('');
+        if (ids.length && !document.getElementById('pe-model').value) document.getElementById('pe-model').value = ids[0];
+        out.textContent = ids.length ? `Found ${ids.length}: ${ids.slice(0, 6).join(', ')}${ids.length > 6 ? '…' : ''}` : 'Server is up but has no models. Pull one first.';
+      } catch (e) {
+        out.textContent = `Could not reach ${base} (${e.message}). Is the server running?`;
+      }
     };
 
     window._saveProv = (id, keyField, modelField) => {

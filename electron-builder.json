@@ -39,5 +39,37 @@
     "perMachine": false,
     "runAfterFinish": true,
     "shortcutName": "Nexus Agent"
+  },
+  "linux": {
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": [
+          "x64"
+        ]
+      },
+      {
+        "target": "deb",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "category": "Utility",
+    "icon": "assets/icon.png",
+    "synopsis": "Local-first AI agent",
+    "maintainer": "Nexus Agent <nexus-agent@users.noreply.github.com>"
+  },
+  "deb": {
+    "depends": [
+      "libgtk-3-0",
+      "libnss3",
+      "libxss1",
+      "libxtst6",
+      "xdg-utils",
+      "libatspi2.0-0",
+      "libuuid1",
+      "libsecret-1-0"
+    ]
   }
 }

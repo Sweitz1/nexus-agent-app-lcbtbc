@@ -47,6 +47,44 @@
 
 ---
 
+## Linux desktop: fully local, no API keys
+
+Download the `nexus-agent-linux` artifact from **Actions → Build Release**. It contains:
+
+- `Nexus Agent-1.2.0.AppImage`: run anywhere (`chmod +x` it, then double-click)
+- `nexus-agent_1.2.0_amd64.deb`: `sudo apt install ./nexus-agent_1.2.0_amd64.deb`
+- `linux-local-ai-setup.sh`: installs Ollama and pulls models sized for your machine
+
+```bash
+chmod +x linux-local-ai-setup.sh
+./linux-local-ai-setup.sh              # auto-picks models from your RAM/VRAM
+./linux-local-ai-setup.sh --dry-run    # preview only
+```
+
+With no API keys set, the app uses **Local LLM** by default. Open Providers → Local LLM → **Detect installed models**, pick one, then Save.
+
+**Sizing for an i7 13th gen with 64 GB RAM and an 8 GB GPU:**
+
+| Model | Approx. size (Q4) | Where it runs | Use |
+|---|---|---|---|
+| `qwen3:8b` | ~5 GB | Entirely on the GPU | Fast default |
+| `qwen3:14b` | ~9 GB | GPU + a little RAM | Better reasoning |
+| `qwen3:30b-a3b` | ~19 GB | Mostly RAM; MoE keeps it quick | Best quality that stays interactive |
+| Dense 32B–70B | 20–40 GB | RAM | Fits, but only ~1–5 tokens/sec |
+
+**Abliterated models** (open-weight models with their refusal behaviour removed) are published by the community on ollama.com and Hugging Face. Pull any of them with
+`./linux-local-ai-setup.sh --model <tag>`, or straight from a Hugging Face GGUF repo with `--model hf.co/<user>/<repo>-GGUF:Q4_K_M`, then pick it in the app. Check each model's card for its size and licence.
+
+---
+
+## Skills from GitHub
+
+The **Skills** page indexes any GitHub repo that holds `SKILL.md` folders (default: `anthropics/skills`). Add more as `owner/repo` or `owner/repo@branch`, one per line.
+
+The agent sees only each skill's name and description. When a task matches one, it calls `skill_load` to pull the full instructions, and `skill_read_file` for any reference files the skill mentions, so context stays small for local models. The index refreshes daily, or on demand. Public repos need no token; add a GitHub token in Providers if you hit GitHub's rate limit.
+
+---
+
 ## Private / Local AI
 
 ### Venice AI

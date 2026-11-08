@@ -76,13 +76,13 @@ jobs:
           APK=app/build/outputs/apk/release/app-release.apk
           test -f "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
-          mkdir -p ../out && cp "$APK" ../out/nexus-agent-1.1.0.apk
+          mkdir -p ../out && cp "$APK" ../out/nexus-agent-1.2.0.apk
           rm -f "$NEXUS_KEYSTORE_PATH"
 
       - uses: actions/upload-artifact@v4
         with:
           name: nexus-agent-android-release
-          path: out/nexus-agent-1.1.0.apk
+          path: out/nexus-agent-1.2.0.apk
           retention-days: 90
 
   windows:
@@ -97,23 +97,7 @@ jobs:
 
       - name: Stage Electron app
         shell: bash
-        run: |
-          mkdir -p stage/dist stage/assets
-          cp dist/index.html stage/dist/
-          cp electron-main.js stage/
-          cp assets/icon.png stage/assets/
-          magick assets/icon.png -define icon:auto-resize=256,128,64,48,32,16 stage/assets/icon.ico
-          cat > stage/package.json <<'JSON'
-          {
-            "name": "nexus-agent",
-            "productName": "Nexus Agent",
-            "version": "1.1.0",
-            "description": "Nexus Agent AI assistant",
-            "author": "Nexus Agent",
-            "main": "electron-main.js"
-          }
-          JSON
-          sed 's#"dist-electron"#"../dist-electron"#' electron-builder.json > stage/electron-builder.json
+        run: scripts/stage-electron.sh 1.2.0
 
       - name: Install Electron and build installers
         shell: bash
@@ -128,4 +112,35 @@ jobs:
           path: |
             dist-electron/*.exe
             dist-electron/*.msi
+          retention-days: 90
+
+  linux:
+    name: Linux AppImage and deb
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Stage Electron app
+        run: scripts/stage-electron.sh 1.2.0
+
+      - name: Install Electron and build Linux packages
+        working-directory: stage
+        run: |
+          npm install --save-dev electron@33.2.1 electron-builder@25.1.8 --no-audit --no-fund
+          npx electron-builder --linux AppImage deb --x64 --config electron-builder.json --publish never
+
+      - name: Add local AI setup script
+        run: cp scripts/linux-local-ai-setup.sh dist-electron/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexus-agent-linux
+          path: |
+            dist-electron/*.AppImage
+            dist-electron/*.deb
+            dist-electron/linux-local-ai-setup.sh
           retention-days: 90
