@@ -25,7 +25,7 @@
       providerId: '', model: '', persona: 'me', globalBooks: [],
       temperature: 0.9, top_p: 0.95, max_tokens: 400, frequency_penalty: 0, presence_penalty: 0, contextTokens: 8000,
       mainPrompt: "Write {{char}}'s next reply in a fictional roleplay chat between {{char}} and {{user}}. Stay in character, write vivid and natural prose, move the story forward, and never speak or act for {{user}}.",
-      authorNote: '', authorDepth: 4, speakReplies: false,
+      authorNote: '', authorDepth: 4, speakReplies: false, glassesMature: false,
       mature: false, adultConfirmedAt: 0, pinHash: '', lockMature: false,
     },
   }, parseJSON(localStorage.getItem(KEY), {}) || {});
@@ -50,7 +50,7 @@
     return MINOR_RX.test(t) || ADULT_AGE_RX.test(t);
   }
   const textDescribesMinor = t => MINOR_RX.test(String(t || ''));
-  const matureActive = chat => !!(RP.settings.mature && RP.settings.adultConfirmedAt && isUnlocked() && chat && chat.mature && !chatMembers(chat).some(c => c.minorFlag));
+  const matureActive = (chat, unlocked) => !!(RP.settings.mature && RP.settings.adultConfirmedAt && (unlocked ?? isUnlocked()) && chat && chat.mature && !chatMembers(chat).some(c => c.minorFlag));
   async function sha(s) { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('nexus-rp:' + s)); return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join(''); }
 
   /* ================================================================ cards: parse / build */
@@ -197,9 +197,9 @@
   }
 
   /** Builds the chat-completion messages for the next reply by `speaker` (a card). */
-  function buildPrompt(chat, speaker, { impersonate = false, continueText = '' } = {}) {
+  function buildPrompt(chat, speaker, { impersonate = false, continueText = '', unlocked } = {}) {
     const me = persona(); const ctx = { char: speaker.name, user: me.name };
-    const mature = matureActive(chat);
+    const mature = matureActive(chat, unlocked);
     const members = chatMembers(chat);
     const hist = chat.messages.filter(m => !m.hidden);
     const recentText = hist.slice(-12).map(m => m.text()).join('\n');
@@ -306,8 +306,8 @@
   }
 
   let generating = false;
-  async function generate(chat, { speaker, swipeOf, continueOf, impersonate } = {}) {
-    if (generating) return; generating = true; renderChat();
+  async function generate(chat, { speaker, swipeOf, continueOf, impersonate, unlocked, quiet } = {}) {
+    if (generating) throw new Error('Still writing the previous reply'); generating = true; renderChat();
     try {
       if (chat.mature) {
         const lastUser = [...chat.messages].reverse().find(m => m.isUser);
@@ -315,26 +315,26 @@
       }
       if (impersonate) {
         const sp = speaker || chatMembers(chat)[0];
-        const r = await complete(buildPrompt(chat, sp, { impersonate: true }));
+        const r = await complete(buildPrompt(chat, sp, { impersonate: true, unlocked }));
         return { impersonated: clean(r.text, { name: persona().name }, { members: [] }) };
       }
       if (continueOf) {
         const sp = charById(continueOf.charId) || chatMembers(chat)[0];
-        const r = await complete(buildPrompt({ ...chat, messages: chat.messages.filter(m => m !== continueOf) }, sp, { continueText: continueOf.text() }));
+        const r = await complete(buildPrompt({ ...chat, messages: chat.messages.filter(m => m !== continueOf) }, sp, { continueText: continueOf.text(), unlocked }));
         const add = clean(r.text, sp, chat); const cur = continueOf.text();
         continueOf.swipes[continueOf.swipeId] = cur + (/^[\s,.!?;:]/.test(add) ? '' : ' ') + add; saveRp(); return continueOf;
       }
       if (swipeOf) {
         const sp = charById(swipeOf.charId) || chatMembers(chat)[0];
-        const r = await complete(buildPrompt({ ...chat, messages: chat.messages.slice(0, chat.messages.indexOf(swipeOf)) }, sp));
+        const r = await complete(buildPrompt({ ...chat, messages: chat.messages.slice(0, chat.messages.indexOf(swipeOf)) }, sp, { unlocked }));
         swipeOf.swipes.push(clean(r.text, sp, chat)); swipeOf.swipeId = swipeOf.swipes.length - 1; saveRp(); return swipeOf;
       }
       const lastUser = [...chat.messages].reverse().find(m => m.isUser);
       const sp = speaker || nextSpeaker(chat, lastUser && lastUser.text());
-      const r = await complete(buildPrompt(chat, sp));
+      const r = await complete(buildPrompt(chat, sp, { unlocked }));
       const m = msg({ charId: sp.id, isUser: false, text: clean(r.text, sp, chat), model: r.model });
       chat.messages.push(m); chat.updated = Date.now(); saveRp();
-      if (RP.settings.speakReplies) speakRp(chat, m.text());
+      if (RP.settings.speakReplies && !quiet) speakRp(chat, m.text());
       return m;
     } finally { generating = false; renderChat(); }
   }
@@ -616,6 +616,9 @@
           <button class="nogrow" id="rsPin">${st.pinHash ? 'Change / remove PIN' : 'Set a PIN'}</button></div>` : '<div class="row"><input id="rsPinU" type="password" inputmode="numeric" placeholder="PIN"><button class="nogrow" id="rsUnl">Unlock to change</button></div>'}
         <label class="inline"><input type="checkbox" data-s="lockMature" ${st.lockMature ? 'checked' : ''} ${st.pinHash && isUnlocked() ? '' : 'disabled'}> Ask for the PIN when opening Roleplay (18+ characters and chats are hidden until unlocked)</label>
         <p class="hint">Always applies, whatever the settings: no sexual content involving minors (cards that describe a minor are SFW-only) and none about real people. Roleplay chats are private to this tab: never sent to the glasses, car, Telegram, webhooks or AutoGPT. The provider's own policy still applies — for adult fiction pick a provider that allows it (e.g. Venice or a local model).</p></div>
+      <div class="card"><h3>Nexus Glasses</h3>
+        <p class="hint">Roleplay is also available in the Nexus Glasses app (☰ → Roleplay): pick a character, talk by voice, swipe or continue replies.</p>
+        <label class="inline"><input type="checkbox" data-s="glassesMature" ${st.glassesMature ? 'checked' : ''} ${isUnlocked() ? '' : 'disabled'}> Show 18+ characters and chats on the glasses${st.pinHash && st.lockMature ? ' (after entering the PIN on the glasses)' : ''}</label></div>
       <div class="card"><h3>Use SillyTavern with Nexus</h3>
         <p class="hint">Run SillyTavern on a PC (or in Termux on Android) and use Nexus as its backend: models and keys stay on this phone.</p>
         <ol class="hint"><li>Turn on the local server (Settings → Webhooks &amp; server).</li><li>In SillyTavern: API → <b>Chat Completion</b> → source <b>Custom (OpenAI-compatible)</b>.</li><li>Endpoint <code>${esc(apiBase())}</code>, API key = the server token, then pick a model (<code>provider/model</code>).</li></ol>
@@ -689,6 +692,70 @@
       }
       return reply(404, { error: { message: 'Unknown endpoint ' + path, type: 'invalid_request_error' } });
     } catch (e) { reply(e.status && e.status < 600 ? e.status : 500, { error: { message: e.message, type: 'api_error' } }); }
+  });
+
+  /* ================================================================ Nexus Glasses client: /client/rp/… */
+  // The glasses app is a remote for this tab. 18+ content shows there only when allowed for the
+  // glasses (setting) and, with a PIN lock, after the PIN is entered on the glasses (expires after
+  // 30 minutes without use). Nothing is pushed to the glasses unasked.
+  const G = { unlockedUntil: 0, fails: 0, lockedUntil: 0 };
+  const gUnlocked = () => !RP.settings.pinHash || !RP.settings.lockMature || Date.now() < G.unlockedUntil;
+  const gMatureOk = () => !!(RP.settings.glassesMature && RP.settings.mature && RP.settings.adultConfirmedAt && gUnlocked());
+  const gCharOk = c => c && (!c.mature || gMatureOk());
+  const gChatOk = ch => ch && (!ch.mature || gMatureOk()) && chatMembers(ch).every(gCharOk);
+  const gMsg = (m, chat) => ({ id: m.id, isUser: !!m.isUser, who: m.isUser ? persona().name : ((charById(m.charId) || {}).name || '?'), text: m.text(), swipe: m.swipeId + 1, swipes: m.swipes.length });
+  const gChat = ch => ({ chat: { id: ch.id, title: ch.title, mature: !!ch.mature, matureActive: matureActive(ch, gUnlocked()), members: chatMembers(ch).map(c => ({ id: c.id, name: c.name, avatar: !!(c.avatar && !c.avatar.startsWith('data:')) })) }, messages: ch.messages.slice(-12).map(m => gMsg(m, ch)) });
+  onNative('webhook', async ev => {
+    const path = String(ev.path || ''); if (!path.startsWith('/client/rp/')) return;
+    const reply = (status, data) => N.serverRespond(ev.reqId, status, 'application/json', JSON.stringify(data));
+    const b = parseJSON(ev.body, {}) || {}; const q = new URLSearchParams(ev.query || '');
+    try {
+      if (gUnlocked() && G.unlockedUntil) G.unlockedUntil = Date.now() + 30 * 60000;   // sliding expiry while in use
+      if (path === '/client/rp/list') {
+        const hidden = RP.chars.some(c => c.mature) && !gMatureOk();
+        return reply(200, { chars: RP.chars.filter(gCharOk).map(c => ({ id: c.id, name: c.name, tags: (c.tags || []).slice(0, 4), mature: !!c.mature, sfwOnly: !!c.minorFlag, avatar: !!(c.avatar && !c.avatar.startsWith('data:')), blurb: clip(c.creator_notes || c.description || '', 120) })),
+          chats: RP.chats.filter(gChatOk).slice(0, 8).map(ch => ({ id: ch.id, title: ch.title, mature: !!ch.mature, n: ch.messages.length })),
+          hidden, canUnlock: hidden && !!RP.settings.glassesMature && !!RP.settings.pinHash && RP.settings.lockMature && !gUnlocked(), persona: persona().name });
+      }
+      if (path === '/client/rp/avatar') {
+        const c = charById(q.get('id') || ''); if (!gCharOk(c) || !c.avatar || c.avatar.startsWith('data:')) return reply(404, { error: 'no avatar' });
+        return N.serverRespondFile(ev.reqId, 200, 'image/png', c.avatar);
+      }
+      if (path === '/client/rp/unlock') {
+        if (Date.now() < G.lockedUntil) return reply(429, { error: 'Too many wrong PINs — try again in a few minutes' });
+        if (RP.settings.pinHash && (await sha(String(b.pin || '').replace(/\D/g, ''))) === RP.settings.pinHash) { G.unlockedUntil = Date.now() + 30 * 60000; G.fails = 0; return reply(200, { ok: true }); }
+        if (++G.fails >= 5) { G.fails = 0; G.lockedUntil = Date.now() + 5 * 60000; }
+        return reply(401, { error: 'Wrong PIN' });
+      }
+      if (path === '/client/rp/lock') { G.unlockedUntil = 0; return reply(200, { ok: true }); }
+      if (path === '/client/rp/open') {
+        let ch = b.chatId && chatById(b.chatId);
+        if (!ch && b.charId) { const c = charById(b.charId); if (!gCharOk(c)) return reply(404, { error: 'Character not available' }); ch = b.resume !== false && RP.chats.find(x => x.members.length === 1 && x.members[0] === c.id && gChatOk(x)) || newChat([c.id], { mature: gMatureOk() && c.mature }); }
+        if (!gChatOk(ch)) return reply(404, { error: 'Chat not available on the glasses' });
+        return reply(200, gChat(ch));
+      }
+      const ch = chatById(b.chatId); if (!gChatOk(ch)) return reply(404, { error: 'Chat not available on the glasses' });
+      const last = ch.messages[ch.messages.length - 1];
+      if (path === '/client/rp/send') {
+        const t = String(b.text || '').trim();
+        if (t) { if (ch.mature && textDescribesMinor(t)) return reply(400, { error: 'Mature chats cannot involve minors.' }); ch.messages.push(msg({ isUser: true, text: t })); saveRp(); }
+        const m = await generate(ch, { unlocked: gUnlocked(), quiet: true });
+        return reply(200, { message: gMsg(m, ch), mature: !!ch.mature, ...gChat(ch) });
+      }
+      if (path === '/client/rp/regen' || path === '/client/rp/continue') {
+        if (!last || last.isUser) return reply(400, { error: 'Nothing to ' + (path.endsWith('regen') ? 'swipe' : 'continue') + ' yet' });
+        const m = await generate(ch, { [path.endsWith('regen') ? 'swipeOf' : 'continueOf']: last, unlocked: gUnlocked(), quiet: true });
+        return reply(200, { message: gMsg(m, ch), mature: !!ch.mature, ...gChat(ch) });
+      }
+      if (path === '/client/rp/swipe') {
+        if (!last || last.isUser) return reply(400, { error: 'No reply to swipe' });
+        const dir = Number(b.dir) || 1;
+        if (dir > 0 && last.swipeId >= last.swipes.length - 1) { const m = await generate(ch, { swipeOf: last, unlocked: gUnlocked(), quiet: true }); return reply(200, { message: gMsg(m, ch), mature: !!ch.mature, ...gChat(ch) }); }
+        last.swipeId = Math.max(0, Math.min(last.swipes.length - 1, last.swipeId + dir)); saveRp(); renderChat();
+        return reply(200, { message: gMsg(last, ch), mature: !!ch.mature, ...gChat(ch) });
+      }
+      return reply(404, { error: 'unknown roleplay path' });
+    } catch (e) { reply(e.status && e.status < 600 ? e.status : 500, { error: e.message }); }
   });
 
   /* ================================================================ agent skill (SFW helper only) */

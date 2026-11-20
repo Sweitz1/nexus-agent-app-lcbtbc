@@ -80,6 +80,8 @@ public class ClientActivity extends Activity {
         ws.setMediaPlaybackRequiresUserGesture(false);
         ws.setAllowFileAccess(false);
         ws.setAllowContentAccess(false);
+        // Character avatars are plain-HTTP images from the paired phone (LAN); allow images only, not scripts.
+        ws.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         bridge = new ClientBridge(this);
         web.addJavascriptInterface(bridge, "NexusClient");
         web.setWebViewClient(new WebViewClient() {

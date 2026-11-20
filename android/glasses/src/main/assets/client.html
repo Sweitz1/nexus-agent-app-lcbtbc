@@ -33,6 +33,18 @@ input{background:var(--panel);border:1px solid var(--line);border-radius:10px;pa
 .hint{color:var(--dim);font-size:.7em}
 #toast{position:fixed;left:50%;bottom:1em;transform:translateX(-50%);background:#0b1a22;border:1px solid var(--accent);border-radius:99px;padding:.25em .9em;font-size:.7em;display:none;z-index:9;max-width:90vw}
 video{width:100%;max-height:60vh;border-radius:10px;background:#000}
+#rpBody{flex:1;overflow-y:auto;margin:.3em 0}
+#rpBody .ch{display:flex;align-items:center;gap:.5em;width:100%;text-align:left;margin:.2em 0}
+#rpBody .ch img{width:2.2em;height:2.2em;border-radius:50%;object-fit:cover;background:#111;flex:none}
+#rpBody .ch .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rpBody .tag{color:#ffcc33;font-size:.6em;border:1px solid #ffcc33;border-radius:6px;padding:0 .3em;margin-left:.3em}
+#rpBody .m{margin:.25em 0;white-space:pre-wrap}
+#rpBody .m .w{color:var(--accent);font-size:.65em}
+#rpBody .m.u{color:var(--accent2);font-size:.8em}
+#rpBody .m em{color:#9fb7c9}
+#rpTop{display:flex;justify-content:space-between;align-items:center;color:var(--dim);font-size:.7em;gap:.5em}
+#rpBar{display:flex;gap:.35em;flex-wrap:wrap}
+#rpBar button{flex:1;min-width:3em}
 </style>
 </head>
 <body>
@@ -58,6 +70,20 @@ video{width:100%;max-height:60vh;border-radius:10px;background:#000}
     <button class="f" id="music" title="Play / pause">⏯</button>
     <button class="f" id="next" title="Next track">⏭</button>
     <button class="f" id="more" title="More">☰</button>
+  </div>
+</section>
+
+<!-- roleplay (runs on the phone's Roleplay tab) -->
+<section id="rp" class="screen">
+  <div id="rpTop"><span id="rpTitle">🎭 Roleplay</span><span id="rpMode"></span></div>
+  <div id="rpBody"></div>
+  <div id="rpStatus" class="hint"></div>
+  <div id="rpBar">
+    <button class="primary f" id="rpSay" title="Say your line">🎙</button>
+    <button class="f" id="rpPrev" title="Previous swipe">‹</button>
+    <button class="f" id="rpNext" title="Next swipe / new reply">›</button>
+    <button class="f" id="rpCont" title="Continue the reply">⤳</button>
+    <button class="f" id="rpBack" title="Back">←</button>
   </div>
 </section>
 
@@ -222,12 +248,14 @@ $('#next').onclick = () => skill('music_control', { action: 'next' }).then(toast
 $('#more').onclick = () => {
   overlay(`<div class="row"><button class="f" data-m="np">🎵 Now playing</button><button class="f" data-m="cal">📅 Today</button></div>
     <div class="row"><button class="f" data-m="auto">🤖 AutoGPT runs</button><button class="f" data-m="notif">🔔 Notifications</button></div>
-    <div class="row"><button class="f" data-m="stop">■ Stop agent</button><button class="f" data-m="set">⚙ Settings</button></div>
+    <div class="row"><button class="f" data-m="rp">🎭 Roleplay</button><button class="f" data-m="stop">■ Stop agent</button></div>
+    <div class="row"><button class="f" data-m="set">⚙ Settings</button></div>
     <div class="row"><button class="f" data-m="close">Close</button></div>`);
   $$('#ovBox [data-m]').forEach(b => b.onclick = async () => {
     const m = b.dataset.m;
     if (m === 'close') return closeOverlay();
     if (m === 'set') return settings();
+    if (m === 'rp') { closeOverlay(); return rpList(); }
     if (m === 'stop') { stopSpeak(); api('/client/stop').catch(() => {}); return closeOverlay(); }
     closeOverlay(); status('…');
     try { const out = m === 'np' ? await skill('music_now_playing') : m === 'cal' ? await skill('calendar_events', { range: 'today' }) : m === 'auto' ? await skill('autogpt_status') : await skill('notifications_read', { limit: 8 }); add('a', out); speak(out.split('\n').slice(0, 3).join('. ')); }
@@ -297,9 +325,73 @@ document.addEventListener('keydown', e => {
   const l = focusables(); if (!l.length) return; let i = l.indexOf(a); const fwd = e.key === 'ArrowDown' || e.key === 'ArrowRight';
   i = i < 0 ? 0 : (i + (fwd ? 1 : -1) + l.length) % l.length; e.preventDefault(); l[i].focus();
 });
-on('back', () => { if ($('#ov').classList.contains('on')) return closeOverlay(); if (busy) { stopSpeak(); api('/client/stop').catch(() => {}); return; } if (N) N.exitApp(); });
-on('key', p => { if (!conn) return; if (p.key === 'voice') $('#ask').click(); else if (p.key === 'camera') $('#look').click(); else if (p.key === 'menu') $('#more').click(); });
+on('back', () => { if ($('#ov').classList.contains('on')) return closeOverlay(); if ($('#rp').classList.contains('on')) return rpBack(); if (busy) { stopSpeak(); api('/client/stop').catch(() => {}); return; } if (N) N.exitApp(); });
+on('key', p => { if (!conn) return; if ($('#rp').classList.contains('on')) { if (p.key === 'voice') return $('#rpSay').click(); if (p.key === 'menu') return rpBack(); } if (p.key === 'voice') $('#ask').click(); else if (p.key === 'camera') $('#look').click(); else if (p.key === 'menu') $('#more').click(); });
 setInterval(() => { $('#clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); try { const d = JSON.parse(N ? N.deviceInfo() : '{}'); if (d.battery != null) $('#batt').textContent = '🔋' + d.battery + '%'; } catch { /* */ } }, 10000);
+
+/* ------------------------------------------------------------ roleplay (phone Roleplay tab, by voice) */
+let rp = { chat: null, messages: [], busy: false };
+const rpFmt = t => esc(t).replace(/\*([^*\n]+)\*/g, '<em>*$1*</em>');
+const rpAvatar = id => `${base()}/client/rp/avatar?id=${encodeURIComponent(id)}&token=${encodeURIComponent(conn.token)}`;
+const rpStatus = t => { $('#rpStatus').textContent = t || ''; };
+// In the character list only ← is shown; in a chat the whole bar.
+const rpBarMode = inChat => { for (const id of ['rpSay', 'rpPrev', 'rpNext', 'rpCont']) $('#' + id).style.display = inChat ? '' : 'none'; };
+// Replies from 18+ chats are read with the glasses' own voice only (never sent to a cloud voice).
+const rpSpeak = (t, mature) => { const s = String(t).replace(/\*[^*]+\*/g, ' ').trim(); if (!s) return; if (mature) deviceSpeak(s); else speak(s); };
+async function rpList() {
+  show('rp'); rp.chat = null; $('#rpTitle').textContent = '🎭 Roleplay'; $('#rpMode').textContent = ''; rpBarMode(false); rpStatus('loading…');
+  try {
+    const r = await api('/client/rp/list', {}, { timeoutMs: 15000 });
+    const b = $('#rpBody');
+    b.innerHTML = (r.chats.length ? '<div class="hint">Recent chats</div>' + r.chats.map(c => `<button class="ch f" data-chat="${esc(c.id)}"><span class="t">${esc(c.title)}</span>${c.mature ? '<span class="tag">18+</span>' : ''}</button>`).join('') : '')
+      + '<div class="hint" style="margin-top:.4em">Characters</div>'
+      + (r.chars.length ? r.chars.map(c => `<button class="ch f" data-char="${esc(c.id)}">${c.avatar ? `<img src="${esc(rpAvatar(c.id))}" alt="">` : '<img alt="">'}<span class="t">${esc(c.name)}</span>${c.mature ? '<span class="tag">18+</span>' : ''}</button>`).join('') : '<div class="hint">No characters yet. Import cards in the phone\'s Roleplay tab.</div>')
+      + (r.canUnlock ? '<button class="f" id="rpUnl" style="width:100%;margin-top:.4em">🔓 Unlock 18+</button>' : r.hidden ? '<div class="hint" style="margin-top:.4em">Some 18+ content is hidden on the glasses (phone: Roleplay → Settings → Nexus Glasses).</div>' : '');
+    $$('#rpBody [data-chat]').forEach(x => { x.onclick = () => rpOpen({ chatId: x.dataset.chat }); });
+    $$('#rpBody [data-char]').forEach(x => { x.onclick = () => rpOpen({ charId: x.dataset.char }); });
+    const u = $('#rpUnl'); if (u) u.onclick = rpUnlock;
+    rpStatus(`Playing as ${r.persona}`); focusFirst();
+  } catch (e) { rpStatus('⚠ ' + e.message); }
+}
+function rpRender() {
+  const c = rp.chat; $('#rpTitle').textContent = '🎭 ' + c.title; $('#rpMode').textContent = c.mature ? (c.matureActive ? '18+' : '18+ (locked)') : 'SFW'; rpBarMode(true);
+  const b = $('#rpBody');
+  b.innerHTML = rp.messages.slice(-6).map(m => `<div class="m ${m.isUser ? 'u' : ''}"><div class="w">${esc(m.who)}${!m.isUser && m.swipes > 1 ? ` · ${m.swipe}/${m.swipes}` : ''}</div>${rpFmt(m.text)}</div>`).join('') || '<div class="hint">Say something to start.</div>';
+  b.scrollTop = b.scrollHeight;
+  const last = rp.messages[rp.messages.length - 1];
+  $('#rpPrev').disabled = !(last && !last.isUser && last.swipe > 1);
+  focusFirst();
+}
+async function rpOpen(sel) {
+  try {
+    rpStatus('opening…'); const r = await api('/client/rp/open', sel, { timeoutMs: 20000 }); rp.chat = r.chat; rp.messages = r.messages; rpRender(); rpStatus('');
+    const last = r.messages[r.messages.length - 1]; if (last && !last.isUser && r.messages.length <= 2) rpSpeak(last.text, r.chat.mature);
+  } catch (e) { rpStatus('⚠ ' + e.message); }
+}
+async function rpCall(path, body, label) {
+  if (rp.busy || !rp.chat) return; rp.busy = true; rpStatus(label || '✍ writing…'); stopSpeak();
+  try {
+    const r = await api(path, { chatId: rp.chat.id, ...body }, { timeoutMs: 240000 }); rp.chat = r.chat; rp.messages = r.messages; rpRender(); rpStatus('');
+    if (r.message && !r.message.isUser) rpSpeak(r.message.text, r.mature); if (N) N.vibrate(30);
+  } catch (e) { rpStatus('⚠ ' + e.message); if (rp.messages.length && rp.messages[rp.messages.length - 1].pending) { rp.messages.pop(); rpRender(); rpStatus('⚠ ' + e.message); } }
+  finally { rp.busy = false; }
+}
+function rpUnlock() {
+  overlay(`<h3 style="margin:.1em 0">Unlock 18+</h3><p class="hint">Enter the Roleplay PIN set on the phone.</p><input class="f" id="rpPin" type="password" inputmode="numeric" placeholder="PIN"><div class="row"><button class="f" id="rpPinV">🎙 Say it</button><button class="primary f" id="rpPinGo">Unlock</button><button class="f" id="rpPinX">Cancel</button></div>`);
+  $('#rpPinX').onclick = closeOverlay;
+  $('#rpPinV').onclick = async () => { try { $('#rpPin').value = (await hear()).replace(/\D/g, ''); } catch (e) { toast(e.message); } };
+  $('#rpPinGo').onclick = async () => { try { await api('/client/rp/unlock', { pin: $('#rpPin').value }); closeOverlay(); toast('Unlocked for 30 minutes'); rpList(); } catch (e) { toast(e.message); } };
+}
+function rpBack() { if (rp.chat) return rpList(); api('/client/rp/lock').catch(() => {}); show('main'); }
+$('#rpSay').onclick = async () => {
+  if (rp.busy) return;
+  try { rpStatus('🎙 listening…'); const t = await hear(); if (!t) { rpStatus("Didn't catch that"); return; } rp.messages.push({ isUser: true, who: 'You', text: t, pending: true }); rpRender(); rpCall('/client/rp/send', { text: t }); }
+  catch (e) { rpStatus(e.message); }
+};
+$('#rpNext').onclick = () => rpCall('/client/rp/swipe', { dir: 1 }, '⟳ new reply…');
+$('#rpPrev').onclick = () => rpCall('/client/rp/swipe', { dir: -1 }, '‹');
+$('#rpCont').onclick = () => rpCall('/client/rp/continue', {}, '⤳ continuing…');
+$('#rpBack').onclick = rpBack;
 
 /* ------------------------------------------------------------ start */
 async function start() {
@@ -308,7 +400,7 @@ async function start() {
   catch (e) { setOnline(false); add('ev', '⚠ Phone not reachable: ' + e.message + ' — is Nexus open on the phone, and is it on the same Wi-Fi or VPN?'); }
   poll();
 }
-window.NexusGlassesClient = { ask, pair, start, handleEvent, get conn() { return conn; } };
+window.NexusGlassesClient = { ask, pair, start, handleEvent, rpList, rpOpen, get rp() { return rp; }, get conn() { return conn; } };
 if (conn && conn.token) start(); else { show('connect'); search(); }
 </script>
 </body>

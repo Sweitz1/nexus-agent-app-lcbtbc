@@ -370,8 +370,19 @@ The **Roleplay** tab is a character-chat mode in the style of TavernAI / SillyTa
   - no sexual content involving minors;
   - cards that describe a minor are SFW-only, and messages describing a minor are refused in mature chats;
   - no sexual content about real people.
-- **Private.** Roleplay chats stay in that tab. They are never forwarded to the glasses, car, Telegram, webhooks, AutoGPT or agents. Spoken replies in mature chats use the on-device voice.
+- **Private.** Roleplay chats stay in that tab. Nothing from them is pushed automatically to the glasses, car, Telegram, webhooks, AutoGPT or agents; the glasses show roleplay only when you open it there (see below). Spoken replies in mature chats use the on-device voice.
 - **Provider policies still apply.** Nexus doesn't try to get around them. For adult fiction, choose a provider that allows it, such as Venice or a local model.
+
+### Roleplay on the glasses
+
+The Nexus Glasses app has a **Roleplay** screen under *☰ → Roleplay*. The chats run on the phone's Roleplay tab, and the glasses act as a voice remote:
+
+- **Choose:** pick a recent chat or a character (avatars come from the phone). Picking a character continues your last chat with them.
+- **Talk:** say your line with 🎙 or the assistant key. The reply appears on the glasses and is read aloud.
+- **Controls:** **‹ ›** step through swipes (**›** on the newest one writes a new reply) and **⤳** continues the reply. **←**, back or the menu key leaves.
+- **18+ on the glasses:** 18+ characters and chats appear on the glasses only after you allow it on the phone (*Roleplay → Settings → Nexus Glasses*). With a PIN lock, you also enter the PIN on the glasses, by typing or saying it. The unlock lasts 30 minutes of use and ends when you leave Roleplay. Five wrong PINs pause unlocking for 5 minutes.
+- **Voice:** 18+ replies use the glasses' own on-device voice, never a cloud voice. Other chats use your narrator voice if one is set.
+- **Same rules everywhere:** the rules about minors and real people apply on the glasses exactly as on the phone.
 
 ### Using the real SillyTavern
 

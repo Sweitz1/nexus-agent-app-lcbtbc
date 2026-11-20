@@ -80,7 +80,7 @@
   const SAFE_SKILLS = ['music_now_playing', 'music_control', 'autogpt_status', 'calendar_events', 'notifications_read', 'glasses_status', 'datetime', 'spotify_now_playing', 'audiobook_control', 'gtasks_list', 'shopping_list'];
   onNative('webhook', async ev => {
     const path = String(ev.path || '');
-    if (!path.startsWith('/client/')) return;
+    if (!path.startsWith('/client/') || path.startsWith('/client/rp/')) return;   // /client/rp/: js/skills-roleplay.js
     const b = parseJSON(ev.body, {}) || {};
     try {
       if (path === '/client/pair') {
