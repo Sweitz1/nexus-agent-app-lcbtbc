@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.nexus.rayneo;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
@@ -34,13 +34,13 @@ import java.util.concurrent.TimeUnit;
  * the system Bluetooth settings or the media output switcher are opened instead.
  */
 @SuppressLint("MissingPermission")   // callers check BLUETOOTH_CONNECT / BLUETOOTH_SCAN first (JS ensurePermission)
-final class BluetoothTools {
+public final class BluetoothTools {
     private final Context ctx;
     private final Set<String> connected = new HashSet<>();   // addresses connected on A2DP/headset/LE audio
 
     private boolean proxiesAsked;
 
-    BluetoothTools(Context c) {
+    public BluetoothTools(Context c) {
         ctx = c.getApplicationContext();
         IntentFilter f = new IntentFilter();
         f.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
@@ -82,7 +82,7 @@ final class BluetoothTools {
         return m == null ? null : m.getAdapter();
     }
 
-    static String kind(BluetoothDevice d) {
+    public static String kind(BluetoothDevice d) {
         try {
             BluetoothClass c = d.getBluetoothClass();
             if (c == null) return "device";
@@ -114,7 +114,7 @@ final class BluetoothTools {
         return o;
     }
 
-    String state() throws Exception {
+    public String state() throws Exception {
         BluetoothAdapter a = adapter();
         JSONObject o = new JSONObject();
         o.put("available", a != null);
@@ -126,7 +126,7 @@ final class BluetoothTools {
         return o.toString();
     }
 
-    String paired() throws Exception {
+    public String paired() throws Exception {
         BluetoothAdapter a = adapter();
         JSONArray arr = new JSONArray();
         if (a == null || !a.isEnabled()) return arr.toString();
@@ -136,7 +136,7 @@ final class BluetoothTools {
     }
 
     /** Discovers nearby devices for up to timeoutMs (discoverable phones, speakers in pairing mode, cars…). */
-    String scan(int timeoutMs) throws Exception {
+    public String scan(int timeoutMs) throws Exception {
         BluetoothAdapter a = adapter();
         if (a == null) throw new Exception("No Bluetooth on this device");
         if (!a.isEnabled()) throw new Exception("Bluetooth is off — turn it on first");
@@ -171,7 +171,7 @@ final class BluetoothTools {
     }
 
     /** Starts pairing; Android shows its own confirmation (PIN / passkey) dialog. Waits up to 60 s. */
-    String pair(String address) throws Exception {
+    public String pair(String address) throws Exception {
         BluetoothAdapter a = adapter();
         if (a == null || !a.isEnabled()) throw new Exception("Bluetooth is off — turn it on first");
         if (!BluetoothAdapter.checkBluetoothAddress(address)) throw new Exception("Not a Bluetooth address: " + address);
@@ -199,7 +199,7 @@ final class BluetoothTools {
     }
 
     /** Where media audio is going right now (speaker, wired, Bluetooth device name, USB, HDMI…). */
-    String audioOutput() throws Exception {
+    public String audioOutput() throws Exception {
         AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
         JSONObject o = new JSONObject();
         JSONArray outs = new JSONArray();
@@ -231,7 +231,7 @@ final class BluetoothTools {
     }
 
     /** Android 11+ media output switcher (pick phone / Bluetooth / cast device for this app's audio). */
-    boolean openOutputSwitcher() {
+    public boolean openOutputSwitcher() {
         try {
             Intent i = new Intent("com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG");
             i.setPackage("com.android.systemui");
@@ -241,7 +241,7 @@ final class BluetoothTools {
         } catch (Exception e) { return false; }
     }
 
-    static List<String> requiredPermissions() {
+    public static List<String> requiredPermissions() {
         return Build.VERSION.SDK_INT >= 31
                 ? java.util.Arrays.asList("android.permission.BLUETOOTH_CONNECT", "android.permission.BLUETOOTH_SCAN")
                 : java.util.Collections.singletonList("android.permission.ACCESS_FINE_LOCATION");

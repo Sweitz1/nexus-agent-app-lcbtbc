@@ -178,6 +178,25 @@ The phone also pushes live updates to the glasses: replies from other places (ph
 
 Keep Nexus running on the phone. While glasses are being served, a "Nexus is serving your glasses" notification keeps it alive in the background.
 
+## Glasses app: Bluetooth and head tracking
+
+**Bluetooth** (*☰ → 🔵 Bluetooth* in Nexus Glasses)
+- See what's paired and where audio is playing.
+- **Scan** for nearby devices in pairing mode (earbuds, speakers, game controllers, keyboards) and tap one to pair.
+- **⚙ Settings** opens Android's Bluetooth screen to connect, disconnect or forget devices, which apps can't do themselves.
+
+**World-locked display** (*☰ → ⚙ Settings → 🧭 World-locked*)
+- With head tracking on, the screen stays in place in space instead of following your head.
+- **3DoF** uses the glasses' motion sensors (rotation only) and works on any device.
+- **6DoF** also follows your position. Lean in to see the screen closer, or step aside. It reads the head pose from the glasses' **OpenXR runtime** (RayNeo X3 Pro) through native code built with the Khronos OpenXR loader.
+  - It first tries the runtime's **headless** mode, which reads the pose without drawing anything.
+  - If the runtime has no headless mode, you can turn on **⚗ OpenXR session (experimental)**. That runs a normal OpenXR session with empty frames. On some runtimes it may take over the display; if the screen goes blank, double-tap (back) and turn it off.
+  - If 6DoF can't start, or sends no pose, the app automatically falls back to 3DoF and shows why.
+- **Lazy follow** lets the screen drift back when you look far away, about 22° sideways or 14° up/down.
+- **🧭 Recenter** in the ☰ menu puts the screen straight ahead again.
+- **◐ − / +** adjusts how far the screen moves per degree, to match your glasses' field of view.
+- Tracking pauses while the app is in the background.
+
 ## Binocular display and temple touchpad (RayNeo X3 / X3 Pro)
 
 The X3 and X3 Pro show both eye panels as one wide logical screen. A normal Android app would be split across the two eyes. Both Nexus apps handle this themselves, without the RayNeo SDK:
@@ -648,9 +667,12 @@ android/
     remote.html         phone remote console
   shared/                 code used by both APKs (shared/rayneo.gradle)
     java/com/nexus/rayneo/GlassesDisplay.java  binocular mirror + temple touchpad gestures
+    java/com/nexus/rayneo/HeadTracker.java     head tracking: OpenXR 6DoF or rotation-sensor 3DoF, recentring
+    java/com/nexus/rayneo/BluetoothTools.java  Bluetooth state, scan, pairing, audio output (both apps)
     sdk/ | nosdk/          RayNeoSdk bridge: with / without the RayNeo Mercury SDK
   libs/rayneo/            place for the optional RayNeo SDK AAR (git-ignored)
   glasses/                Nexus Glasses client APK (com.nexus.agent.glasses)
+    src/main/cpp/nexus_xr.cpp  6DoF head pose from the OpenXR runtime (headless or GLES session)
     src/main/java/com/nexus/glasses/
       ClientActivity.java  WebView host, glasses keys (assistant/camera/menu/back), permissions
       ClientBridge.java    window.NexusClient: HTTP, mDNS discovery, TTS, speech, head gestures, storage

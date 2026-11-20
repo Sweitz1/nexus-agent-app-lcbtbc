@@ -187,5 +187,7 @@ public class ClientActivity extends Activity {
 
     void exit() { runOnUiThread(() -> moveTaskToBack(true)); }
 
+    @Override protected void onStart() { super.onStart(); if (bridge != null) bridge.onVisible(true); }
+    @Override protected void onStop() { if (bridge != null) bridge.onVisible(false); super.onStop(); }
     @Override protected void onDestroy() { bridge.shutdown(); super.onDestroy(); }
 }

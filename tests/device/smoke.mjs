@@ -143,6 +143,23 @@ async function attach(pkg, port) {
     await check('Glasses display mode on a phone-shaped screen: no mirror', async () => {
       const d = await glasses.evaluate('return JSON.parse(NexusClient.displayMode())'); assert(!d.mirrorActive, JSON.stringify(d)); return `mirror ${d.mirrorEngine}`;
     });
+    await check('Glasses app: Bluetooth state and paired list', async () => {
+      const r = await glasses.evaluate("const st = await new Promise((res, rej) => { const id = 'bt' + Date.now(); const prev = window.__cb; window.__cb = (i, ok, v) => { if (i === id) { window.__cb = prev; ok ? res(v) : rej(new Error(v.error || 'btState failed')); } else prev(i, ok, v); }; NexusClient.btState(id); }); return st;");
+      return `available ${r.available}, enabled ${r.enabled}, audio ${r.audioOutput && r.audioOutput.active}`;
+    });
+    await check('Glasses app: 3DoF head tracking delivers poses', async () => {
+      const st = await glasses.evaluate("return JSON.parse(NexusClient.headTrackStart('3dof', false))");
+      const pose = await waitFor(() => glasses.evaluate("const p = NexusGlassesClient.track.last; return p && p.tracked ? p : null"), 8000);
+      return `${st.mode}; pose yaw ${pose.yaw} pitch ${pose.pitch}`;
+    });
+    await check('Glasses app: 6DoF library loads and falls back cleanly without an OpenXR runtime', async () => {
+      const st = await glasses.evaluate("return JSON.parse(NexusClient.headTrackStart('6dof', false))");
+      assert(st.sixDofBuilt, 'native library not loaded: ' + JSON.stringify(st));
+      const s2 = await waitFor(() => glasses.evaluate("const s = JSON.parse(NexusClient.headTrackStatus()); return s.mode !== '6dof' || /tracking/.test(s.runtime || '') ? s : null"), 15000);
+      await glasses.evaluate("NexusClient.headTrackStop()");
+      assert(adb(`shell pidof ${GLASSES}`), 'glasses app process died');
+      return `${s2.mode}${s2.note ? ' — ' + s2.note : ''}${s2.runtime ? ' — ' + s2.runtime : ''}`;
+    });
     await check('No JavaScript errors in the glasses app', async () => { assert(!glasses.errors.length, glasses.errors.join(' | ')); return 'none'; });
   }
   // lifecycle: background / resume, rotation

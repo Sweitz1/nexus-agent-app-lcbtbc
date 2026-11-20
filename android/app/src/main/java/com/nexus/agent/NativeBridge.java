@@ -26,6 +26,7 @@ import android.view.KeyEvent;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
 
+import com.nexus.rayneo.BluetoothTools;
 import com.nexus.rayneo.GlassesDisplay;
 
 import org.json.JSONArray;

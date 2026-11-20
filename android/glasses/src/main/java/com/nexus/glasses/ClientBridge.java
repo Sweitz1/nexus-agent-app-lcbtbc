@@ -27,7 +27,9 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.webkit.JavascriptInterface;
 
+import com.nexus.rayneo.BluetoothTools;
 import com.nexus.rayneo.GlassesDisplay;
+import com.nexus.rayneo.HeadTracker;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -321,7 +323,65 @@ public class ClientBridge {
         });
     }
 
+    // ------------------------------------------------------------------ Bluetooth (pair headphones, speakers, controllers…)
+
+    private BluetoothTools bt;
+    private BluetoothTools bt() { if (bt == null) bt = new BluetoothTools(act); return bt; }
+    private interface BtJob { String run() throws Exception; }
+    private void btAsync(String id, BtJob j) { pool.execute(() -> { try { act.callback(id, true, j.run()); } catch (Exception e) { act.callback(id, false, err(e)); } }); }
+
+    @JavascriptInterface public String btPermissions() { return new JSONArray(BluetoothTools.requiredPermissions()).toString(); }
+    @JavascriptInterface public void btState(String id) { btAsync(id, () -> bt().state()); }
+    @JavascriptInterface public void btPaired(String id) { btAsync(id, () -> bt().paired()); }
+    @JavascriptInterface public void btScan(String id, int timeoutMs) { btAsync(id, () -> bt().scan(timeoutMs)); }
+    @JavascriptInterface public void btPair(String id, String address) { btAsync(id, () -> { JSONObject o = new JSONObject(); o.put("result", bt().pair(address)); return o.toString(); }); }
+    @JavascriptInterface public String audioOutput() { try { return bt().audioOutput(); } catch (Exception e) { return err(e); } }
+    @JavascriptInterface
+    public boolean openBluetoothSettings() {
+        try { act.startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return true; }
+        catch (Exception e) { return false; }
+    }
+
+    // ------------------------------------------------------------------ head tracking (world-locked display)
+
+    private HeadTracker tracker;
+    private String trackMode = "off";
+    private boolean trackGl;
+    private final Handler poseLoop = new Handler(Looper.getMainLooper());
+    private final Runnable poseTick = new Runnable() {
+        @Override public void run() {
+            if (tracker == null || "off".equals(trackMode)) return;
+            act.emit("pose", tracker.pose());
+            poseLoop.postDelayed(this, 33);
+        }
+    };
+
+    /** mode: off | 3dof | 6dof. allowGlSession: allow the experimental OpenXR session (may take over the display). */
+    @JavascriptInterface
+    public String headTrackStart(String mode, boolean allowGlSession) {
+        trackMode = mode == null ? "off" : mode; trackGl = allowGlSession;
+        poseLoop.removeCallbacks(poseTick);
+        if (tracker == null) tracker = new HeadTracker(act);
+        if ("off".equals(trackMode)) { tracker.stop(); return tracker.status(); }
+        String st = tracker.start(trackMode, trackGl);
+        poseLoop.post(poseTick);
+        return st;
+    }
+    @JavascriptInterface public void headTrackStop() { headTrackStart("off", false); }
+    @JavascriptInterface public void headTrackRecenter() { if (tracker != null) tracker.recenter(); }
+    @JavascriptInterface public String headTrackStatus() { return tracker == null ? "{\"mode\":\"off\",\"sixDofBuilt\":" + HeadTracker.sixDofAvailable() + "}" : tracker.status(); }
+
+    /** Pause tracking while the app is not visible (battery); resume with the same mode. */
+    void onVisible(boolean visible) {
+        if (tracker == null || "off".equals(trackMode)) return;
+        poseLoop.removeCallbacks(poseTick);
+        if (visible) { tracker.start(trackMode, trackGl); poseLoop.post(poseTick); }
+        else tracker.stop();
+    }
+
     void shutdown() {
+        poseLoop.removeCallbacks(poseTick);
+        if (tracker != null) tracker.stop();
         act.runOnUiThread(this::releasePlayer);
         if (rec != null) rec.destroy();
         if (tts != null) tts.shutdown();
