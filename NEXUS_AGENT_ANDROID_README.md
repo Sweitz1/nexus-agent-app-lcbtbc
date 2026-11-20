@@ -51,8 +51,8 @@
 
 Download the `nexus-agent-linux` artifact from **Actions → Build Release**. It contains:
 
-- `Nexus Agent-1.3.0.AppImage`: run anywhere (`chmod +x` it, then double-click)
-- `nexus-agent_1.3.0_amd64.deb`: `sudo apt install ./nexus-agent_1.3.0_amd64.deb`
+- `Nexus Agent-1.4.0.AppImage`: run anywhere (`chmod +x` it, then double-click)
+- `nexus-agent_1.4.0_amd64.deb`: `sudo apt install ./nexus-agent_1.4.0_amd64.deb`
 - `linux-local-ai-setup.sh`: installs Ollama and pulls models sized for your machine
 
 ```bash
@@ -109,10 +109,33 @@ With no API keys set, the app uses **Local LLM** by default. Open Providers → 
 - Always-on focus outlines.
 - Backup export and import: moves characters, chats and settings between phone, PC and glasses. A backup includes your API keys, so keep it private.
 
+**Device controls and agent tools** (Android app; ported from the RayNeo app on `prod`):
+
+| Tool | What it does |
+|---|---|
+| `glasses_status` | Battery, charging, temperature, volume, network and IP, Bluetooth, storage, memory, brightness, sensors |
+| `glasses_volume` / `glasses_brightness` | Set media volume, or this app's brightness (or follow the system setting) |
+| `media_control` | Play, pause, next, previous or stop whatever music or podcast app is playing |
+| `glasses_settings` | Open Wi-Fi, Bluetooth, display, sound, battery, notifications, developer and other settings screens |
+| `head_pose` | Head orientation (yaw, pitch, roll) from the IMU |
+| `ask_yes_no` | Shows and speaks a question; you answer by nodding or shaking your head, or by tapping |
+| `notifications_read` / `notifications_dismiss` | Read and dismiss device notifications. Needs notification access; dismissing asks for approval |
+| `hud_control` | Text, a clock, a teleprompter or a toast on USB-C display glasses (Lenovo Legion/T1, XREAL, Viture, Rokid, RayNeo Air) |
+
+On the glasses, new tasks include `glasses_status`, `media_control`, `ask_yes_no` and `notifications_read` by default.
+
+The **Glasses & Dev** page adds matching controls:
+- Battery, network and storage at a glance.
+- Volume and brightness sliders, and media buttons.
+- Settings shortcuts.
+- **Calibrate nod / shake.** The motion sensor sits differently in each pair of glasses, so calibrate once.
+- Notification access.
+- HUD controls, and *Mirror chat replies to the HUD*.
+
 **Install with ADB:**
 ```bash
 adb devices
-adb install -r nexus-agent-1.3.0.apk
+adb install -r nexus-agent-1.4.0.apk
 adb shell monkey -p com.nexusagent.app 1
 adb logcat -s chromium:V      # page console output while developing
 ```

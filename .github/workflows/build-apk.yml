@@ -28,7 +28,7 @@ jobs:
       - name: Copy web assets into Android project
         run: |
           mkdir -p android-webview/app/src/main/assets
-          cp dist/index.html android-webview/app/src/main/assets/
+          cp dist/index.html dist/hud.html android-webview/app/src/main/assets/
 
       - name: Generate app icons
         run: |

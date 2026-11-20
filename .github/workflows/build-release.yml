@@ -27,7 +27,7 @@ jobs:
       - name: Copy web assets and generate icons
         run: |
           mkdir -p android-webview/app/src/main/assets
-          cp dist/index.html android-webview/app/src/main/assets/
+          cp dist/index.html dist/hud.html android-webview/app/src/main/assets/
           for size in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
             dir=${size%%:*}; px=${size##*:}
             mkdir -p android-webview/app/src/main/res/mipmap-$dir
@@ -76,13 +76,13 @@ jobs:
           APK=app/build/outputs/apk/release/app-release.apk
           test -f "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
-          mkdir -p ../out && cp "$APK" ../out/nexus-agent-1.3.0.apk
+          mkdir -p ../out && cp "$APK" ../out/nexus-agent-1.4.0.apk
           rm -f "$NEXUS_KEYSTORE_PATH"
 
       - uses: actions/upload-artifact@v4
         with:
           name: nexus-agent-android-release
-          path: out/nexus-agent-1.3.0.apk
+          path: out/nexus-agent-1.4.0.apk
           retention-days: 90
 
   windows:
@@ -97,7 +97,7 @@ jobs:
 
       - name: Stage Electron app
         shell: bash
-        run: scripts/stage-electron.sh 1.3.0
+        run: scripts/stage-electron.sh 1.4.0
 
       - name: Install Electron and build installers
         shell: bash
@@ -125,7 +125,7 @@ jobs:
           node-version: '20'
 
       - name: Stage Electron app
-        run: scripts/stage-electron.sh 1.3.0
+        run: scripts/stage-electron.sh 1.4.0
 
       - name: Install Electron and build Linux packages
         working-directory: stage
