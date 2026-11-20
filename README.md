@@ -362,6 +362,23 @@ The **Roleplay** tab is a character-chat mode in the style of TavernAI / SillyTa
 - **Settings:** prompt macros (`{{char}}`, `{{user}}`, `{{time}}`, `{{date}}`, `{{random:a,b}}`, `{{roll:1d20}}`) and sampling settings (temperature, top-p, penalties, max tokens, context budget). *Show prompt* displays exactly what is sent.
 - **Models:** any configured provider works, including OpenAI-compatible ones and Claude. Venice and local models are the defaults.
 
+### New characters and backgrounds
+
+Press **＋ New** in the Roleplay tab:
+
+- **Gallery · SFW:** six original starter characters: a space-smuggler captain, an archaeologist, a café baker, a noir detective, a fox spirit and a language-practice partner.
+- **Gallery · 18+:** four original adult characters for romance and mature roleplay, with their ages stated: a vampire aristocrat, a 1940s jazz singer, a beach bartender and a sorceress-queen. This tab only appears when mature content is on and unlocked. Their chats start as 18+.
+- **✨ Create from description:** describe a concept and optionally give a name, genre and 18+ setting. Your roleplay model writes a complete original card, which opens in the editor.
+- **🖼 Create from an image:** pick a picture (art, anime, a render, a photo).
+  - Your vision agent (*Settings → Files & images*) describes the look, setting and art style.
+  - Your roleplay model then writes an original character from that description, and the picture becomes the avatar.
+  - Characters made from **a photo of a real person**, or from a picture that **may show someone under 18**, are SFW-only. That lock stays when the card is edited.
+- **Blank card:** an empty card to fill in yourself.
+
+The list has an **SFW / 18+** filter.
+
+**Backgrounds** (SillyTavern-style): from a chat's ☰ menu, choose **🖼 Background**. You can pick one of eight built-in scenes (tavern, forest, neon city, space, beach, castle, library, rain), use your own image, or **generate one from the scenario** with your image provider. A character can also have a default background (*Edit card → 🏞 Background*), which its chats use unless they set their own.
+
 ### Mature content (18+)
 
 - **Off by default.** Turning it on in *Roleplay → Settings* requires confirming that you are 18 or older. Mature content then applies only to chats you mark 18+, in the chat's ☰ menu.

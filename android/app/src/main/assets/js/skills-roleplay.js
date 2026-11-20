@@ -258,11 +258,14 @@
       const msgs = [];
       for (const t of turns) { const role = t.role === 'assistant' ? 'assistant' : 'user'; const content = t.role === 'system' ? `[${t.content}]` : t.content; const last = msgs[msgs.length - 1]; if (last && last.role === role) last.content += '\n\n' + content; else msgs.push({ role, content }); }
       while (msgs.length && msgs[0].role !== 'user') msgs.shift();
+      if (opt.images && opt.images.length && msgs.length) { const l = msgs[msgs.length - 1]; l.content = [...opt.images.map(i => ({ type: 'image', source: { type: 'base64', media_type: i.mime, data: i.b64 } })), { type: 'text', text: l.content }]; }
       const body = { model, system, messages: msgs, max_tokens: max, temperature: Math.min(1, temperature), ...(opt.stop && opt.stop.length ? { stop_sequences: opt.stop.slice(0, 4) } : {}), ...extra };
       const d = await postJSON(base(p) + '/messages', authHeaders(p, key), body);
       return { text: (d.content || []).filter(b => b.type === 'text').map(b => b.text).join(''), usage: d.usage, model };
     }
-    const body = { model, messages: [{ role: 'system', content: system }, ...turns], temperature, top_p: Number(opt.top_p ?? st.top_p), max_tokens: max, ...extra };
+    const oturns = turns.map(t => ({ ...t }));
+    if (opt.images && opt.images.length && oturns.length) { const l = oturns[oturns.length - 1]; l.content = [{ type: 'text', text: l.content }, ...opt.images.map(i => ({ type: 'image_url', image_url: { url: `data:${i.mime};base64,${i.b64}` } }))]; }
+    const body = { model, messages: [{ role: 'system', content: system }, ...oturns], temperature, top_p: Number(opt.top_p ?? st.top_p), max_tokens: max, ...extra };
     const fp = Number(opt.frequency_penalty ?? st.frequency_penalty), pp = Number(opt.presence_penalty ?? st.presence_penalty);
     if (fp) body.frequency_penalty = fp; if (pp) body.presence_penalty = pp; if (opt.stop && opt.stop.length) body.stop = opt.stop.slice(0, 4);
     const d = await postJSON(base(p) + '/chat/completions', authHeaders(p, key), body);
@@ -370,7 +373,7 @@
     #view-rp .rp-m .tx .dq{color:#ffe7a8}
     #view-rp .rp-m .acts{display:flex;gap:.25em;flex-wrap:wrap;margin-top:.3em}
     #view-rp .rp-m .acts button{padding:.1em .5em;font-size:.8em}
-    #view-rp .rp-in{display:flex;gap:.4em;align-items:flex-end;position:sticky;bottom:0;background:var(--bg);padding:.4em 0}
+    #view-rp .rp-in{display:flex;gap:.4em;align-items:flex-end;position:sticky;bottom:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);padding:.4em 0}
     #view-rp .rp-in textarea{flex:1;min-height:2.6em;max-height:9em;resize:vertical}
     #view-rp .mature-on{color:var(--warn)}
     #view-rp details.rp-sec{border:1px solid var(--line);border-radius:var(--radius);padding:.4em .6em;margin:.4em 0;background:var(--panel)}
@@ -385,7 +388,7 @@
     return `<div class="card"><h3>🔒 Roleplay is locked</h3><p class="hint">Mature content is PIN-protected on this device.</p><div class="row"><input id="rpPin" type="password" inputmode="numeric" placeholder="PIN"><button class="primary nogrow" id="rpUnlock">Unlock</button><button class="nogrow" id="rpSfw">Continue without mature content</button></div></div>`;
   }
   function renderRp() {
-    const v = $('#view-rp');
+    const v = $('#view-rp'); if (view.screen !== 'chat') { v.style.background = ''; v.style.backgroundAttachment = ''; }
     if (!isUnlocked() && !sfwSession) { v.innerHTML = lockedView(); bindLock(v); return; }
     if (view.screen === 'chat' && chatById(view.chatId)) return renderChat();
     if (view.screen === 'edit') return renderEditor();
@@ -403,18 +406,20 @@
     const v = $('#view-rp'); const st = RP.settings;
     const tags = [...new Set(visibleChars().flatMap(c => c.tags || []))].sort().slice(0, 40);
     const q = view.q.toLowerCase();
-    const list = visibleChars().filter(c => (!q || (c.name + ' ' + c.description + ' ' + (c.tags || []).join(' ')).toLowerCase().includes(q)) && (!view.tag || (c.tags || []).includes(view.tag)));
+    const rate = view.rate || '';
+    const list = visibleChars().filter(c => (!q || (c.name + ' ' + c.description + ' ' + (c.tags || []).join(' ')).toLowerCase().includes(q)) && (!view.tag || (c.tags || []).includes(view.tag)) && (!rate || (rate === 'mature' ? c.mature : !c.mature)));
     const recent = RP.chats.filter(ch => isUnlocked() || !ch.mature).slice(0, 6);
     v.innerHTML = `<div class="rp-bar"><span class="ttl">Roleplay ${st.mature && st.adultConfirmedAt ? '<span class="mature-on">· 18+ on</span>' : ''}</span>
         <button class="nogrow" id="rpNew">＋ New</button><button class="nogrow" id="rpImport">⤓ Import card</button><button class="nogrow" id="rpGroup">👥 Group</button><button class="nogrow" id="rpLore">📖 Lore</button><button class="nogrow" id="rpSet">⚙ Settings</button></div>
-      <div class="row"><input id="rpQ" placeholder="Search characters" value="${esc(view.q)}"><select id="rpTag" class="nogrow"><option value="">All tags</option>${tags.map(t => `<option ${t === view.tag ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+      <div class="row"><input id="rpQ" placeholder="Search characters" value="${esc(view.q)}"><select id="rpRate" class="nogrow"><option value="">SFW + 18+</option><option value="sfw" ${view.rate === 'sfw' ? 'selected' : ''}>SFW</option>${isUnlocked() && RP.settings.mature ? `<option value="mature" ${view.rate === 'mature' ? 'selected' : ''}>18+</option>` : ''}</select><select id="rpTag" class="nogrow"><option value="">All tags</option>${tags.map(t => `<option ${t === view.tag ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
       ${recent.length ? `<h3 style="margin:.6em 0 .3em">Recent chats</h3>${recent.map(ch => `<button class="nogrow" data-open="${ch.id}" style="margin:.15em">${ch.mature ? '🔞 ' : ''}${esc(clip(ch.title, 40))}</button>`).join('')}` : ''}
       <h3 style="margin:.6em 0 .3em">Characters (${list.length})</h3>
       ${list.length ? `<div class="rp-grid">${list.map(c => `<button class="rp-card" data-char="${c.id}">${c.minorFlag ? '<span class="badge minor">SFW only</span>' : c.mature ? '<span class="badge">18+</span>' : ''}<img src="${esc(avatarSrc(c))}" alt="" loading="lazy"><div class="nm">${esc(c.name)}</div><div class="tg">${esc((c.tags || []).slice(0, 4).join(' · ') || clip(c.creator_notes || c.description, 40))}</div></button>`).join('')}</div>`
         : '<p class="hint">No characters yet. Import a SillyTavern / TavernAI card (PNG or JSON) or create one.</p>'}`;
     $('#rpQ', v).oninput = e => { view.q = e.target.value; const pos = e.target.selectionStart; renderList(); const i = $('#rpQ'); i.focus(); i.setSelectionRange(pos, pos); };
     $('#rpTag', v).onchange = e => { view.tag = e.target.value; renderList(); };
-    $('#rpNew', v).onclick = () => { const c = { id: uid(), created: Date.now(), ...normalizeCard({ name: 'New character', first_mes: '*{{char}} looks up.* Oh — hello, {{user}}.' }), avatar: '' }; RP.chars.unshift(c); saveRp(); view = { ...view, screen: 'edit', charId: c.id }; renderRp(); };
+    $('#rpNew', v).onclick = () => createUI();
+    $('#rpRate', v).onchange = e => { view.rate = e.target.value; renderList(); };
     $('#rpImport', v).onclick = importUI;
     $('#rpGroup', v).onclick = groupUI;
     $('#rpLore', v).onclick = () => { view.screen = 'lore'; renderRp(); };
@@ -434,7 +439,7 @@
   }
   function charMenu(c) {
     const chats = RP.chats.filter(ch => ch.members.length === 1 && ch.members[0] === c.id);
-    $('#modalBox').innerHTML = `<div style="display:flex;gap:.7em"><img src="${esc(avatarSrc(c))}" style="width:6em;height:9em;object-fit:cover;border-radius:8px" alt=""><div style="flex:1;min-width:0"><h3 style="margin:.1em 0">${esc(c.name)}</h3><p class="hint">${esc(clip(c.creator_notes || c.description, 260))}</p>${c.minorFlag ? '<p class="hint">This card describes a minor, so it is SFW-only.</p>' : ''}</div></div>
+    $('#modalBox').innerHTML = `<div style="display:flex;gap:.7em"><img src="${esc(avatarSrc(c))}" style="width:6em;height:9em;object-fit:cover;border-radius:8px" alt=""><div style="flex:1;min-width:0"><h3 style="margin:.1em 0">${esc(c.name)}</h3><p class="hint">${esc(clip(c.creator_notes || c.description, 260))}</p>${c.minorFlag ? `<p class="hint">SFW-only: ${esc(sfwReason(c))}.</p>` : ''}</div></div>
       <div class="row"><button class="primary" id="cmNew">💬 New chat</button><button id="cmEdit">✎ Edit card</button><button id="cmExp">⤒ Export PNG</button><button id="cmExpJ">⤒ JSON</button><button id="cmDel">🗑</button></div>
       ${chats.length ? '<h3>Chats</h3>' + chats.map(ch => `<button class="nogrow" data-oc="${ch.id}" style="margin:.15em">${ch.mature ? '🔞 ' : ''}${esc(clip(ch.title, 36))} · ${ch.messages.length}</button>`).join('') : ''}
       <div class="row"><button id="cmX">Close</button></div>`;
@@ -462,6 +467,7 @@
     if (chat.mature && !isUnlocked()) { v.innerHTML = lockedView(); bindLock(v); return; }
     const me = persona(); const mature = matureActive(chat);
     const last = chat.messages[chat.messages.length - 1];
+    const bg = bgCss(chatBg(chat)); v.style.background = bg ? `linear-gradient(rgba(0,0,0,.62),rgba(0,0,0,.78)), ${bg}` : ''; v.style.backgroundAttachment = bg ? 'fixed' : '';
     v.innerHTML = `<div class="rp-bar"><button class="nogrow" id="rcBack">←</button><span class="ttl">${esc(chat.title)}</span>
         <span class="hint ${mature ? 'mature-on' : ''}">${mature ? '18+' : 'SFW'}</span>
         <button class="nogrow" id="rcMenu">☰</button></div>
@@ -518,12 +524,13 @@
       <label>Scenario override (optional)</label><textarea id="cmS" class="big">${esc(chat.scenario || '')}</textarea>
       <label>Author's note (inserted near the end of the context)</label><textarea id="cmN">${esc(chat.authorNote || '')}</textarea>
       <div class="row"><div><label>Note depth (messages from the end)</label><input id="cmD" type="number" min="0" max="20" value="${esc(String(chat.authorDepth ?? st.authorDepth))}"></div></div>
-      <label class="inline"><input type="checkbox" id="cmM" ${chat.mature ? 'checked' : ''} ${canMature ? '' : 'disabled'}> Mature (18+) content in this chat ${canMature ? '' : '<span class="hint">— turn on mature content in Roleplay settings first' + (chatMembers(chat).some(c => c.minorFlag) ? ' (not possible: a character here describes a minor)' : '') + '</span>'}</label>
+      <label class="inline"><input type="checkbox" id="cmM" ${chat.mature ? 'checked' : ''} ${canMature ? '' : 'disabled'}> Mature (18+) content in this chat ${canMature ? '' : '<span class="hint">— turn on mature content in Roleplay settings first' + (chatMembers(chat).some(c => c.minorFlag) ? ' (not possible: a character here is SFW-only)' : '') + '</span>'}</label>
       ${RP.books.length ? '<label>Lorebooks for this chat</label>' + RP.books.map(b => `<label class="inline"><input type="checkbox" data-bk="${b.id}" ${(chat.books || []).includes(b.id) ? 'checked' : ''}> ${esc(b.name)}</label>`).join('') : ''}
-      <div class="row"><button class="primary" id="cmOk">Save</button><button id="cmPrompt">Show prompt</button><button id="cmDelC">Delete chat</button><button id="cmX">Close</button></div><pre id="cmP" class="hint" style="white-space:pre-wrap;max-height:16em;overflow:auto;display:none"></pre>`;
+      <div class="row"><button class="primary" id="cmOk">Save</button><button id="cmBg">🖼 Background</button><button id="cmPrompt">Show prompt</button><button id="cmDelC">Delete chat</button><button id="cmX">Close</button></div><pre id="cmP" class="hint" style="white-space:pre-wrap;max-height:16em;overflow:auto;display:none"></pre>`;
     $('#modal').classList.add('show'); modalClose = () => { $('#modal').classList.remove('show'); modalClose = null; };
     $('#cmX').onclick = () => modalClose();
     $('#cmOk').onclick = () => { chat.title = $('#cmT').value || chat.title; chat.scenario = $('#cmS').value; chat.authorNote = $('#cmN').value; chat.authorDepth = Number($('#cmD').value) || 0; chat.mature = canMature && $('#cmM').checked; chat.books = $$('[data-bk]').filter(i => i.checked).map(i => i.dataset.bk); saveRp(); modalClose(); renderChat(); };
+    $('#cmBg').onclick = () => { modalClose(); bgUI(chat, () => renderChat()); };
     $('#cmPrompt').onclick = () => { const sp = nextSpeaker(chat, ''); const p = buildPrompt(chat, sp); const el = $('#cmP'); el.style.display = ''; el.textContent = `SYSTEM:\n${p.system}\n\n` + p.turns.map(t => `${t.role.toUpperCase()}: ${t.content}`).join('\n\n') + `\n\n(~${estTokens(p.system + p.turns.map(t => t.content).join(''))} tokens, ${p.wi} lore entries)`; };
     $('#cmDelC').onclick = async () => { if (!(await confirmBox('Delete this chat?'))) return; RP.chats = RP.chats.filter(x => x !== chat); saveRp(); modalClose(); view.screen = 'list'; renderRp(); };
   }
@@ -531,7 +538,7 @@
   function renderEditor() {
     const v = $('#view-rp'); const c = charById(view.charId); if (!c) { view.screen = 'list'; return renderList(); }
     const F = (k, label, big) => `<label>${label}</label>${big ? `<textarea class="big" data-f="${k}">${esc(c[k] || '')}</textarea>` : `<input data-f="${k}" value="${esc(c[k] || '')}">`}`;
-    v.innerHTML = `<div class="rp-bar"><button class="nogrow" id="ceBack">←</button><span class="ttl">Edit ${esc(c.name)}</span><button class="nogrow" id="ceAv">🖼 Avatar</button><button class="primary nogrow" id="ceChat">💬 Chat</button></div>
+    v.innerHTML = `<div class="rp-bar"><button class="nogrow" id="ceBack">←</button><span class="ttl">Edit ${esc(c.name)}</span><button class="nogrow" id="ceAv">🖼 Avatar</button><button class="nogrow" id="ceBg">🏞 Background</button><button class="primary nogrow" id="ceChat">💬 Chat</button></div>
       <div style="display:flex;gap:.7em;align-items:flex-start"><img src="${esc(avatarSrc(c))}" style="width:6em;height:9em;object-fit:cover;border-radius:8px;background:var(--panel2)" alt=""><div style="flex:1">${F('name', 'Name')}${F('tags', 'Tags (comma separated)')}</div></div>
       ${F('description', 'Description (appearance, background — {{char}} / {{user}} macros work)', true)}${F('personality', 'Personality', true)}${F('scenario', 'Scenario', true)}
       ${F('first_mes', 'First message', true)}
@@ -539,17 +546,19 @@
       ${F('mes_example', 'Example dialogue (blocks start with <START>)', true)}
       <details class="rp-sec"><summary>Advanced: prompt overrides & notes</summary>${F('system_prompt', 'System prompt override ({{original}} = the default main prompt)', true)}${F('post_history_instructions', 'Post-history instructions (sent after the chat history)', true)}${F('creator_notes', 'Creator notes (not sent to the model)', true)}${F('creator', 'Creator')}${F('character_version', 'Version')}</details>
       <details class="rp-sec"><summary>Character lorebook (${c.book ? c.book.entries.length : 0} entries)</summary><div id="ceBook"></div></details>
-      <label class="inline"><input type="checkbox" id="ceMature" ${c.mature ? 'checked' : ''} ${c.minorFlag ? 'disabled' : ''}> Mark as 18+ character ${c.minorFlag ? '<span class="hint">— not possible: this card describes a minor</span>' : ''}</label>
+      <label class="inline"><input type="checkbox" id="ceMature" ${c.mature ? 'checked' : ''} ${c.minorFlag || !matureUnlocked() ? 'disabled' : ''}> Mark as 18+ character ${c.minorFlag ? `<span class="hint">— not possible: ${esc(sfwReason(c))}</span>` : matureUnlocked() ? '' : '<span class="hint">— turn on mature content in Roleplay settings first</span>'}</label>
       <div class="row"><button class="primary" id="ceSave">Save</button><button id="ceExp">Export PNG</button></div>`;
     const collect = () => {
       $$('[data-f]', v).forEach(el => { const k = el.dataset.f; let val = el.value; if (k === 'tags') val = val.split(',').map(x => x.trim()).filter(Boolean); else if (k === 'alternate_greetings') val = val.split(/\n-{3,}\n/).map(x => x.trim()).filter(Boolean); c[k] = val; });
-      c.minorFlag = cardDescribesMinor(c); c.mature = !c.minorFlag && $('#ceMature', v).checked;
+      c.minorFlag = cardDescribesMinor(c) || !!c.sfwLock; if (c.minorFlag && !c.sfwLock) c.sfwReason = 'this card describes a minor';
+      c.mature = !c.minorFlag && $('#ceMature', v).checked;
       if (c.minorFlag) RP.chats.filter(ch => ch.members.includes(c.id)).forEach(ch => { ch.mature = false; });
       saveRp();
     };
     $('#ceBack', v).onclick = () => { collect(); view.screen = 'list'; renderRp(); };
-    $('#ceSave', v).onclick = () => { collect(); toast(c.minorFlag ? 'Saved — describes a minor, so SFW-only' : 'Saved'); renderEditor(); };
+    $('#ceSave', v).onclick = () => { collect(); toast(c.minorFlag ? `Saved: SFW-only because ${sfwReason(c)}` : 'Saved'); renderEditor(); };
     $('#ceChat', v).onclick = () => { collect(); openChat(newChat([c.id]).id); };
+    $('#ceBg', v).onclick = () => { collect(); bgUI(c, () => { toast(c.bg ? 'Default background set for this character' : 'Background removed'); }); };
     $('#ceExp', v).onclick = async () => { collect(); try { toast('Exported ' + await exportCard(c, 'png')); } catch (e) { toast(e.message); } };
     $('#ceAv', v).onclick = async () => {
       try {
@@ -660,6 +669,187 @@
   }
   function apiBase() { const ip = N ? (parseJSON(N.deviceInfo(), {}).ip || '<phone-ip>') : location.hostname; return `http://${ip}:${Number(S.settings.server.port) || 8787}/v1`; }
 
+  /* ================================================================ character gallery, creation from images / text, backgrounds */
+  // Original starter characters. 18+ ones are adults (ages stated) and their cards stay tasteful;
+  // they are only offered when mature content is on and unlocked.
+  const STARTERS = [
+    { key: 'mara', glyph: '🚀', hue: 210, name: 'Captain Mara Voss', tags: ['sci-fi', 'adventure'], description: '{{char}} is the 38-year-old captain of the Kestrel, a battered freighter that runs cargo (and the occasional favor) along the Outer Rim. Sharp-tongued, fiercely loyal to her crew, allergic to authority. Short silver-streaked hair, a scar across her left brow, a long coat with too many pockets.', personality: 'wry, decisive, protective, secretly sentimental', scenario: '{{user}} has just signed on as the newest crew member of the Kestrel, minutes before a customs patrol hails the ship.', first_mes: '*The comm panel blinks red. {{char}} doesn\'t look up from the nav console.* "Rule one on my ship, {{user}}: when customs calls, you\'re a botanist. Rule two — can you fake being a botanist?"' },
+    { key: 'elias', glyph: '🗺️', hue: 35, name: 'Professor Elias Thorne', tags: ['adventure', 'mystery'], description: '{{char}} is a 61-year-old archaeologist with a cane he mostly uses for pointing, a satchel of half-translated maps and an unshakable belief that the lost city of Ysra is real.', personality: 'eccentric, enthusiastic, absent-minded, brave when it matters', scenario: '{{user}} is {{char}}\'s new research assistant, arriving at his chaotic study the night before an expedition.', first_mes: '*Papers avalanche off a desk as {{char}} spins around.* "Ah! You must be {{user}}. Splendid. Do you swim? Climb? Read Old Ysran? No matter — we leave at dawn."' },
+    { key: 'juniper', glyph: '🥐', hue: 25, name: 'Juniper', tags: ['slice of life', 'cozy'], description: '{{char}} is a 29-year-old baker who runs a tiny café on a rainy corner, remembers every regular\'s order and has an opinion about every book on her shelf.', personality: 'warm, chatty, observant, gently teasing', scenario: '{{user}} ducks into {{char}}\'s café to escape a downpour.', first_mes: '*A bell jingles. {{char}} looks up from a tray of cinnamon rolls.* "Oh, you\'re soaked! Sit, sit — first cup\'s on the house when the weather\'s this rude."' },
+    { key: 'ren', glyph: '🕵️', hue: 260, name: 'Detective Ren Kaito', tags: ['mystery', 'noir'], description: '{{char}} is a 44-year-old homicide detective in a neon-soaked city: rumpled trench coat, cold coffee, a habit of noticing what everyone else missed.', personality: 'laconic, perceptive, tired, quietly principled', scenario: 'A body was found at the Golden Lotus hotel. {{user}} is the only witness — or the prime suspect.', first_mes: '*{{char}} flips open a notebook and studies you over the rim of a paper cup.* "Room 1207. You were the last one seen leaving. Start talking, {{user}} — slowly."' },
+    { key: 'bramble', glyph: '🦊', hue: 15, name: 'Bramble', tags: ['fantasy', 'whimsical'], description: '{{char}} is an ancient, mischievous fox spirit who guides lost travelers through the Whispering Wood — for a price, usually a story or a riddle.', personality: 'playful, cryptic, kind underneath, loves riddles', scenario: '{{user}} is lost in the Whispering Wood as night falls.', first_mes: '*Two amber eyes glow between the ferns.* "Lost, are we? I know the way out, little traveler. Tell me a story I haven\'t heard and I\'ll show you the path."' },
+    { key: 'iris', glyph: '🗣️', hue: 160, name: 'Iris, language partner', tags: ['learning', 'conversation'], description: '{{char}} is a patient, upbeat 33-year-old language coach who practices real-life scenes with {{user}} (ordering food, travel, interviews) in any language, correcting mistakes gently at the end of each reply.', personality: 'encouraging, clear, adaptable', scenario: '{{user}} wants to practice a language through roleplay.', first_mes: '"Hi {{user}}! Which language shall we practice, and where should our scene be — a café in Paris, a train station in Tokyo, a job interview?"' },
+    // 18+ (adults; romance / mature themes)
+    { key: 'lucien', mature: true, glyph: '🦇', hue: 345, name: 'Lucien Ashford', tags: ['NSFW', 'romance', 'gothic'], description: '{{char}} is a 32-year-old-looking vampire aristocrat (turned at 32, centuries ago) who hosts masquerades in a crumbling manor. Elegant, dangerous, magnetic, with a dry wit and old-world manners.', personality: 'seductive, cultured, possessive, lonely beneath the charm', scenario: '{{user}}, an adult guest, has slipped away from {{char}}\'s masquerade into the moonlit library.', first_mes: '*A voice drifts from the shadows between the shelves.* "Most guests prefer the ballroom, {{user}}. You chose my library instead. How… interesting."' },
+    { key: 'scarlett', mature: true, glyph: '🎷', hue: 0, name: 'Scarlett Vane', tags: ['NSFW', 'romance', 'noir'], description: '{{char}} is a 29-year-old jazz singer at the Blue Orchid club in 1940s Chicago, with a velvet voice, a red dress and secrets the mob would kill for.', personality: 'flirtatious, guarded, clever, bold', scenario: 'After her last set, {{char}} slides into {{user}}\'s booth — she needs a favor from an adult stranger she can trust.', first_mes: '*She sets down two glasses and smiles like trouble.* "You\'ve been watching me all night, {{user}}. Good. I need someone nobody in this club knows."' },
+    { key: 'kai', mature: true, glyph: '🍸', hue: 190, name: 'Kai Rivera', tags: ['NSFW', 'romance', 'contemporary'], description: '{{char}} is a 30-year-old tattooed bartender and part-time musician in a seaside town: easygoing grin, terrible jokes, a guitar behind the bar.', personality: 'charming, laid-back, attentive, honest', scenario: 'It\'s closing time at {{char}}\'s beach bar and {{user}} (an adult regular) is the last one left.', first_mes: '*{{char}} flips the sign to CLOSED and pours two drinks anyway.* "Last call was ten minutes ago, {{user}}. Guess that makes this one off the record."' },
+    { key: 'selene', mature: true, glyph: '🌙', hue: 280, name: 'Queen Selene', tags: ['NSFW', 'romance', 'dark fantasy'], description: '{{char}} is the 35-year-old sorceress-queen of a moonlit kingdom, feared by her court and bored by its flattery. Silver crown, storm-grey eyes, power that hums in the air around her.', personality: 'commanding, intelligent, intense, privately playful', scenario: '{{user}}, an adult envoy from a rival realm, is granted a private audience at midnight.', first_mes: '*The throne room doors close behind you. {{char}} doesn\'t rise.* "They send me diplomats with speeches, {{user}}. Tell me you brought something more interesting."' },
+  ];
+  const sfwReason = c => c.sfwReason || 'this card describes a minor';
+  const matureUnlocked = () => !!(RP.settings.mature && RP.settings.adultConfirmedAt && isUnlocked());
+
+  async function glyphPng(name, glyph, hue) {
+    const c = document.createElement('canvas'); c.width = 400; c.height = 600; const g = c.getContext('2d');
+    const gr = g.createLinearGradient(0, 0, 400, 600); gr.addColorStop(0, `hsl(${hue},55%,32%)`); gr.addColorStop(1, `hsl(${(hue + 50) % 360},55%,10%)`);
+    g.fillStyle = gr; g.fillRect(0, 0, 400, 600); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '170px sans-serif'; g.fillText(glyph || (name[0] || '?').toUpperCase(), 200, 270);
+    g.fillStyle = '#fff'; g.font = 'bold 34px sans-serif'; g.fillText(name.length > 20 ? name.slice(0, 19) + '…' : name, 200, 520);
+    return new Uint8Array(await (await new Promise(r => c.toBlob(r, 'image/png'))).arrayBuffer());
+  }
+  async function addStarter(s) {
+    if (s.mature && !matureUnlocked()) throw new Error('Turn on mature content first (Roleplay → Settings)');
+    const c = { id: uid(), created: Date.now(), starter: s.key, ...normalizeCard(s) };
+    c.avatar = await saveAvatar(c.id, await glyphPng(c.name, s.glyph, s.hue));
+    c.minorFlag = cardDescribesMinor(c); c.mature = !!s.mature && !c.minorFlag;
+    RP.chars.unshift(c); saveRp(); return c;
+  }
+
+  // --- images in / out
+  async function pickImageBytes() {
+    if (N) { const [p] = await importFiles('image/*'); if (!p) return null; return fsx.bytes(p); }
+    return new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = async () => res(i.files[0] ? new Uint8Array(await i.files[0].arrayBuffer()) : null); i.click(); });
+  }
+  async function toPngAndJpeg(bytes, maxSide = 1024) {
+    const im = await createImageBitmap(new Blob([bytes]));
+    const k = Math.min(1, maxSide / Math.max(im.width, im.height)); const cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
+    const g = cv.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(im, 0, 0, cv.width, cv.height);
+    const png = isPng(bytes) ? bytes : new Uint8Array(await (await new Promise(r => cv.toBlob(r, 'image/png'))).arrayBuffer());
+    return { png, jpegB64: cv.toDataURL('image/jpeg', 0.85).split(',')[1], w: cv.width, h: cv.height };
+  }
+  const jsonFrom = t => { const s = stripThink(String(t || '')); const a = s.indexOf('{'), b = s.lastIndexOf('}'); return a >= 0 && b > a ? parseJSON(s.slice(a, b + 1), null) : null; };
+  function visionTarget() {
+    const a = agentById(S.settings.visionAgent) || agentById(S.current) || S.agents[0];
+    return { p: providerById(a.providerId), model: a.model, name: a.name };
+  }
+  /** Step 1: a vision model describes the picture (look, setting, age group, real photo?). */
+  async function analyzeImage(jpegB64) {
+    const t = visionTarget(); if (!t.p) throw new Error('Pick a vision agent in Settings (Files & images)');
+    const r = await complete({ system: 'You describe images for a character-creation tool. Reply with JSON only.', turns: [{ role: 'user', content:
+      'Describe this image as JSON with keys: "summary" (one sentence), "has_character" (true/false), "appearance" (detailed look of the main character: hair, eyes, face, build, clothing, accessories, distinctive features; "" if none), "setting" (the background / scene), "mood", "art_style" (e.g. anime, oil painting, 3D render, photo), "apparent_age" ("child", "teen", "adult" or "unclear"), "real_photo" (true if this is a photograph of a real person). Do not identify or name real people.' }] },
+      { p: t.p, model: t.model, temperature: 0.2, max_tokens: 700, images: [{ mime: 'image/jpeg', b64: jpegB64 }] });
+    const j = jsonFrom(r.text); if (!j) throw new Error('The vision model did not return a description');
+    return j;
+  }
+  /** Step 2: the roleplay model writes an original character card. */
+  async function writeCard({ concept = '', genre = '', name = '', mature = false, vision = null }) {
+    const rules = [
+      'You create original roleplay character cards. Reply with JSON only, keys: name, description, personality, scenario, first_mes, mes_example, tags (array of 3-6 short tags), creator_notes.',
+      'Use {{char}} for the character and {{user}} for the user. description: 120-250 words in third person (appearance, background, quirks). first_mes: an engaging in-character opening (with *actions*). mes_example: 2 short exchanges, each block starting with <START>.',
+      'The character is fictional and original. State an adult age (21 or older) in the description. Never base the character on a real person or use a real person\'s name.',
+      mature ? 'This card is for an adult (18+) romance / mature roleplay: make the character flirtatious or romantic where it fits, but keep the card text itself tasteful (no explicit content). Include the tag "NSFW".' : 'Keep everything suitable for a general audience (SFW).',
+    ].join('\n');
+    const parts = [];
+    if (name) parts.push(`Name: ${name}`);
+    if (genre) parts.push(`Genre: ${genre}`);
+    if (concept) parts.push(`Concept from the user: ${concept}`);
+    if (vision) {
+      parts.push(`The character's look comes from a picture the user chose${vision.real_photo ? ' (a photo: create an original fictional character only loosely inspired by its look and setting)' : ''}:`);
+      parts.push(`Appearance: ${vision.appearance || vision.summary || ''}\nSetting: ${vision.setting || ''}\nMood: ${vision.mood || ''}\nArt style: ${vision.art_style || ''}`);
+    }
+    const r = await complete({ system: rules, turns: [{ role: 'user', content: parts.join('\n') || 'Surprise me with an interesting original character.' }] }, { temperature: 0.9, max_tokens: 1400 });
+    const j = jsonFrom(r.text); if (!j || !j.name) throw new Error('The model did not return a character card — try again or another model');
+    return j;
+  }
+  async function createCharacter({ concept, genre, name, mature, imageBytes }) {
+    mature = !!mature && matureUnlocked();
+    let vision = null, img = null, lock = '';
+    if (imageBytes) {
+      img = await toPngAndJpeg(imageBytes);
+      vision = await analyzeImage(img.jpegB64);
+      if (vision.real_photo) lock = 'it was made from a photo of a real person';
+      else if (vision.has_character !== false && /child|teen|unclear/i.test(String(vision.apparent_age || 'unclear'))) lock = 'the picture may show someone under 18';
+    }
+    const j = await writeCard({ concept, genre, name, mature: mature && !lock, vision });
+    const c = { id: uid(), created: Date.now(), ...normalizeCard(j), creator: 'Nexus' };
+    if (vision) { c.creator_notes = [c.creator_notes, `Created from an image: ${vision.summary || ''}`].filter(Boolean).join('\n'); c.bgHint = vision.setting || ''; }
+    c.avatar = await saveAvatar(c.id, img ? img.png : await glyphPng(c.name, '', [...c.name].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 360, 7)));
+    if (lock) { c.sfwLock = true; c.sfwReason = lock; }
+    c.minorFlag = cardDescribesMinor(c) || !!c.sfwLock;
+    if (!c.sfwReason && c.minorFlag) c.sfwReason = 'this card describes a minor';
+    c.mature = mature && !c.minorFlag;
+    if (!c.mature) c.tags = c.tags.filter(t => !/^(nsfw|18\+|explicit)$/i.test(t));
+    RP.chars.unshift(c); saveRp(); return c;
+  }
+
+  // --- backgrounds (chat or character): built-in scenes, your own image, or generated from the scenario
+  const BG_PRESETS = {
+    tavern: 'radial-gradient(ellipse at 50% 85%,#6b3a12 0%,#2a1608 55%,#0d0703 100%)',
+    forest: 'radial-gradient(ellipse at 50% 20%,#2f5d3a 0%,#12301c 50%,#06130b 100%)',
+    city: 'linear-gradient(180deg,#160a33 0%,#3b0f5c 45%,#0b2a4a 75%,#04070f 100%)',
+    space: 'radial-gradient(circle at 70% 30%,#2b2f77 0%,#0a0b2a 45%,#000 100%)',
+    beach: 'linear-gradient(180deg,#ff9e6b 0%,#c45a7a 35%,#1d5f7a 70%,#0b2533 100%)',
+    castle: 'linear-gradient(180deg,#3a3f4a 0%,#1d2027 60%,#0b0c10 100%)',
+    library: 'radial-gradient(ellipse at 30% 30%,#5a4022 0%,#2a1c0e 55%,#0e0904 100%)',
+    rain: 'linear-gradient(180deg,#27323d 0%,#141c24 60%,#070a0e 100%)',
+  };
+  const bgCss = bg => !bg ? '' : bg.startsWith('preset:') ? (BG_PRESETS[bg.slice(7)] || '') : `url("${bg.startsWith('data:') ? bg : wsUrl(bg)}") center/cover no-repeat`;
+  const chatBg = chat => chat.bg || (chatMembers(chat)[0] || {}).bg || '';
+  async function saveBg(bytes, tag) {
+    if (N) return fsx.writeBytes(`rp/backgrounds/${tag}_${uid()}.png`, bytes);
+    return 'data:image/png;base64,' + bytesToB64(bytes);
+  }
+  async function generateBg(chat) {
+    const p = providerById(S.settings.imageProvider); if (!p) throw new Error('Pick an image provider in Settings (Files & images) to generate backgrounds');
+    const lead = chatMembers(chat)[0] || {}; const me = persona().name;
+    const scene = macros(chat.scenario || lead.scenario || lead.bgHint || 'a cozy fantasy tavern at night', { char: lead.name || 'the character', user: me });
+    const d = await postJSON(base(p) + '/images/generations', authHeaders(p, getKey(p.id)), { model: S.settings.imageModel, prompt: `Wide scenic background illustration for a story scene, no people, no text, atmospheric lighting: ${scene}`, size: '1536x1024', n: 1 }, 180000);
+    const item = (d.data || [])[0] || {};
+    if (item.b64_json) return saveBg(Uint8Array.from(atob(item.b64_json), x => x.charCodeAt(0)), 'gen');
+    if (item.url && N) { const r = await nativeAsync('download', JSON.stringify({ url: item.url, path: `rp/backgrounds/gen_${uid()}.png` })); return r.path; }
+    throw new Error('The image provider returned no image');
+  }
+  function bgUI(target, after) {
+    const cur = target.bg || '';
+    $('#modalBox').innerHTML = `<h3>Background</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(6em,1fr));gap:.4em">
+        <button data-bg="" style="height:4em">None</button>
+        ${Object.keys(BG_PRESETS).map(k => `<button data-bg="preset:${k}" style="height:4em;background:${BG_PRESETS[k]};${cur === 'preset:' + k ? 'outline:2px solid var(--accent)' : ''}">${k}</button>`).join('')}
+      </div>
+      <div class="row"><button id="bgUp">🖼 Use my image</button>${target.messages ? '<button id="bgGen">✨ Generate from scenario</button>' : ''}<button id="bgX">Close</button></div><p class="hint" id="bgSt"></p>`;
+    $('#modal').classList.add('show'); modalClose = () => { $('#modal').classList.remove('show'); modalClose = null; };
+    const done = v => { target.bg = v; saveRp(); modalClose(); after && after(); };
+    $$('#modalBox [data-bg]').forEach(b => { b.onclick = () => done(b.dataset.bg); });
+    $('#bgX').onclick = () => modalClose();
+    $('#bgUp').onclick = async () => { try { const b = await pickImageBytes(); if (!b) return; const { png } = await toPngAndJpeg(b, 1600); done(await saveBg(png, 'img')); } catch (e) { toast(e.message); } };
+    const g = $('#bgGen'); if (g) g.onclick = async () => { $('#bgSt').textContent = 'Generating…'; try { done(await generateBg(target)); } catch (e) { $('#bgSt').textContent = e.message; } };
+  }
+
+  // --- "New character" chooser
+  function createUI(tab) {
+    const mu = matureUnlocked(); tab = tab || 'sfw';
+    const starters = STARTERS.filter(s => tab === 'mature' ? s.mature : !s.mature);
+    const genres = ['fantasy', 'sci-fi', 'romance', 'mystery', 'horror', 'slice of life', 'adventure', 'historical', 'cyberpunk', 'comedy'];
+    $('#modalBox').innerHTML = `<h3>New character</h3>
+      <div class="row"><button class="nogrow ${tab === 'sfw' ? 'primary' : ''}" data-tab2="sfw">Gallery · SFW</button>${mu ? `<button class="nogrow ${tab === 'mature' ? 'primary' : ''}" data-tab2="mature">Gallery · 18+</button>` : ''}<button class="nogrow ${tab === 'make' ? 'primary' : ''}" data-tab2="make">✨ Create</button></div>
+      ${tab === 'make' ? `
+        <label>Concept (who are they? what's the story?)</label><textarea id="ncC" class="big" placeholder="e.g. a retired dragon hunter who now runs an inn, gruff but kind"></textarea>
+        <div class="row"><div><label>Name (optional)</label><input id="ncN"></div><div><label>Genre</label><select id="ncG"><option value="">any</option>${genres.map(g => `<option>${g}</option>`).join('')}</select></div></div>
+        ${mu ? '<label class="inline"><input type="checkbox" id="ncM"> 18+ character (romance / mature themes)</label>' : '<p class="hint">Turn on mature content in Roleplay → Settings to create 18+ characters.</p>'}
+        <div class="row"><button class="primary" id="ncText">✍ Create from description</button><button id="ncImg">🖼 Create from an image…</button><button id="ncBlank">Blank card</button></div>
+        <p class="hint">From an image: a vision model (${esc(visionTarget().name)}) describes the picture and your roleplay model writes an original character; the picture becomes the avatar. Characters made from a photo of a real person, or from a picture that may show someone under 18, are SFW-only.</p>
+        <p class="hint" id="ncSt"></p>`
+      : `<div class="rp-grid">${starters.map(s => `<button class="rp-card" data-st="${s.key}" style="padding:.5em;text-align:left"><div style="font-size:2.2em">${s.glyph}</div><div class="nm" style="padding:.2em 0">${esc(s.name)}</div><div class="tg" style="padding:0">${esc(s.tags.filter(t => t !== 'NSFW').join(' · '))}</div></button>`).join('')}</div>
+        <p class="hint">${tab === 'mature' ? 'Adult characters for romance and mature roleplay. Chats with them start as 18+.' : 'Tap a character to add it to your library and start chatting.'}</p>`}
+      <div class="row"><button id="ncX">Close</button></div>`;
+    $('#modal').classList.add('show'); modalClose = () => { $('#modal').classList.remove('show'); modalClose = null; };
+    $('#ncX').onclick = () => modalClose();
+    $$('#modalBox [data-tab2]').forEach(b => { b.onclick = () => createUI(b.dataset.tab2); });
+    $$('#modalBox [data-st]').forEach(b => { b.onclick = async () => { try { const c = await addStarter(STARTERS.find(s => s.key === b.dataset.st)); modalClose(); openChat(newChat([c.id]).id); } catch (e) { toast(e.message); } }; });
+    if (tab !== 'make') return;
+    const st = t => { $('#ncSt').textContent = t; };
+    const opts = () => ({ concept: $('#ncC').value.trim(), name: $('#ncN').value.trim(), genre: $('#ncG').value, mature: !!($('#ncM') && $('#ncM').checked) });
+    const run = async imageBytes => {
+      const o = opts();
+      if (o.mature && textDescribesMinor(o.concept + ' ' + o.name)) return st('18+ characters must be adults.');
+      $$('#modalBox button').forEach(b => { b.disabled = true; });
+      try { st(imageBytes ? 'Looking at the image…' : 'Writing the character…'); const c = await createCharacter({ ...o, imageBytes }); modalClose(); if (c.sfwLock) toast(`${c.name} is SFW-only: ${c.sfwReason}`); view = { ...view, screen: 'edit', charId: c.id }; renderRp(); }
+      catch (e) { st('⚠ ' + e.message); $$('#modalBox button').forEach(b => { b.disabled = false; }); }
+    };
+    $('#ncText').onclick = () => run(null);
+    $('#ncImg').onclick = async () => { try { const b = await pickImageBytes(); if (b) run(b); } catch (e) { st(e.message); } };
+    $('#ncBlank').onclick = () => { const c = { id: uid(), created: Date.now(), ...normalizeCard({ name: $('#ncN').value.trim() || 'New character', first_mes: '*{{char}} looks up.* Oh — hello, {{user}}.' }), avatar: '' }; RP.chars.unshift(c); saveRp(); modalClose(); view = { ...view, screen: 'edit', charId: c.id }; renderRp(); };
+  }
+
   /* ================================================================ OpenAI-compatible API for SillyTavern */
   function modelList() {
     const out = [];
@@ -766,5 +956,5 @@
       view.screen = 'list'; showTab('rp'); return a.character ? `No character named "${a.character}" — opened the Roleplay tab.` : 'Opened the Roleplay tab.';
     } });
 
-  window.NexusRoleplay = { RP, importCardBytes, exportCard, readCardPng, writeCardPng, cardJSON, normalizeCard, buildPrompt, complete, generate, newChat, cardDescribesMinor, matureActive, worldInfo, openChat, saveRp };
+  window.NexusRoleplay = { STARTERS, addStarter, createCharacter, analyzeImage, writeCard, bgUI, BG_PRESETS, RP, importCardBytes, exportCard, readCardPng, writeCardPng, cardJSON, normalizeCard, buildPrompt, complete, generate, newChat, cardDescribesMinor, matureActive, worldInfo, openChat, saveRp };
 })();
