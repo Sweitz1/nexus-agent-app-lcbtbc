@@ -336,6 +336,14 @@ public class ClientBridge {
     @JavascriptInterface public void btScan(String id, int timeoutMs) { btAsync(id, () -> bt().scan(timeoutMs)); }
     @JavascriptInterface public void btPair(String id, String address) { btAsync(id, () -> { JSONObject o = new JSONObject(); o.put("result", bt().pair(address)); return o.toString(); }); }
     @JavascriptInterface public String audioOutput() { try { return bt().audioOutput(); } catch (Exception e) { return err(e); } }
+    /** Opens an https link (e.g. the community Discord) in a browser or the Discord app. */
+    @JavascriptInterface
+    public boolean openUrl(String url) {
+        if (url == null || !url.startsWith("https://")) return false;
+        try { act.startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return true; }
+        catch (Exception e) { return false; }
+    }
+
     @JavascriptInterface
     public boolean openBluetoothSettings() {
         try { act.startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return true; }

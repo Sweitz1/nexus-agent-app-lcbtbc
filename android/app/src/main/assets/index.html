@@ -969,6 +969,7 @@ function displayModeHtml() {
 function bindDisplayMode(v) {
   for (const [id, key] of [['#dmMirror', 'mirror'], ['#dmTemple', 'temple']]) { const el = $(id, v); if (el) el.onchange = () => N.setDisplayMode(key, el.value); }
 }
+const DISCORD_INVITE = 'https://discord.gg/vzeSZMYCM';
 function renderSettings() {
   const v = $('#view-settings'); const st = S.settings;
   const mem = Object.entries(S.memory);
@@ -996,10 +997,14 @@ function renderSettings() {
       <div class="row"><button class="small danger nogrow" id="clearMem">Clear memory</button></div></div>
     <div class="card"><h3>Backup</h3>
       <div class="row"><button class="nogrow" id="exp">Export config</button><button class="nogrow" id="expKeys">Export with keys</button><button class="nogrow" id="imp">Import…</button><button class="danger nogrow" id="reset">Factory reset</button></div>
-      <p class="hint">Device: ${esc(deviceLabel())}${N ? ' · native bridge ✓' : ' · browser preview'}</p></div>`;
+      <p class="hint">Device: ${esc(deviceLabel())}${N ? ' · native bridge ✓' : ' · browser preview'}</p></div>
+    <div class="card"><h3>Community</h3>
+      <p class="hint">Questions, X3 Pro test results, bug reports and ideas: join the Nexus Agent Discord.</p>
+      <div class="row"><button class="primary nogrow" id="discordJoin">💬 Join the Discord</button><span class="hint" style="align-self:center">${esc(DISCORD_INVITE)}</span></div></div>`;
   bind(v, st, k => { applySettings(); if (k === 'glasses') renderSettings(); });
   bindProSettings(v);
   bindDisplayMode(v);
+  $('#discordJoin').onclick = () => { if (N) { if (!N.openUrl(DISCORD_INVITE)) toast('No app can open ' + DISCORD_INVITE); } else window.open(DISCORD_INVITE, '_blank'); };
   $('#clearMem').onclick = async () => { if (await confirmBox('Clear all long-term memory?')) { S.memory = {}; save(); renderSettings(); } };
   const showJSON = c => { const s = JSON.stringify(c, null, 1); if (N) N.shareText(s); else infoBox(`<code class="block">${esc(s)}</code>`); };
   $('#exp').onclick = () => showJSON(exportConfig(false));
