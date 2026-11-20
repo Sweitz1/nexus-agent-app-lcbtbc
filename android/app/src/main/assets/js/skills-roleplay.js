@@ -686,7 +686,7 @@
     { key: 'selene', mature: true, glyph: '🌙', hue: 280, name: 'Queen Selene', tags: ['NSFW', 'romance', 'dark fantasy'], description: '{{char}} is the 35-year-old sorceress-queen of a moonlit kingdom, feared by her court and bored by its flattery. Silver crown, storm-grey eyes, power that hums in the air around her.', personality: 'commanding, intelligent, intense, privately playful', scenario: '{{user}}, an adult envoy from a rival realm, is granted a private audience at midnight.', first_mes: '*The throne room doors close behind you. {{char}} doesn\'t rise.* "They send me diplomats with speeches, {{user}}. Tell me you brought something more interesting."' },
   ];
   const sfwReason = c => c.sfwReason || 'this card describes a minor';
-  const matureUnlocked = () => !!(RP.settings.mature && RP.settings.adultConfirmedAt && isUnlocked());
+  const matureUnlocked = unlocked => !!(RP.settings.mature && RP.settings.adultConfirmedAt && (unlocked ?? isUnlocked()));
 
   async function glyphPng(name, glyph, hue) {
     const c = document.createElement('canvas'); c.width = 400; c.height = 600; const g = c.getContext('2d');
@@ -696,8 +696,8 @@
     g.fillStyle = '#fff'; g.font = 'bold 34px sans-serif'; g.fillText(name.length > 20 ? name.slice(0, 19) + '…' : name, 200, 520);
     return new Uint8Array(await (await new Promise(r => c.toBlob(r, 'image/png'))).arrayBuffer());
   }
-  async function addStarter(s) {
-    if (s.mature && !matureUnlocked()) throw new Error('Turn on mature content first (Roleplay → Settings)');
+  async function addStarter(s, unlocked) {
+    if (s.mature && !matureUnlocked(unlocked)) throw new Error('Turn on mature content first (Roleplay → Settings)');
     const c = { id: uid(), created: Date.now(), starter: s.key, ...normalizeCard(s) };
     c.avatar = await saveAvatar(c.id, await glyphPng(c.name, s.glyph, s.hue));
     c.minorFlag = cardDescribesMinor(c); c.mature = !!s.mature && !c.minorFlag;
@@ -750,8 +750,8 @@
     const j = jsonFrom(r.text); if (!j || !j.name) throw new Error('The model did not return a character card — try again or another model');
     return j;
   }
-  async function createCharacter({ concept, genre, name, mature, imageBytes }) {
-    mature = !!mature && matureUnlocked();
+  async function createCharacter({ concept, genre, name, mature, imageBytes, unlocked }) {
+    mature = !!mature && matureUnlocked(unlocked);
     let vision = null, img = null, lock = '';
     if (imageBytes) {
       img = await toPngAndJpeg(imageBytes);
@@ -918,6 +918,28 @@
         return reply(401, { error: 'Wrong PIN' });
       }
       if (path === '/client/rp/lock') { G.unlockedUntil = 0; return reply(200, { ok: true }); }
+      if (path === '/client/rp/gallery') {
+        const pub = st => ({ key: st.key, name: st.name, glyph: st.glyph, tags: st.tags.filter(t => t !== 'NSFW').slice(0, 3), have: RP.chars.some(c => c.starter === st.key) });
+        return reply(200, { sfw: STARTERS.filter(x => !x.mature).map(pub), mature: gMatureOk() ? STARTERS.filter(x => x.mature).map(pub) : [], matureOk: gMatureOk() });
+      }
+      if (path === '/client/rp/create') {
+        let c;
+        if (b.starter) {
+          const st = STARTERS.find(x => x.key === b.starter); if (!st) return reply(404, { error: 'Unknown starter character' });
+          if (st.mature && !gMatureOk()) return reply(403, { error: '18+ characters are not available on the glasses' });
+          c = RP.chars.find(x => x.starter === st.key) || await addStarter(st, gUnlocked());
+        } else {
+          const mature = !!b.mature && gMatureOk();
+          const concept = String(b.concept || '').slice(0, 2000);
+          if (mature && textDescribesMinor(concept)) return reply(400, { error: '18+ characters must be adults.' });
+          const img = b.image && b.image.b64 ? Uint8Array.from(atob(b.image.b64), x => x.charCodeAt(0)) : null;
+          if (!concept && !img) return reply(400, { error: 'Describe the character or take a picture' });
+          c = await createCharacter({ concept, mature, imageBytes: img, unlocked: gUnlocked() });
+        }
+        const ch = RP.chats.find(x => x.members.length === 1 && x.members[0] === c.id && gChatOk(x)) || newChat([c.id], { mature: gMatureOk() && c.mature });
+        if (currentTab === 'rp' && view.screen === 'list') renderList();
+        return reply(200, { char: { id: c.id, name: c.name, mature: !!c.mature, sfwOnly: !!c.minorFlag, reason: c.minorFlag ? sfwReason(c) : '' }, ...gChat(ch) });
+      }
       if (path === '/client/rp/open') {
         let ch = b.chatId && chatById(b.chatId);
         if (!ch && b.charId) { const c = charById(b.charId); if (!gCharOk(c)) return reply(404, { error: 'Character not available' }); ch = b.resume !== false && RP.chats.find(x => x.members.length === 1 && x.members[0] === c.id && gChatOk(x)) || newChat([c.id], { mature: gMatureOk() && c.mature }); }

@@ -400,6 +400,12 @@ The Nexus Glasses app has a **Roleplay** screen under *☰ → Roleplay*. The ch
 - **18+ on the glasses:** 18+ characters and chats appear on the glasses only after you allow it on the phone (*Roleplay → Settings → Nexus Glasses*). With a PIN lock, you also enter the PIN on the glasses, by typing or saying it. The unlock lasts 30 minutes of use and ends when you leave Roleplay. Five wrong PINs pause unlocking for 5 minutes.
 - **Voice:** 18+ replies use the glasses' own on-device voice, never a cloud voice. Other chats use your narrator voice if one is set.
 - **Same rules everywhere:** the rules about minors and real people apply on the glasses exactly as on the phone.
+- **New characters on the glasses:** tap **＋ New character** in the glasses Roleplay list. You can:
+  - pick from the gallery (the 18+ section shows only when 18+ is allowed and unlocked on the glasses);
+  - **🎙 Describe** a character by voice;
+  - use **📷 From camera**: the glasses take a picture and you can add spoken details.
+
+  The phone does the work, using your vision agent and roleplay model, and saves the character to the phone's library. A camera picture of a real person, or one that may show someone under 18, makes the character SFW-only, the same as on the phone.
 
 ### Using the real SillyTavern
 

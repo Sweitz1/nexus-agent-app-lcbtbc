@@ -343,13 +343,14 @@ async function rpList() {
   try {
     const r = await api('/client/rp/list', {}, { timeoutMs: 15000 });
     const b = $('#rpBody');
-    b.innerHTML = (r.chats.length ? '<div class="hint">Recent chats</div>' + r.chats.map(c => `<button class="ch f" data-chat="${esc(c.id)}"><span class="t">${esc(c.title)}</span>${c.mature ? '<span class="tag">18+</span>' : ''}</button>`).join('') : '')
+    b.innerHTML = '<button class="primary f" id="rpNewC" style="width:100%">＋ New character</button>' + (r.chats.length ? '<div class="hint">Recent chats</div>' + r.chats.map(c => `<button class="ch f" data-chat="${esc(c.id)}"><span class="t">${esc(c.title)}</span>${c.mature ? '<span class="tag">18+</span>' : ''}</button>`).join('') : '')
       + '<div class="hint" style="margin-top:.4em">Characters</div>'
-      + (r.chars.length ? r.chars.map(c => `<button class="ch f" data-char="${esc(c.id)}">${c.avatar ? `<img src="${esc(rpAvatar(c.id))}" alt="">` : '<img alt="">'}<span class="t">${esc(c.name)}</span>${c.mature ? '<span class="tag">18+</span>' : ''}</button>`).join('') : '<div class="hint">No characters yet. Import cards in the phone\'s Roleplay tab.</div>')
+      + (r.chars.length ? r.chars.map(c => `<button class="ch f" data-char="${esc(c.id)}">${c.avatar ? `<img src="${esc(rpAvatar(c.id))}" alt="">` : '<img alt="">'}<span class="t">${esc(c.name)}</span>${c.mature ? '<span class="tag">18+</span>' : ''}</button>`).join('') : '<div class="hint">No characters yet: tap ＋ New character, or import cards in the phone\'s Roleplay tab.</div>')
       + (r.canUnlock ? '<button class="f" id="rpUnl" style="width:100%;margin-top:.4em">🔓 Unlock 18+</button>' : r.hidden ? '<div class="hint" style="margin-top:.4em">Some 18+ content is hidden on the glasses (phone: Roleplay → Settings → Nexus Glasses).</div>' : '');
     $$('#rpBody [data-chat]').forEach(x => { x.onclick = () => rpOpen({ chatId: x.dataset.chat }); });
     $$('#rpBody [data-char]').forEach(x => { x.onclick = () => rpOpen({ charId: x.dataset.char }); });
     const u = $('#rpUnl'); if (u) u.onclick = rpUnlock;
+    $('#rpNewC').onclick = rpNew;
     rpStatus(`Playing as ${r.persona}`); focusFirst();
   } catch (e) { rpStatus('⚠ ' + e.message); }
 }
@@ -393,6 +394,48 @@ $('#rpPrev').onclick = () => rpCall('/client/rp/swipe', { dir: -1 }, '‹');
 $('#rpCont').onclick = () => rpCall('/client/rp/continue', {}, '⤳ continuing…');
 $('#rpBack').onclick = rpBack;
 
+/* ------------------------------------------------------------ roleplay: new characters from the glasses */
+// Gallery starters, a character described by voice, or one created from what the glasses camera sees.
+// The phone does the work (vision + card writing) and applies the same SFW locks as on the phone.
+async function rpNew() {
+  let g;
+  try { g = await api('/client/rp/gallery', {}, { timeoutMs: 15000 }); } catch (e) { return toast(e.message); }
+  const btn = (st, i) => `<button class="f" data-gi="${i}" style="width:100%;text-align:left;margin:.15em 0">${st.glyph} ${esc(st.name)}${st.have ? ' ✓' : ''}<span class="hint"> ${esc(st.tags.join(' · '))}</span></button>`;
+  const all = [...g.sfw, ...g.mature];
+  overlay(`<h3 style="margin:.1em 0">New character</h3>
+    <div class="row"><button class="primary f" id="rnVoice">🎙 Describe</button><button class="f" id="rnCam">📷 From camera</button></div>
+    ${g.matureOk ? '<div class="row"><button class="f" id="rnM">18+: off</button></div>' : ''}
+    <div class="hint" style="margin-top:.4em">Gallery</div>${g.sfw.map((st, i) => btn(st, i)).join('')}
+    ${g.mature.length ? '<div class="hint" style="margin-top:.3em">Gallery · 18+</div>' + g.mature.map((st, i) => btn(st, g.sfw.length + i)).join('') : ''}
+    <div class="row"><button class="f" id="rnX">Cancel</button></div><p class="hint" id="rnSt"></p>`);
+  let mature = false;
+  const m = $('#rnM'); if (m) m.onclick = () => { mature = !mature; m.textContent = '18+: ' + (mature ? 'on' : 'off'); };
+  $('#rnX').onclick = closeOverlay;
+  $$('#ovBox [data-gi]').forEach(b => { b.onclick = () => rpCreate({ starter: all[Number(b.dataset.gi)].key }); });
+  $('#rnVoice').onclick = async () => {
+    try { $('#rnSt').textContent = '🎙 Describe the character…'; const t = await hear(); if (!t) { $('#rnSt').textContent = "Didn't catch that"; return; } rpCreate({ concept: t, mature }); }
+    catch (e) { $('#rnSt').textContent = e.message; }
+  };
+  $('#rnCam').onclick = async () => {
+    try {
+      $('#rnSt').textContent = '📷 taking a picture…'; const b64 = await snapshot();
+      $('#rnSt').textContent = '🎙 Add details (or stay quiet)…'; let t = ''; try { t = await hear(); } catch { /* optional */ }
+      rpCreate({ image: { mime: 'image/jpeg', b64 }, concept: t, mature });
+    } catch (e) { $('#rnSt').textContent = e.message; }
+  };
+}
+async function rpCreate(body) {
+  const st = $('#rnSt'); if (st) st.textContent = body.starter ? 'Adding…' : '✨ Creating on your phone…';
+  $$('#ovBox button').forEach(b => { b.disabled = true; });
+  try {
+    const r = await api('/client/rp/create', body, { timeoutMs: 240000 });
+    closeOverlay(); show('rp'); rp.chat = r.chat; rp.messages = r.messages; rpRender();
+    rpStatus(r.char.sfwOnly ? `${r.char.name} is SFW-only: ${r.char.reason}` : `Created ${r.char.name}`);
+    const last = r.messages[r.messages.length - 1]; if (last && !last.isUser) rpSpeak(last.text, r.chat.mature);
+    if (N) N.vibrate(40);
+  } catch (e) { if (st) st.textContent = '⚠ ' + e.message; $$('#ovBox button').forEach(b => { b.disabled = false; }); }
+}
+
 /* ------------------------------------------------------------ start */
 async function start() {
   show('main'); $('#phone').textContent = conn.name || conn.host; $('#clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -400,7 +443,7 @@ async function start() {
   catch (e) { setOnline(false); add('ev', '⚠ Phone not reachable: ' + e.message + ' — is Nexus open on the phone, and is it on the same Wi-Fi or VPN?'); }
   poll();
 }
-window.NexusGlassesClient = { ask, pair, start, handleEvent, rpList, rpOpen, get rp() { return rp; }, get conn() { return conn; } };
+window.NexusGlassesClient = { ask, pair, start, handleEvent, rpList, rpOpen, rpNew, get rp() { return rp; }, get conn() { return conn; } };
 if (conn && conn.token) start(); else { show('connect'); search(); }
 </script>
 </body>
