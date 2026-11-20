@@ -9,7 +9,16 @@ dist-electron/
 build/
 web-build/
 .natively/
-android/
+# Android (prod app): ignore build output only
+android/.gradle/
+android/build/
+android/app/build/
+android/glasses/build/
+android/local.properties
+android/.idea/
+*.iml
+*.apk
+*.keystore
 ios/
 bun.lock
 bun.lockb
