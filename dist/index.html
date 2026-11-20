@@ -158,6 +158,37 @@ select.form-input{cursor:pointer}
 /* TOAST */
 #toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;max-width:300px}
 #toast.show{opacity:1}
+/* CHARACTERS & CHAT */
+.char-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.char-row:last-child{border-bottom:none}
+.char-av{width:40px;height:40px;border-radius:50%;background:var(--primary-dim);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0}
+.char-av.big{width:64px;height:64px;font-size:24px}
+.char-av img{width:100%;height:100%;object-fit:cover}
+.char-info{flex:1;min-width:0;cursor:pointer}
+.char-info .label{font-weight:600}
+.char-info .desc{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 100px);max-width:760px;margin:0 auto}
+.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.bubble{max-width:85%;padding:10px 13px;border-radius:12px;background:var(--surface);border:1px solid var(--border);word-wrap:break-word;align-self:flex-start}
+.bubble.user{align-self:flex-end;background:var(--primary-dim);border-color:rgba(0,255,159,.25)}
+.bubble .who{font-size:11px;color:var(--primary);margin-bottom:3px;font-weight:600}
+.bubble em{color:#a9a9bd}
+.bubble-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.chat-input{display:flex;gap:8px;align-items:flex-end;padding-top:8px;border-top:1px solid var(--border)}
+.chat-input textarea{min-height:42px;max-height:140px;resize:none}
+.dev-pre{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow:auto;font-family:monospace}
+.menu-btn{display:none}
+/* GLASSES MODE (RayNeo X3 Pro): black is transparent on the waveguide */
+body.glasses{--bg:#000;--surface:#000;--surface2:#000;--border:#16303a;font-size:var(--glasses-fs,20px)}
+body.glasses .sidebar{display:none}
+body.glasses.menu-open .sidebar{display:flex;position:fixed;inset:0;width:100%;z-index:300}
+body.glasses .menu-btn{display:inline-flex}
+body.glasses .form-input,body.glasses .btn,body.glasses .nav-item{font-size:inherit}
+body.glasses .page-content{padding:10px}
+body.glasses .topbar{padding:8px 10px}
+body.glasses .bubble{max-width:100%}
+body.glasses .chat-wrap{height:calc(100vh - 70px)}
+body.kbd :focus,body.devmode :focus{outline:3px solid var(--primary);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -173,19 +204,21 @@ select.form-input{cursor:pointer}
       <div class="nav-item active" data-page="home"><span class="ico">⌂</span> Dashboard</div>
       <div class="nav-item" data-page="tasks"><span class="ico">⚡</span> Tasks <span class="badge" id="badge-running">0</span></div>
       <div class="nav-item" data-page="new-task"><span class="ico">＋</span> New Task</div>
+      <div class="nav-item" data-page="characters"><span class="ico">♡</span> Characters</div>
       <div class="nav-item" data-page="memory"><span class="ico">◈</span> Memory</div>
       <div class="nav-item" data-page="skills"><span class="ico">✦</span> Skills</div>
       <div class="nav-group">Config</div>
       <div class="nav-item" data-page="providers"><span class="ico">◎</span> Providers</div>
       <div class="nav-item" data-page="permissions"><span class="ico">🛡</span> Permissions</div>
       <div class="nav-item" data-page="logs"><span class="ico">☰</span> Logs</div>
+      <div class="nav-item" data-page="glasses"><span class="ico">◐</span> Glasses &amp; Dev</div>
     </nav>
   </aside>
 
   <!-- MAIN -->
   <main class="main">
     <div class="topbar">
-      <div class="topbar-left"><div class="topbar-title" id="page-title">Dashboard</div></div>
+      <div class="topbar-left"><button class="btn btn-ghost btn-sm menu-btn" onclick="document.body.classList.toggle('menu-open')" aria-label="Menu">☰</button><div class="topbar-title" id="page-title">Dashboard</div></div>
       <div id="topbar-action"></div>
     </div>
     <div class="page-content" id="content"></div>
@@ -857,7 +890,7 @@ function resumeTask(taskId, approved) {
 // ────────────────────────────────────────────────────────────────────────────
 const PAGE_TITLES = {
   home: 'Dashboard', tasks: 'Tasks', 'new-task': 'New Task',
-  memory: 'Memory', skills: 'Skills', providers: 'Providers', permissions: 'Permissions', logs: 'Logs'
+  memory: 'Memory', skills: 'Skills', characters: 'Characters', chat: 'Chat', glasses: 'Glasses & Dev', providers: 'Providers', permissions: 'Permissions', logs: 'Logs'
 };
 
 let currentPage = 'home';
@@ -866,6 +899,7 @@ let pollTimer = null;
 function navigate(page) {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   currentPage = page;
+  document.body.classList.remove('menu-open');
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.page === page);
   });
@@ -1395,8 +1429,635 @@ document.getElementById('task-overlay').addEventListener('click', e => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
+// NATIVE BRIDGE (Android APK) with browser/Electron fallbacks
+// ────────────────────────────────────────────────────────────────────────────
+const NATIVE = window.NexusNative || null;
+const DEVICE = (() => {
+  try { return NATIVE ? JSON.parse(NATIVE.deviceInfo()) : {}; } catch { return {}; }
+})();
+const IS_GLASSES_HW = /rayneo|ffalcon|tcl/i.test(`${navigator.userAgent} ${DEVICE.manufacturer || ''} ${DEVICE.brand || ''} ${DEVICE.model || ''}`);
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+
+function speak(text) {
+  const clean = String(text || '').replace(/\*[^*]*\*/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!clean) return;
+  if (NATIVE && NATIVE.speak(clean)) return;
+  if ('speechSynthesis' in window) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(clean)); }
+}
+function stopSpeaking() {
+  if (NATIVE) NATIVE.stopSpeaking();
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+}
+function voiceAvailable() { return !!(NATIVE && DEVICE.voiceInput); }
+function listen() {
+  return new Promise((resolve, reject) => {
+    if (!voiceAvailable()) return reject(new Error('Voice input needs a speech-recognition app on this device.'));
+    window.nexusVoiceResult = (t) => { window.nexusVoiceResult = null; resolve(t || ''); };
+    if (!NATIVE.startVoice()) { window.nexusVoiceResult = null; reject(new Error('Voice input is not available.')); }
+  });
+}
+function saveDownload(name, blob) {
+  return new Promise((resolve) => {
+    if (NATIVE && NATIVE.saveFile) {
+      const r = new FileReader();
+      r.onload = () => resolve(NATIVE.saveFile(name, String(r.result).split(',')[1], blob.type || 'application/octet-stream') || '');
+      r.readAsDataURL(blob);
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      resolve(name);
+    }
+  });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// CONTENT RATING (SFW by default; Mature is adults-only and opt-in)
+// ────────────────────────────────────────────────────────────────────────────
+const CONTENT = {
+  mode() { const s = DB.settings(); return s.contentMode === 'mature' && s.ageConfirmedAt ? 'mature' : 'sfw'; },
+  isMature() { return this.mode() === 'mature'; },
+  rule(char) {
+    if (this.isMature() && char.mature) {
+      return 'Content rating: Mature (adults only). {{user}} is an adult who has opted in to mature themes, and {{char}} and every other character are adults (18+). Never depict minors, or anyone who seems underage, in any sexual or romantic context.';
+    }
+    return 'Content rating: SFW. Keep everything suitable for a general audience: no sexual content and no graphic violence. If {{user}} pushes for explicit content, gently steer the scene elsewhere while staying in character.';
+  }
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// CHARACTERS (SillyTavern-compatible character cards V1/V2/V3)
+// ────────────────────────────────────────────────────────────────────────────
+const MATURE_TAGS = /^(nsfw|explicit|mature|18\+|adult|lewd|smut)$/i;
+const CHARS = {
+  all: () => LS.get('nx_chars', []),
+  save: (list) => LS.set('nx_chars', list),
+  get: (id) => CHARS.all().find(c => c.id === id),
+  upsert(c) {
+    const list = CHARS.all(); const i = list.findIndex(x => x.id === c.id);
+    if (i >= 0) list[i] = c; else list.unshift(c);
+    CHARS.save(list); return c;
+  },
+  remove(id) { CHARS.save(CHARS.all().filter(c => c.id !== id)); localStorage.removeItem(`nx_chat_${id}`); },
+  visible() { return CHARS.all().filter(c => !c.mature || CONTENT.isMature()); },
+  blank() {
+    return { id: uid(), name: '', description: '', personality: '', scenario: '', first_mes: '', mes_example: '',
+      creator_notes: '', system_prompt: '', post_history_instructions: '', alternate_greetings: [], tags: [],
+      creator: '', character_version: '1.0', avatar: '', mature: false, adult: false, createdAt: Date.now() };
+  },
+  TEMPLATES: {
+    blank: { label: 'Blank', make: () => ({}) },
+    companion: { label: 'Companion (girlfriend / boyfriend / partner)', make: () => ({
+      name: 'Aria', tags: ['companion'],
+      description: '{{char}} is {{user}}\'s caring, playful partner. Warm, attentive and a little teasing. Remembers what {{user}} shares (their day, plans, likes) and brings it up later. Has her own life and opinions: loves late-night music, terrible puns and planning weekend trips.',
+      personality: 'affectionate, curious, supportive, witty, honest',
+      scenario: '{{char}} and {{user}} are in a relationship and chatting at the end of the day.',
+      first_mes: '*leans against the doorframe with a grin* There you are! I was just thinking about you. So, how did today actually go?',
+      mes_example: '<START>\n{{user}}: I\'m tired.\n{{char}}: *pulls you onto the couch* Then no more effort required. Tell me the worst part, and I\'ll tell you a pun so bad it fixes everything.',
+      alternate_greetings: ['Morning, sleepyhead. Coffee is ready, and I want to hear about your dreams. The weird ones especially.']
+    }) },
+    assistant: { label: 'Personal assistant', make: () => ({
+      name: 'Nova', tags: ['assistant'],
+      description: '{{char}} is a calm, organised personal assistant who keeps answers short and practical.',
+      personality: 'concise, friendly, proactive',
+      first_mes: 'Hi {{user}}. What can I take off your plate today?'
+    }) },
+    narrator: { label: 'Storyteller / game master', make: () => ({
+      name: 'The Narrator', tags: ['story'],
+      description: '{{char}} runs an interactive story. Describes scenes vividly, plays every side character, and ends each reply with a choice or a question for {{user}}.',
+      scenario: 'A fantasy adventure that begins at a crossroads tavern.',
+      first_mes: 'Rain drums on the roof of the Crossed Keys tavern. A hooded stranger slides into the seat across from you and sets down a sealed letter with your name on it. Do you open it?'
+    }) }
+  },
+  persona() { const s = DB.settings(); return { name: s.personaName || 'User', description: s.personaDescription || '' }; },
+  macros(text, c) {
+    const user = CHARS.persona().name;
+    return String(text || '').replace(/\{\{char\}\}|<BOT>/gi, c.name || 'Character').replace(/\{\{user\}\}|<USER>/gi, user);
+  },
+
+  // ── Card import/export ──
+  fromCard(json) {
+    const d = json && (json.spec === 'chara_card_v2' || json.spec === 'chara_card_v3') ? (json.data || {}) : (json || {});
+    if (!d.name) throw new Error('Not a character card (no name).');
+    const tags = Array.isArray(d.tags) ? d.tags.map(String) : [];
+    const nx = (d.extensions && d.extensions.nexus) || {};
+    const c = { ...CHARS.blank(),
+      name: String(d.name), description: d.description || '', personality: d.personality || '', scenario: d.scenario || '',
+      first_mes: d.first_mes || '', mes_example: d.mes_example || '', creator_notes: d.creator_notes || '',
+      system_prompt: d.system_prompt || '', post_history_instructions: d.post_history_instructions || '',
+      alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings.map(String) : [],
+      tags, creator: d.creator || '', character_version: d.character_version || '',
+      mature: !!nx.mature || tags.some(t => MATURE_TAGS.test(t.trim())),
+      adult: !!nx.adult };
+    return c;
+  },
+  toCard(c) {
+    const data = { name: c.name, description: c.description, personality: c.personality, scenario: c.scenario,
+      first_mes: c.first_mes, mes_example: c.mes_example, creator_notes: c.creator_notes, system_prompt: c.system_prompt,
+      post_history_instructions: c.post_history_instructions, alternate_greetings: c.alternate_greetings || [],
+      tags: c.tags || [], creator: c.creator || 'Nexus Agent', character_version: c.character_version || '1.0',
+      extensions: { nexus: { mature: !!c.mature, adult: !!c.adult } } };
+    // V1 fields at the top level too, as SillyTavern writes them.
+    return { name: c.name, description: c.description, personality: c.personality, scenario: c.scenario,
+      first_mes: c.first_mes, mes_example: c.mes_example, spec: 'chara_card_v2', spec_version: '2.0', data };
+  },
+  async importFile(file) {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    let card, avatar = '';
+    if (buf[0] === 0x89 && buf[1] === 0x50) {
+      card = JSON.parse(PNGCARD.read(buf));
+      avatar = await shrinkImage(new Blob([buf], { type: 'image/png' }));
+    } else {
+      card = JSON.parse(new TextDecoder().decode(buf));
+    }
+    const c = CHARS.fromCard(card);
+    c.avatar = avatar;
+    return CHARS.upsert(c);
+  },
+  async exportPng(c) {
+    const base = c.avatar ? await (await fetch(c.avatar)).blob() : null;
+    const png = await renderCardImage(c, base);
+    const out = PNGCARD.write(new Uint8Array(await png.arrayBuffer()), JSON.stringify(CHARS.toCard(c)));
+    return saveDownload(`${(c.name || 'character').replace(/\s+/g, '_')}.png`, new Blob([out], { type: 'image/png' }));
+  },
+  exportJson(c) {
+    return saveDownload(`${(c.name || 'character').replace(/\s+/g, '_')}.json`,
+      new Blob([JSON.stringify(CHARS.toCard(c), null, 2)], { type: 'application/json' }));
+  }
+};
+
+// PNG tEXt chunks: SillyTavern stores cards as base64 JSON under "chara" (V2) or "ccv3" (V3).
+const PNGCARD = (() => {
+  const T = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; T[n] = c >>> 0; }
+  const crc = (bytes) => { let c = 0xffffffff; for (const b of bytes) c = T[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const u32 = (b, o) => ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0;
+  function chunks(buf) {
+    const SIG = [137, 80, 78, 71, 13, 10, 26, 10];
+    if (!SIG.every((v, i) => buf[i] === v)) throw new Error('Not a PNG file.');
+    const out = []; let o = 8;
+    while (o + 8 <= buf.length) {
+      const len = u32(buf, o), type = String.fromCharCode(...buf.subarray(o + 4, o + 8));
+      out.push({ type, start: o, end: o + 12 + len, data: buf.subarray(o + 8, o + 8 + len) });
+      o += 12 + len;
+      if (type === 'IEND') break;
+    }
+    return out;
+  }
+  const b64ToUtf8 = (s) => new TextDecoder().decode(Uint8Array.from(atob(s.trim()), ch => ch.charCodeAt(0)));
+  const utf8ToB64 = (s) => { const b = new TextEncoder().encode(s); let bin = ''; for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode(...b.subarray(i, i + 0x8000)); return btoa(bin); };
+  return {
+    read(buf) {
+      const texts = chunks(buf).filter(c => c.type === 'tEXt').map(c => {
+        const z = c.data.indexOf(0);
+        return { key: String.fromCharCode(...c.data.subarray(0, z)).toLowerCase(), text: String.fromCharCode(...c.data.subarray(z + 1)) };
+      });
+      const hit = texts.find(t => t.key === 'ccv3') || texts.find(t => t.key === 'chara');
+      if (!hit) throw new Error('This PNG has no character card inside.');
+      return b64ToUtf8(hit.text);
+    },
+    write(buf, json) {
+      const keep = chunks(buf).filter(c => !(c.type === 'tEXt' && /^(chara|ccv3)\0/i.test(String.fromCharCode(...c.data.subarray(0, 6)))));
+      const payload = new TextEncoder().encode('chara\0' + utf8ToB64(json));
+      const typeData = new Uint8Array(4 + payload.length);
+      typeData.set([116, 69, 88, 116]); typeData.set(payload, 4); // "tEXt"
+      const chunk = new Uint8Array(12 + payload.length);
+      const dv = new DataView(chunk.buffer);
+      dv.setUint32(0, payload.length); chunk.set(typeData, 4); dv.setUint32(8 + payload.length, crc(typeData));
+      const parts = [buf.subarray(0, 8)];
+      for (const c of keep) { if (c.type === 'IEND') parts.push(chunk); parts.push(buf.subarray(c.start, c.end)); }
+      const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+      let o = 0; for (const p of parts) { out.set(p, o); o += p.length; }
+      return out;
+    }
+  };
+})();
+
+function loadImage(src) {
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Bad image')); i.src = src; });
+}
+async function shrinkImage(blob, max = 256) {
+  try {
+    const url = URL.createObjectURL(blob); const img = await loadImage(url); URL.revokeObjectURL(url);
+    const k = Math.min(1, max / Math.max(img.width, img.height));
+    const cv = document.createElement('canvas'); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    return cv.toDataURL('image/jpeg', 0.85);
+  } catch { return ''; }
+}
+async function renderCardImage(c, avatarBlob) {
+  const cv = document.createElement('canvas'); cv.width = 400; cv.height = 600;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#111116'; g.fillRect(0, 0, 400, 600);
+  if (avatarBlob) {
+    const url = URL.createObjectURL(avatarBlob); const img = await loadImage(url); URL.revokeObjectURL(url);
+    const k = Math.max(400 / img.width, 600 / img.height);
+    g.drawImage(img, (400 - img.width * k) / 2, (600 - img.height * k) / 2, img.width * k, img.height * k);
+  } else {
+    g.fillStyle = '#00ff9f'; g.font = 'bold 160px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText((c.name || '?').trim().charAt(0).toUpperCase(), 200, 270);
+    g.fillStyle = '#e8e8f0'; g.font = 'bold 30px sans-serif'; g.fillText(c.name || '', 200, 470);
+  }
+  return new Promise(res => cv.toBlob(res, 'image/png'));
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// CHAT
+// ────────────────────────────────────────────────────────────────────────────
+const CHAT = {
+  get: (id) => LS.get(`nx_chat_${id}`, []),
+  set: (id, msgs) => LS.set(`nx_chat_${id}`, msgs.slice(-300)),
+  start(c, greetingIdx = 0) {
+    const greetings = [c.first_mes, ...(c.alternate_greetings || [])].filter(Boolean);
+    const msgs = greetings.length ? [{ role: 'assistant', content: greetings[greetingIdx % greetings.length], ts: Date.now(), greeting: greetingIdx }] : [];
+    CHAT.set(c.id, msgs); return msgs;
+  },
+  buildMessages(c, history) {
+    const m = (t) => CHARS.macros(t, c);
+    const persona = CHARS.persona();
+    const sys = [
+      m(c.system_prompt || 'You are {{char}} in an ongoing conversation with {{user}}. Stay in character, write only {{char}}\'s replies (dialogue and *actions*), and never speak or act for {{user}}.'),
+      c.description && m(`About {{char}}: ${c.description}`),
+      c.personality && m(`{{char}}'s personality: ${c.personality}`),
+      c.scenario && m(`Scenario: ${c.scenario}`),
+      persona.description && m(`About {{user}}: ${persona.description}`),
+      c.mes_example && m(`Example of how {{char}} talks:\n${c.mes_example.replace(/<START>/gi, '').trim()}`),
+      m(CONTENT.rule(c)),
+      document.body.classList.contains('glasses') ? 'Replies are shown on small AR glasses: keep them to 1-3 short sentences.' : '',
+      c.post_history_instructions && m(c.post_history_instructions)
+    ].filter(Boolean).join('\n\n');
+
+    // Most recent history that fits the budget, oldest first, roles alternating.
+    const BUDGET = 24000; let used = 0; const kept = [];
+    for (let i = history.length - 1; i >= 0; i--) {
+      used += history[i].content.length; if (used > BUDGET && kept.length) break;
+      kept.unshift({ role: history[i].role, content: m(history[i].content) });
+    }
+    if (!kept.length || kept[0].role !== 'user') kept.unshift({ role: 'user', content: '[Start of chat]' });
+    const merged = [];
+    for (const x of kept) {
+      const last = merged[merged.length - 1];
+      if (last && last.role === x.role) last.content += '\n\n' + x.content; else merged.push({ ...x });
+    }
+    return [{ role: 'system', content: sys }, ...merged];
+  },
+  clean(c, text) {
+    let t = String(text || '').trim();
+    const user = CHARS.persona().name;
+    t = t.replace(new RegExp(`^${(c.name || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\s*`, 'i'), '');
+    const cut = t.search(new RegExp(`\\n\\s*(${user.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|\\{\\{user\\}\\}):`, 'i'));
+    return (cut > 0 ? t.slice(0, cut) : t).trim();
+  },
+  async reply(c, history) {
+    return CHAT.clean(c, await callLLM(CHAT.buildMessages(c, history), false));
+  }
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// GLASSES MODE (RayNeo X3 Pro) + touchpad / D-pad navigation
+// ────────────────────────────────────────────────────────────────────────────
+const GLASSES = {
+  on() { const s = DB.settings(); return s.glassesMode === undefined ? IS_GLASSES_HW : !!s.glassesMode; },
+  apply() {
+    const s = DB.settings();
+    document.body.classList.toggle('glasses', GLASSES.on());
+    document.body.classList.toggle('devmode', !!s.devMode);
+    document.documentElement.style.setProperty('--glasses-fs', `${s.glassesFontSize || 20}px`);
+    if (NATIVE) NATIVE.keepScreenOn(GLASSES.on() && s.keepScreenOn !== false);
+  },
+  keyLog: [],
+  focusables() {
+    const overlay = document.querySelector('.overlay.open');
+    const scope = overlay || (document.body.classList.contains('menu-open') ? document.querySelector('.sidebar') : document);
+    return [...scope.querySelectorAll('button, a[href], input:not([type=hidden]):not([disabled]), select, textarea, [tabindex="0"]')]
+      .filter(el => el.offsetParent !== null && !(document.body.classList.contains('glasses') && !document.body.classList.contains('menu-open') && el.closest('.sidebar')));
+  }
+};
+window.nexusBack = () => {
+  if (document.querySelector('.overlay.open')) { closeModal(); return true; }
+  if (document.body.classList.contains('menu-open')) { document.body.classList.remove('menu-open'); return true; }
+  if (currentPage === 'chat') { navigate('characters'); return true; }
+  if (currentPage !== 'home') { navigate('home'); return true; }
+  return false;
+};
+document.addEventListener('keydown', (e) => {
+  GLASSES.keyLog.unshift(`${new Date().toLocaleTimeString()}  key=${e.key}  code=${e.code}  keyCode=${e.keyCode}`);
+  GLASSES.keyLog.length = Math.min(GLASSES.keyLog.length, 15);
+  const kl = document.getElementById('dev-keylog'); if (kl) kl.textContent = GLASSES.keyLog.join('\n');
+  document.body.classList.add('kbd');
+  const a = document.activeElement;
+  const typing = a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit', 'range'].includes(a.type)));
+  if (e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack') { if (window.nexusBack()) e.preventDefault(); return; }
+  if (e.key === 'Enter' && a && a.getAttribute('tabindex') === '0' && !typing) { e.preventDefault(); a.click(); return; }
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  if (typing && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (a && a.tagName === 'TEXTAREA' && a.value.includes('\n') && !document.body.classList.contains('glasses')) return;
+  const list = GLASSES.focusables(); if (!list.length) return;
+  const fwd = e.key === 'ArrowDown' || e.key === 'ArrowRight';
+  let i = list.indexOf(a);
+  i = i < 0 ? (fwd ? 0 : list.length - 1) : (i + (fwd ? 1 : -1) + list.length) % list.length;
+  e.preventDefault();
+  list[i].focus({ preventScroll: true });
+  list[i].scrollIntoView({ block: 'nearest' });
+});
+document.addEventListener('pointerdown', () => document.body.classList.remove('kbd'));
+
+// ────────────────────────────────────────────────────────────────────────────
+// PAGES: characters, chat, glasses (user + dev)
+// ────────────────────────────────────────────────────────────────────────────
+Object.assign(PAGES, {
+  characters() {
+    const c = document.getElementById('content');
+    const s = DB.settings();
+    const mature = CONTENT.isMature();
+    const hidden = CHARS.all().length - CHARS.visible().length;
+    document.getElementById('topbar-action').innerHTML = `<button class="btn btn-primary btn-sm" onclick="window._editChar()">＋ New</button>`;
+    c.innerHTML = `
+      <div class="card" style="max-width:720px">
+        <div class="card-title">You &amp; content</div>
+        <div class="form-group"><label class="form-label">Your name in chats ({{user}})</label>
+          <input class="form-input" id="pc-name" value="${esc(s.personaName || '')}" placeholder="User"/></div>
+        <div class="form-group"><label class="form-label">About you (optional, shared with characters)</label>
+          <input class="form-input" id="pc-desc" value="${esc(s.personaDescription || '')}" placeholder="e.g. night-shift nurse who loves sci-fi"/></div>
+        <div class="toggle-row">
+          <div class="toggle-info"><div class="label">Content: ${mature ? '<span style="color:var(--warn)">Mature (18+)</span>' : 'SFW'}</div>
+            <div class="desc">${mature ? 'Adults-only characters and themes are available. Cloud providers still apply their own rules; use Local LLM for full control.' : 'Safe for work. Mature characters are hidden.'}${hidden ? ` ${hidden} hidden.` : ''}</div></div>
+          <button class="btn ${mature ? 'btn-ghost' : 'btn-warn'} btn-sm" onclick="window._toggleMature()">${mature ? 'Switch to SFW' : 'Enable mature…'}</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="window._savePersona()">Save</button>
+      </div>
+      <div class="card" style="max-width:720px">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">Characters
+          <span style="display:flex;gap:6px">
+            <label class="btn btn-ghost btn-sm" tabindex="0" style="cursor:pointer">Import card<input type="file" id="ch-import" accept=".png,.json,image/png,application/json" multiple style="display:none"></label>
+            <button class="btn btn-ghost btn-sm" onclick="window._newFromTemplate()">Templates</button>
+          </span></div>
+        ${CHARS.visible().length ? CHARS.visible().map(ch => `
+          <div class="char-row">
+            <div class="char-av">${ch.avatar ? `<img src="${ch.avatar}" alt="">` : esc((ch.name || '?').charAt(0))}</div>
+            <div class="char-info" tabindex="0" onclick="window._openChat('${ch.id}')">
+              <div class="label">${esc(ch.name)} ${ch.mature ? '<span class="pill waiting_for_approval">18+</span>' : ''}</div>
+              <div class="desc">${esc((ch.description || '').slice(0, 110))}</div>
+            </div>
+            <button class="btn btn-primary btn-xs" onclick="window._openChat('${ch.id}')">Chat</button>
+            <button class="btn btn-ghost btn-xs" onclick="window._editChar('${ch.id}')">Edit</button>
+          </div>`).join('') : '<div style="color:var(--muted);font-size:13px">No characters yet. Create one, start from a template, or import a SillyTavern / Chub card (.png or .json).</div>'}
+      </div>
+      <div class="card" style="max-width:720px">
+        <div class="card-title">SillyTavern</div>
+        <div style="font-size:13px;color:var(--muted)">Cards export as SillyTavern-compatible PNG or JSON (Edit → Export), and SillyTavern cards import here. On Linux, <code>sillytavern-setup.sh</code> installs SillyTavern, connects it to your local Ollama and copies exported cards into it.</div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <input class="form-input" id="st-url" style="max-width:260px" value="${esc(s.sillyTavernUrl || 'http://127.0.0.1:8000')}"/>
+          <button class="btn btn-ghost btn-sm" onclick="window._openST()">Open SillyTavern</button>
+        </div>
+      </div>`;
+
+    document.getElementById('ch-import').onchange = async (e) => {
+      let ok = 0; const errs = [];
+      for (const f of e.target.files) { try { await CHARS.importFile(f); ok++; } catch (err) { errs.push(`${f.name}: ${err.message}`); } }
+      toast(errs.length ? `Imported ${ok}. ${errs.join('; ')}` : `Imported ${ok} character(s).`, errs.length ? 'var(--warn)' : undefined);
+      PAGES.characters();
+    };
+    window._savePersona = () => {
+      DB.saveSettings({ ...DB.settings(), personaName: document.getElementById('pc-name').value.trim(), personaDescription: document.getElementById('pc-desc').value.trim() });
+      toast('Saved.');
+    };
+    window._openST = () => {
+      const url = document.getElementById('st-url').value.trim();
+      DB.saveSettings({ ...DB.settings(), sillyTavernUrl: url });
+      window.open(url, '_blank');
+    };
+    window._toggleMature = () => {
+      if (CONTENT.isMature()) { DB.saveSettings({ ...DB.settings(), contentMode: 'sfw' }); toast('Switched to SFW.'); return PAGES.characters(); }
+      openModal('Enable mature content', `
+        <p style="font-size:13px;margin-bottom:12px">Mature mode shows characters marked 18+ and allows adult themes with them. It's off by default and stays on this device only.</p>
+        <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:8px"><input type="checkbox" id="age-ok" style="margin-top:3px"> I am 18 or older, and viewing mature content is legal where I live.</label>
+        <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:14px"><input type="checkbox" id="adult-ok" style="margin-top:3px"> I understand all characters must be adults. Content involving minors is never allowed.</label>
+        <button class="btn btn-warn btn-sm" onclick="window._confirmMature()">Enable</button>`);
+    };
+    window._confirmMature = () => {
+      if (!document.getElementById('age-ok').checked || !document.getElementById('adult-ok').checked) { toast('Tick both boxes to continue.', 'var(--warn)'); return; }
+      DB.saveSettings({ ...DB.settings(), contentMode: 'mature', ageConfirmedAt: Date.now() });
+      closeModal(); toast('Mature content enabled.', 'var(--warn)'); PAGES.characters();
+    };
+    window._newFromTemplate = () => {
+      openModal('Start from a template', Object.entries(CHARS.TEMPLATES).map(([k, t]) =>
+        `<button class="btn btn-ghost" style="width:100%;margin-bottom:8px;justify-content:flex-start" onclick="closeModal();window._editChar(null,'${k}')">${esc(t.label)}</button>`).join(''));
+    };
+    window._openChat = (id) => {
+      const ch = CHARS.get(id);
+      if (ch && ch.mature && !ch.adult) {
+        return openModal('Confirm character age', `
+          <p style="font-size:13px;margin-bottom:14px">"${esc(ch.name)}" is marked 18+. Confirm the character is an adult before chatting. If the card describes anyone underage, delete it instead.</p>
+          <button class="btn btn-warn btn-sm" onclick="window._confirmAdult('${id}')">${esc(ch.name)} is an adult (18+)</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>`);
+      }
+      window._chatId = id; navigate('chat');
+    };
+    window._confirmAdult = (id) => { const ch = CHARS.get(id); CHARS.upsert({ ...ch, adult: true }); closeModal(); window._openChat(id); };
+    window._editChar = (id, tpl) => {
+      const ch = id ? CHARS.get(id) : { ...CHARS.blank(), ...(CHARS.TEMPLATES[tpl || 'blank'].make()) };
+      const f = (k, label, rows, ph = '') => rows
+        ? `<div class="form-group"><label class="form-label">${label}</label><textarea class="form-input" data-k="${k}" rows="${rows}" placeholder="${esc(ph)}">${esc(ch[k] || '')}</textarea></div>`
+        : `<div class="form-group"><label class="form-label">${label}</label><input class="form-input" data-k="${k}" value="${esc(ch[k] || '')}" placeholder="${esc(ph)}"/></div>`;
+      openModal(id ? `Edit ${esc(ch.name)}` : 'New character', `
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
+          <div class="char-av big" id="ce-av">${ch.avatar ? `<img src="${ch.avatar}" alt="">` : '?'}</div>
+          <label class="btn btn-ghost btn-sm" tabindex="0" style="cursor:pointer">Picture<input type="file" id="ce-pic" accept="image/*" style="display:none"></label>
+        </div>
+        ${f('name', 'Name', 0)}
+        ${f('description', 'Description', 4, 'Who they are, looks, background. {{char}} and {{user}} work here.')}
+        ${f('personality', 'Personality', 0, 'e.g. warm, sarcastic, loyal')}
+        ${f('scenario', 'Scenario', 2)}
+        ${f('first_mes', 'First message', 3)}
+        <div class="form-group"><label class="form-label">Alternate greetings (one per line)</label>
+          <textarea class="form-input" id="ce-alt" rows="2">${esc((ch.alternate_greetings || []).join('\n'))}</textarea></div>
+        ${f('mes_example', 'Example dialogue', 3, '<START>\n{{user}}: Hi\n{{char}}: Hey you.')}
+        <details style="margin-bottom:12px"><summary style="cursor:pointer;color:var(--muted);font-size:12px">Advanced</summary><div style="margin-top:10px">
+          ${f('system_prompt', 'System prompt (overrides the default)', 3)}
+          ${f('post_history_instructions', 'Post-history instructions', 2)}
+          ${f('creator_notes', 'Creator notes', 2)}
+          <div class="form-group"><label class="form-label">Tags (comma separated)</label><input class="form-input" id="ce-tags" value="${esc((ch.tags || []).join(', '))}"/></div>
+        </div></details>
+        <label style="display:flex;gap:8px;font-size:13px;margin-bottom:6px"><input type="checkbox" id="ce-mature" ${ch.mature ? 'checked' : ''}> Mature character (18+). Only shown in mature mode.</label>
+        <label style="display:flex;gap:8px;font-size:13px;margin-bottom:14px"><input type="checkbox" id="ce-adult" ${ch.adult ? 'checked' : ''}> This character is an adult (required for mature).</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="window._saveChar()">Save</button>
+          ${id ? `<button class="btn btn-ghost btn-sm" onclick="CHARS.exportPng(CHARS.get('${id}')).then(p=>toast(p?'Saved '+p:'Export failed'))">Export PNG</button>
+          <button class="btn btn-ghost btn-sm" onclick="CHARS.exportJson(CHARS.get('${id}')).then(p=>toast(p?'Saved '+p:'Export failed'))">Export JSON</button>
+          <button class="btn btn-danger btn-sm" onclick="if(confirm('Delete this character and its chat?')){CHARS.remove('${id}');closeModal();PAGES.characters()}">Delete</button>` : ''}
+        </div>`);
+      let avatar = ch.avatar || '';
+      document.getElementById('ce-pic').onchange = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        avatar = await shrinkImage(file);
+        document.getElementById('ce-av').innerHTML = avatar ? `<img src="${avatar}" alt="">` : '?';
+      };
+      window._saveChar = () => {
+        const out = { ...ch };
+        document.querySelectorAll('#modal-body [data-k]').forEach(el => { out[el.dataset.k] = el.value.trim(); });
+        out.alternate_greetings = document.getElementById('ce-alt').value.split('\n').map(x => x.trim()).filter(Boolean);
+        out.tags = document.getElementById('ce-tags').value.split(',').map(x => x.trim()).filter(Boolean);
+        out.mature = document.getElementById('ce-mature').checked;
+        out.adult = document.getElementById('ce-adult').checked;
+        out.avatar = avatar;
+        if (!out.name) { toast('Give the character a name.', 'var(--warn)'); return; }
+        if (out.mature && !out.adult) { toast('Mature characters must be confirmed as adults.', 'var(--warn)'); return; }
+        CHARS.upsert(out); closeModal(); toast(`${out.name} saved.`); PAGES.characters();
+      };
+    };
+  },
+
+  chat() {
+    const c = document.getElementById('content');
+    const ch = CHARS.get(window._chatId);
+    if (!ch || (ch.mature && (!CONTENT.isMature() || !ch.adult))) { navigate('characters'); return; }
+    document.getElementById('page-title').textContent = ch.name;
+    let msgs = CHAT.get(ch.id); if (!msgs.length) msgs = CHAT.start(ch);
+    let busy = false;
+    const s = DB.settings();
+    document.getElementById('topbar-action').innerHTML = `
+      <button class="btn btn-ghost btn-xs" onclick="window._chatSpeak()" id="chat-spk">${s.speakReplies ? '🔊' : '🔈'}</button>
+      <button class="btn btn-ghost btn-xs" onclick="window._chatReset()">New chat</button>`;
+    c.innerHTML = `
+      <div class="chat-wrap">
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="chat-input">
+          ${voiceAvailable() ? '<button class="btn btn-ghost" id="chat-mic" onclick="window._chatMic()">🎤</button>' : ''}
+          <textarea class="form-input" id="chat-text" rows="1" placeholder="Message ${esc(ch.name)}…"></textarea>
+          <button class="btn btn-primary" id="chat-send" onclick="window._chatSend()">Send</button>
+        </div>
+      </div>`;
+    const box = document.getElementById('chat-msgs');
+    const fmt = (t) => esc(CHARS.macros(t, ch)).replace(/\*([^*\n]+)\*/g, '<em>$1</em>').replace(/\n/g, '<br>');
+    const draw = () => {
+      const greetings = [ch.first_mes, ...(ch.alternate_greetings || [])].filter(Boolean);
+      box.innerHTML = msgs.map((m, i) => `
+        <div class="bubble ${m.role}" tabindex="0">
+          ${m.role === 'assistant' ? `<div class="who">${esc(ch.name)}</div>` : ''}
+          <div>${fmt(m.content)}</div>
+          ${i === msgs.length - 1 && m.role === 'assistant' && !busy ? `<div class="bubble-actions">
+            ${msgs.length === 1 && greetings.length > 1 ? '<button class="btn btn-ghost btn-xs" onclick="window._chatGreeting()">Next greeting</button>' : ''}
+            ${msgs.length > 1 ? '<button class="btn btn-ghost btn-xs" onclick="window._chatRegen()">Regenerate</button>' : ''}
+            ${msgs.length > 1 ? '<button class="btn btn-ghost btn-xs" onclick="window._chatUndo()">Undo</button>' : ''}
+          </div>` : ''}
+        </div>`).join('') + (busy ? `<div class="bubble assistant"><span class="spinner"></span></div>` : '');
+      box.scrollTop = box.scrollHeight;
+    };
+    const run = async () => {
+      busy = true; draw(); document.getElementById('chat-send').disabled = true;
+      try {
+        const text = await CHAT.reply(ch, msgs);
+        msgs.push({ role: 'assistant', content: text || '…', ts: Date.now() });
+        CHAT.set(ch.id, msgs);
+        if (DB.settings().speakReplies) speak(CHARS.macros(text, ch));
+      } catch (e) {
+        toast(e.message, 'var(--danger)'); DB.addLog('error', `Chat with ${ch.name}: ${e.message}`);
+      }
+      busy = false; document.getElementById('chat-send').disabled = false; draw();
+      if (GLASSES.on()) (document.getElementById('chat-mic') || document.getElementById('chat-text')).focus();
+    };
+    window._chatSend = () => {
+      const ta = document.getElementById('chat-text'); const t = ta.value.trim();
+      if (!t || busy) return;
+      msgs.push({ role: 'user', content: t, ts: Date.now() }); CHAT.set(ch.id, msgs); ta.value = ''; run();
+    };
+    window._chatRegen = () => { if (busy) return; if (msgs[msgs.length - 1].role === 'assistant') msgs.pop(); run(); };
+    window._chatUndo = () => {
+      if (busy) return;
+      while (msgs.length > 1 && msgs[msgs.length - 1].role === 'assistant') msgs.pop();
+      if (msgs.length > 1 && msgs[msgs.length - 1].role === 'user') { document.getElementById('chat-text').value = msgs.pop().content; }
+      CHAT.set(ch.id, msgs); draw();
+    };
+    window._chatGreeting = () => { msgs = CHAT.start(ch, (msgs[0].greeting || 0) + 1); draw(); };
+    window._chatReset = () => { if (confirm(`Start a new chat with ${ch.name}? The current one is cleared.`)) { msgs = CHAT.start(ch); draw(); } };
+    window._chatSpeak = () => {
+      const on = !DB.settings().speakReplies; DB.saveSettings({ ...DB.settings(), speakReplies: on });
+      if (!on) stopSpeaking(); document.getElementById('chat-spk').textContent = on ? '🔊' : '🔈';
+    };
+    window._chatMic = async () => {
+      try { const t = await listen(); if (t) { document.getElementById('chat-text').value = t; window._chatSend(); } }
+      catch (e) { toast(e.message, 'var(--warn)'); }
+    };
+    document.getElementById('chat-text').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window._chatSend(); }
+    });
+    draw();
+    if (GLASSES.on()) (document.getElementById('chat-mic') || document.getElementById('chat-text')).focus();
+  },
+
+  glasses() {
+    const c = document.getElementById('content');
+    const s = DB.settings();
+    const tog = (k, label, desc, on) => `<div class="toggle-row"><div class="toggle-info"><div class="label">${label}</div><div class="desc">${desc}</div></div>
+      <label class="tog"><input type="checkbox" data-gk="${k}" ${on ? 'checked' : ''}><div class="tog-track"></div><div class="tog-thumb"></div></label></div>`;
+    const info = { ...DEVICE, viewport: `${innerWidth}×${innerHeight} @${devicePixelRatio}x`, userAgent: navigator.userAgent };
+    c.innerHTML = `
+      <div class="card" style="max-width:720px">
+        <div class="card-title">RayNeo X3 Pro: glasses mode</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${IS_GLASSES_HW ? 'RayNeo/TCL hardware detected: glasses mode is on by default.' : 'No RayNeo hardware detected. You can still preview glasses mode here.'}</div>
+        ${tog('glassesMode', 'Glasses mode', 'Pure-black UI (black is see-through on the waveguide), larger text, menu behind ☰, touchpad navigation.', GLASSES.on())}
+        ${tog('keepScreenOn', 'Keep display on', 'While the app is open in glasses mode.', s.keepScreenOn !== false)}
+        ${tog('speakReplies', 'Read replies aloud', 'Character replies are spoken through the glasses speakers.', !!s.speakReplies)}
+        <div class="form-group" style="margin-top:12px"><label class="form-label">Text size in glasses mode: <span id="g-fs-v">${s.glassesFontSize || 20}</span>px</label>
+          <input type="range" min="14" max="32" value="${s.glassesFontSize || 20}" id="g-fs" style="width:100%"></div>
+        <div style="font-size:12px;color:var(--muted)">Touchpad: swipe forward/back moves between items, tap selects, swipe down or double-tap goes back. In a chat, focus lands on 🎤 so one tap starts talking.</div>
+      </div>
+      <div class="card" style="max-width:720px">
+        <div class="card-title">Developer</div>
+        ${tog('devMode', 'Developer mode', 'Always shows focus outlines, to check touchpad navigation.', !!s.devMode)}
+        <div class="form-label" style="margin-top:12px">Device</div>
+        <pre class="dev-pre">${esc(JSON.stringify(info, null, 2))}</pre>
+        <div class="form-label" style="margin-top:12px">Key tester: press keys or swipe the touchpad</div>
+        <pre class="dev-pre" id="dev-keylog">${esc(GLASSES.keyLog.join('\n') || 'No keys yet.')}</pre>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn btn-ghost btn-sm" onclick="speak('Hello from Nexus Agent on your glasses.')">Test speech</button>
+          <button class="btn btn-ghost btn-sm" onclick="listen().then(t=>toast('Heard: '+(t||'(nothing)'))).catch(e=>toast(e.message,'var(--warn)'))">Test voice input</button>
+          <button class="btn btn-ghost btn-sm" onclick="window._exportBackup()">Export backup</button>
+          <label class="btn btn-ghost btn-sm" tabindex="0" style="cursor:pointer">Import backup<input type="file" id="bk-file" accept=".json,application/json" style="display:none"></label>
+        </div>
+        <div class="form-label" style="margin-top:14px">Install / update over ADB</div>
+        <pre class="dev-pre">adb devices
+adb install -r nexus-agent-1.3.0.apk
+adb shell monkey -p com.nexusagent.app 1
+adb logcat -s chromium:V  # page console output</pre>
+      </div>`;
+    c.querySelectorAll('[data-gk]').forEach(el => el.onchange = () => {
+      DB.saveSettings({ ...DB.settings(), [el.dataset.gk]: el.checked }); GLASSES.apply();
+    });
+    const fs = document.getElementById('g-fs');
+    fs.oninput = () => { document.getElementById('g-fs-v').textContent = fs.value; DB.saveSettings({ ...DB.settings(), glassesFontSize: Number(fs.value) }); GLASSES.apply(); };
+    window._exportBackup = () => {
+      const data = {}; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('nx_')) data[k] = localStorage.getItem(k); }
+      saveDownload(`nexus-backup-${new Date().toISOString().slice(0, 10)}.json`, new Blob([JSON.stringify({ nexusBackup: 1, data })], { type: 'application/json' }))
+        .then(p => toast(p ? `Saved ${p}. It includes your API keys: keep it private.` : 'Export failed', 'var(--warn)'));
+    };
+    document.getElementById('bk-file').onchange = async (e) => {
+      try {
+        const j = JSON.parse(await e.target.files[0].text());
+        if (!j.nexusBackup || typeof j.data !== 'object') throw new Error('Not a Nexus backup file.');
+        if (!confirm('Replace this device\'s Nexus data with the backup?')) return;
+        Object.entries(j.data).forEach(([k, v]) => { if (k.startsWith('nx_')) localStorage.setItem(k, v); });
+        toast('Backup restored.'); GLASSES.apply(); navigate('home');
+      } catch (err) { toast(err.message, 'var(--danger)'); }
+    };
+  }
+});
+
+function openModal(title, html) {
+  const o = document.getElementById('task-overlay');
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = html;
+  o.classList.add('open');
+  if (document.body.classList.contains('kbd')) setTimeout(() => { const f = GLASSES.focusables()[0]; if (f) f.focus(); }, 50);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // BOOT
 // ────────────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item[data-page]').forEach(el => el.setAttribute('tabindex', '0'));
+GLASSES.apply();
 
 // Resume any running tasks from before app restart
 DB.tasks().filter(t => t.status === 'running').forEach(t => {

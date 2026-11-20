@@ -51,8 +51,8 @@
 
 Download the `nexus-agent-linux` artifact from **Actions → Build Release**. It contains:
 
-- `Nexus Agent-1.2.0.AppImage`: run anywhere (`chmod +x` it, then double-click)
-- `nexus-agent_1.2.0_amd64.deb`: `sudo apt install ./nexus-agent_1.2.0_amd64.deb`
+- `Nexus Agent-1.3.0.AppImage`: run anywhere (`chmod +x` it, then double-click)
+- `nexus-agent_1.3.0_amd64.deb`: `sudo apt install ./nexus-agent_1.3.0_amd64.deb`
 - `linux-local-ai-setup.sh`: installs Ollama and pulls models sized for your machine
 
 ```bash
@@ -74,6 +74,65 @@ With no API keys set, the app uses **Local LLM** by default. Open Providers → 
 
 **Abliterated models** (open-weight models with their refusal behaviour removed) are published by the community on ollama.com and Hugging Face. Pull any of them with
 `./linux-local-ai-setup.sh --model <tag>`, or straight from a Hugging Face GGUF repo with `--model hf.co/<user>/<repo>-GGUF:Q4_K_M`, then pick it in the app. Check each model's card for its size and licence.
+
+---
+
+## Characters & companion chat
+
+**Characters** (♡ in the menu) is a role-play and companion chat, separate from agent tasks. It uses your default provider; Local LLM keeps every chat on your own hardware.
+
+- **Create** characters from scratch or from a template: *Companion (girlfriend / boyfriend / partner)*, *Personal assistant* or *Storyteller / game master*. Fields follow the SillyTavern card format: description, personality, scenario, first message, alternate greetings, example dialogue, system prompt and post-history instructions. `{{char}}` and `{{user}}` work everywhere.
+- **Import** SillyTavern or Chub cards (`.png` with an embedded card, or `.json`; V1, V2 and V3). **Export** any character as a SillyTavern-compatible PNG or JSON (Characters → Edit → Export). On Android, exports go to `Downloads/NexusAgent`.
+- **Chat**: regenerate, undo, cycle alternate greetings, start a new chat. Each character keeps its own history on the device. 🔊 reads replies aloud; 🎤 (Android) takes voice input.
+- **You**: set your name and an optional short description; characters see it as `{{user}}`.
+
+### SFW and mature content
+
+- **SFW is the default.** Characters are told to keep things suitable for a general audience.
+- **Mature (18+)** is opt-in: Characters → *Enable mature…*, then confirm you're 18+ and that all characters must be adults. Characters tagged NSFW/18+ (or marked *Mature* in the editor) only appear in mature mode, and each one has to be confirmed as an adult before its first chat. Content involving minors is never allowed.
+- Cloud providers (OpenAI, Anthropic, Google and others) apply their own content rules whatever this setting says. Use Local LLM for full control.
+
+---
+
+## RayNeo X3 Pro glasses
+
+**User mode.** On RayNeo/TCL hardware, glasses mode turns on automatically. You can also switch it on in **Glasses & Dev**.
+- Pure-black UI (black is see-through on the waveguide), larger text (adjustable), menu behind ☰.
+- **Temple touchpad:** swipe to move between items, tap to select, swipe down or double-tap to go back.
+- In a chat, focus lands on 🎤, so one tap starts talking. Replies can be read aloud, and the display stays on while the app is open.
+- Characters are told to keep replies to 1–3 short sentences.
+
+**Developer mode** (Glasses & Dev):
+- Device info: model, Android version, screen size and density.
+- Live **key tester**, to see exactly which keys the touchpad sends.
+- Test buttons for speech output and voice input.
+- Always-on focus outlines.
+- Backup export and import: moves characters, chats and settings between phone, PC and glasses. A backup includes your API keys, so keep it private.
+
+**Install with ADB:**
+```bash
+adb devices
+adb install -r nexus-agent-1.3.0.apk
+adb shell monkey -p com.nexusagent.app 1
+adb logcat -s chromium:V      # page console output while developing
+```
+Enable developer mode and USB debugging on the glasses first. On most firmware: *Settings → About → tap the build number 7 times*, then *Developer options → USB debugging*. Menu names vary by firmware.
+
+Voice input needs a speech-recognition app on the device, and read-aloud needs a text-to-speech engine. If either is missing, Glasses & Dev says so.
+
+---
+
+## SillyTavern (Linux, optional)
+
+`sillytavern-setup.sh` (in the Linux download) installs or updates [SillyTavern](https://github.com/SillyTavern/SillyTavern) in `~/SillyTavern` from its `release` branch. It needs Node.js 20+.
+
+```bash
+./sillytavern-setup.sh                          # install / update
+./sillytavern-setup.sh --import ~/Downloads     # copy exported character PNGs into it
+./sillytavern-setup.sh --start                  # start it: http://127.0.0.1:8000
+```
+
+The script only copies PNGs that actually contain a character card. It leaves SillyTavern listening on this PC only. Connect SillyTavern to Ollama once, in its own settings: API Connections → Text Completion → Ollama → `http://127.0.0.1:11434`. **Open SillyTavern** on the Characters page opens it from the app.
 
 ---
 
