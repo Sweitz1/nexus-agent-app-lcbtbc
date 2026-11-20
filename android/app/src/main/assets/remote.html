@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus Remote</title>
+<style>
+:root{--bg:#05070a;--panel:#0d1117;--line:#1f2a36;--text:#e6f7ff;--dim:#8aa0b2;--accent:#00e5ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Roboto,sans-serif;padding:16px;max-width:760px;margin:auto}
+h1{font-size:1.2em;color:var(--accent);margin:.2em 0 .6em}
+h2{font-size:1em;margin:1.2em 0 .4em}
+input,select,textarea,button{font:inherit;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.55em .7em;width:100%}
+button{background:#003b44;border-color:var(--accent);color:var(--accent);cursor:pointer;width:auto}
+.row{display:flex;gap:8px;margin:.4em 0}.row>*{flex:1}.row>button{flex:none}
+label{display:block;color:var(--dim);font-size:.85em;margin:.5em 0 .2em}
+.out{white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.7em;margin:.6em 0;min-height:2em}
+.hint{color:var(--dim);font-size:.85em}
+details{border:1px solid var(--line);border-radius:8px;padding:.5em .8em;margin:.6em 0}
+summary{cursor:pointer;color:var(--accent)}
+</style>
+</head>
+<body>
+<h1>⬡ Nexus Agent — phone remote</h1>
+<label>Access token (from the glasses: Webhooks tab)</label>
+<div class="row"><input id="token" type="password" autocomplete="off"><button id="saveTok">Save</button></div>
+
+<h2>Ask</h2>
+<div class="row"><select id="agent"></select><select id="mode"><option value="solo">Solo</option><option value="council">Council</option><option value="chain">Chain</option></select></div>
+<textarea id="prompt" rows="4" placeholder="Type here — the reply also appears on the glasses"></textarea>
+<div class="row"><label style="display:flex;align-items:center;gap:6px;margin:0"><input id="speak" type="checkbox" style="width:auto">Read reply aloud on glasses</label><button id="send">Send</button></div>
+<div id="out" class="out"></div>
+
+<details><summary>Set API keys &amp; passwords</summary>
+  <p class="hint">Keys are sent over your local Wi-Fi to the glasses and stored in app-private storage there.</p>
+  <div id="keys"></div>
+  <button id="saveKeys">Save keys to glasses</button>
+  <div id="keysOut" class="hint"></div>
+</details>
+
+<details><summary>Import / export configuration</summary>
+  <textarea id="cfg" rows="8" placeholder='{"nexus":1,...}'></textarea>
+  <div class="row"><button id="exportCfg">Load current</button><button id="importCfg">Send to glasses</button></div>
+  <div id="cfgOut" class="hint"></div>
+</details>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const tok = () => $('#token').value.trim();
+$('#token').value = localStorage.getItem('nexus_remote_token') || new URLSearchParams(location.search).get('token') || '';
+$('#saveTok').onclick = () => { localStorage.setItem('nexus_remote_token', tok()); load(); };
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok() }, body: body ? JSON.stringify(body) : undefined });
+  const t = await r.text(); let d; try { d = JSON.parse(t); } catch { d = { raw: t }; }
+  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+  return d;
+}
+async function load() {
+  try {
+    const a = await api('GET', '/agents');
+    $('#agent').innerHTML = a.agents.map(x => `<option ${x.name === a.current ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+    const p = await api('GET', '/config/providers');
+    $('#keys').innerHTML = [...p.providers, ...(p.services || [])].map(x => `<label>${esc(x.name)} ${x.hasKey ? '✓ saved' : (x.local ? '(local, optional)' : '')}</label><input data-pid="${esc(x.id)}" type="password" autocomplete="off" placeholder="${x.hasKey ? 'leave empty to keep' : 'paste key'}">`).join('');
+    $('#out').textContent = 'Connected.';
+  } catch (e) { $('#out').textContent = 'Not connected: ' + e.message; }
+}
+$('#send').onclick = async () => {
+  const prompt = $('#prompt').value.trim(); if (!prompt) return;
+  $('#out').textContent = 'Thinking…'; $('#send').disabled = true;
+  try { const r = await api('POST', '/run', { prompt, agent: $('#agent').value, mode: $('#mode').value, speak: $('#speak').checked }); $('#out').textContent = `[${r.agent}]\n${r.reply}`; $('#prompt').value = ''; }
+  catch (e) { $('#out').textContent = 'Error: ' + e.message; }
+  finally { $('#send').disabled = false; }
+};
+$('#prompt').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('#send').click(); });
+$('#saveKeys').onclick = async () => {
+  const body = {}; document.querySelectorAll('[data-pid]').forEach(i => { if (i.value.trim()) body[i.dataset.pid] = i.value.trim(); });
+  try { const r = await api('POST', '/config/keys', body); $('#keysOut').textContent = 'Saved: ' + (r.saved.join(', ') || 'nothing'); load(); }
+  catch (e) { $('#keysOut').textContent = 'Error: ' + e.message; }
+};
+$('#exportCfg').onclick = async () => { try { $('#cfg').value = JSON.stringify(await api('GET', '/config'), null, 1); } catch (e) { $('#cfgOut').textContent = e.message; } };
+$('#importCfg').onclick = async () => {
+  try { const c = JSON.parse($('#cfg').value); $('#cfgOut').textContent = 'Confirm on the glasses…'; await api('POST', '/config/import', c); $('#cfgOut').textContent = 'Imported.'; load(); }
+  catch (e) { $('#cfgOut').textContent = 'Error: ' + e.message; }
+};
+load();
+</script>
+</body>
+</html>

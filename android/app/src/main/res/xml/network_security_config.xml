@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cloud providers use HTTPS. Cleartext is allowed so the app can reach private, local
+     LLM servers on your LAN (Ollama, LM Studio, llama.cpp, vLLM) at http://192.168.x.x. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

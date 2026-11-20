@@ -1,3 +1,5 @@
+> **The Android APK is now the full RayNeo X3 Pro app** (`android/`, documented in [README.md](README.md)). It includes everything below: characters, SillyTavern cards, mature/SFW content, GitHub skill libraries, Arkon and the glasses tools, plus Google services, music, shopping, the phone server and the glasses client. This page still covers the **desktop app** (Windows and Linux), which is built from `dist/index.html`, and the Linux setup scripts.
+
 # Nexus Agent — Android APK
 
 **Nexus Agent** is a self-contained AutoGPT-style AI agent app that runs entirely on your Android device. It connects directly to OpenAI, Anthropic (Claude), Google Gemini, **Venice AI** (private, no-log), or a **local LLM** running on your phone or LAN — no backend server required. Everything runs in your browser engine on-device, with all data stored locally.

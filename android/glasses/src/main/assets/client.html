@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Nexus Glasses</title>
+<style>
+:root{--bg:#000;--panel:#05080b;--line:#163040;--text:#e8fbff;--dim:#86a0b2;--accent:#00e5ff;--accent2:#b388ff;--ok:#39ff88;--bad:#ff5577;--fs:22px}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:var(--fs)/1.4 system-ui,-apple-system,Roboto,sans-serif;overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.4em .8em}
+button.primary{border-color:var(--accent);color:var(--accent)}
+input{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.35em .6em;width:100%}
+:focus{outline:3px solid var(--accent);outline-offset:2px;box-shadow:0 0 14px #00e5ff88}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;padding:.5em .8em}
+.screen.on{display:flex}
+#top{display:flex;justify-content:space-between;align-items:center;color:var(--dim);font-size:.7em}
+.dot{display:inline-block;width:.6em;height:.6em;border-radius:50%;background:var(--bad);margin-right:.35em}
+.dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+#reply{flex:1;overflow-y:auto;margin:.3em 0;white-space:pre-wrap}
+#reply .q{color:var(--accent2);font-size:.75em;margin-top:.5em}
+#reply .a{margin:.1em 0 .4em}
+#reply .ev{color:var(--dim);font-size:.75em;border-left:3px solid var(--line);padding-left:.4em;margin:.3em 0}
+#bar{display:flex;gap:.35em;flex-wrap:wrap}
+#bar button{flex:1;min-width:3.2em}
+#status{color:var(--dim);font-size:.7em;min-height:1.2em}
+.overlay{position:fixed;inset:0;background:#000e;display:none;align-items:center;justify-content:center;padding:1em;z-index:5}
+.overlay.on{display:flex}
+.box{background:var(--panel);border:1px solid var(--accent);border-radius:14px;padding:.8em;max-width:40em;width:100%;max-height:92vh;overflow:auto}
+.row{display:flex;gap:.4em;flex-wrap:wrap;margin-top:.5em}
+.row>*{flex:1}
+.hint{color:var(--dim);font-size:.7em}
+#toast{position:fixed;left:50%;bottom:1em;transform:translateX(-50%);background:#0b1a22;border:1px solid var(--accent);border-radius:99px;padding:.25em .9em;font-size:.7em;display:none;z-index:9;max-width:90vw}
+video{width:100%;max-height:60vh;border-radius:10px;background:#000}
+</style>
+</head>
+<body>
+<!-- connect / pair -->
+<section id="connect" class="screen">
+  <h2 style="margin:.2em 0;color:var(--accent)">⬡ Nexus Glasses</h2>
+  <p class="hint">Open Nexus on your phone (same Wi-Fi or its hotspot) → Settings → <b>Pair glasses</b>.</p>
+  <div id="found"></div>
+  <div class="row"><button class="primary f" id="scan">📷 Scan phone QR</button><button class="f" id="search">🔍 Search again</button></div>
+  <div class="row"><input id="addr" class="f" placeholder="phone address, e.g. 192.168.1.20:8787"><input id="pin" class="f" placeholder="6-digit code" inputmode="numeric"></div>
+  <div class="row"><button class="f" id="pinVoice">🎙 Say the code</button><button class="primary f" id="pairGo">Pair</button></div>
+  <p id="cstatus" class="hint"></p>
+</section>
+
+<!-- main -->
+<section id="main" class="screen">
+  <div id="top"><span><span id="dot" class="dot"></span><span id="phone">phone</span></span><span id="clock"></span><span id="batt"></span></div>
+  <div id="reply"><div class="ev">Tap 🎙 (or the assistant key) and ask anything. 👁 looks through the camera.</div></div>
+  <div id="status"></div>
+  <div id="bar">
+    <button class="primary f" id="ask" title="Ask">🎙</button>
+    <button class="f" id="look" title="Look and ask">👁</button>
+    <button class="f" id="music" title="Play / pause">⏯</button>
+    <button class="f" id="next" title="Next track">⏭</button>
+    <button class="f" id="more" title="More">☰</button>
+  </div>
+</section>
+
+<div id="ov" class="overlay"><div class="box" id="ovBox"></div></div>
+<div id="toast"></div>
+
+<script src="lib/zxing.min.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const N = window.NexusClient && NexusClient.isNative && NexusClient.isNative() ? window.NexusClient : null;
+const cbs = {}; let cbn = 0; const evs = {};
+window.__cb = (id, ok, p) => { const c = cbs[id]; if (!c) return; delete cbs[id]; ok ? c.res(p) : c.rej(new Error((p && p.error) || 'error')); };
+window.__ev = (t, p) => (evs[t] || []).forEach(f => { try { f(p || {}); } catch (e) { console.error(e); } });
+const on = (t, f) => (evs[t] = evs[t] || []).push(f);
+const nat = (fn, ...a) => new Promise((res, rej) => { const id = 'c' + (++cbn); cbs[id] = { res, rej }; N[fn](id, ...a); });
+function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', 3000); }
+const store = { get: k => { try { return JSON.parse((N ? N.storeGet(k) : localStorage.getItem(k)) || 'null'); } catch { return null; } }, set: (k, v) => N ? N.storeSet(k, JSON.stringify(v)) : localStorage.setItem(k, JSON.stringify(v)) };
+const cfg = Object.assign({ speak: true, speakEvents: false, rate: 1, fontSize: 22, nodAxis: 'x', shakeAxis: 'y', lang: '' }, store.get('cfg') || {});
+const saveCfg = () => { store.set('cfg', cfg); document.documentElement.style.setProperty('--fs', cfg.fontSize + 'px'); };
+saveCfg();
+let conn = store.get('conn');   // {host, port, token, name}
+
+/* ------------------------------------------------------------ transport */
+async function req(method, url, body, timeoutMs = 30000, headers = {}) {
+  if (N) { const r = await nat('http', JSON.stringify({ method, url, headers: { 'Content-Type': 'application/json', ...headers }, body: body == null ? null : JSON.stringify(body), timeoutMs })); return { status: r.status, data: JSON.parse(r.body || '{}') }; }
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json', ...headers }, body: body == null ? undefined : JSON.stringify(body) }); return { status: r.status, data: await r.json().catch(() => ({})) };
+}
+const base = () => `http://${conn.host}:${conn.port}`;
+const DEVICE = (() => { try { return JSON.parse(N ? N.deviceInfo() : '{}').model || 'glasses'; } catch { return 'glasses'; } })();
+async function api(path, body, { method = 'POST', timeoutMs = 60000 } = {}) {
+  const r = await req(method, base() + path, method === 'GET' ? null : { device: DEVICE, ...(body || {}) }, timeoutMs, { Authorization: 'Bearer ' + conn.token });
+  if (r.status === 401) { setOnline(false); throw new Error('Pairing expired — pair again'); }
+  if (r.status >= 400) throw new Error(r.data.error || 'HTTP ' + r.status);
+  return r.data;
+}
+
+/* ------------------------------------------------------------ connect & pair */
+function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); focusFirst(); }
+async function search() {
+  $('#cstatus').textContent = 'Looking for Nexus on this Wi-Fi…'; $('#found').innerHTML = '';
+  let list = []; try { list = N ? await nat('discover', 5000) : []; } catch (e) { $('#cstatus').textContent = e.message; }
+  $('#found').innerHTML = list.map((p, i) => `<button class="f" data-i="${i}" style="width:100%;margin:.2em 0">📱 ${esc(p.name)} · ${esc(p.host)}:${p.port}</button>`).join('');
+  $$('#found [data-i]').forEach(b => b.onclick = () => { const p = list[Number(b.dataset.i)]; $('#addr').value = `${p.host}:${p.port}`; $('#pin').focus(); });
+  $('#cstatus').textContent = list.length ? 'Select your phone, then scan its QR or enter the code.' : 'No phone found automatically — scan the QR or type the address.';
+  if (list.length === 1) $('#addr').value = `${list[0].host}:${list[0].port}`;
+  focusFirst();
+}
+async function pair(host, port, pin) {
+  $('#cstatus').textContent = 'Pairing…';
+  try {
+    const r = await req('POST', `http://${host}:${port}/client/pair`, { pin: String(pin).replace(/\D/g, ''), device: DEVICE }, 15000);
+    if (r.status !== 200) throw new Error(r.data.error || 'HTTP ' + r.status);
+    conn = { host, port: Number(port), token: r.data.token, name: r.data.name }; store.set('conn', conn);
+    if (N) N.vibrate(60); start();
+  } catch (e) { $('#cstatus').textContent = '✗ ' + e.message; }
+}
+$('#search').onclick = search;
+$('#pairGo').onclick = () => { const [h, p] = $('#addr').value.trim().split(':'); if (!h) return toast('Enter or pick the phone address'); pair(h, p || 8787, $('#pin').value); };
+$('#pinVoice').onclick = async () => { try { const t = await hear(); $('#pin').value = t.replace(/\D/g, '').slice(0, 6); } catch (e) { toast(e.message); } };
+$('#scan').onclick = async () => {
+  try {
+    const t = await scanQR(); const j = JSON.parse(t);
+    if (!j.nexus || !j.host || !j.pin) throw new Error('Not a Nexus pairing code');
+    pair(j.host, j.port || 8787, j.pin);
+  } catch (e) { toast(e.message); }
+};
+
+/* ------------------------------------------------------------ camera: QR + look */
+async function camera() {
+  if (N && !N.hasPermission('android.permission.CAMERA')) { const r = await nat('requestPermission', 'android.permission.CAMERA'); if (!r.granted) throw new Error('Camera permission denied'); }
+  return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+}
+function overlay(html) { $('#ovBox').innerHTML = html; $('#ov').classList.add('on'); focusFirst(); }
+function closeOverlay() { $('#ov').classList.remove('on'); $('#ovBox').innerHTML = ''; focusFirst(); }
+async function scanQR() {
+  const s = await camera();
+  return new Promise((res, rej) => {
+    overlay('<video id="qv" autoplay playsinline muted></video><p class="hint">Point at the QR on your phone…</p><div class="row"><button class="f" id="qx">Cancel</button></div>');
+    const v = $('#qv'); v.srcObject = s; let stop = false; const end = () => { stop = true; s.getTracks().forEach(t => t.stop()); closeOverlay(); };
+    $('#qx').onclick = () => { end(); rej(new Error('cancelled')); };
+    const c = document.createElement('canvas'); const Z = window.ZXing; const reader = new Z.MultiFormatReader();
+    const tick = () => {
+      if (stop) return;
+      if (v.videoWidth) {
+        const k = Math.min(1, 800 / v.videoWidth); c.width = v.videoWidth * k; c.height = v.videoHeight * k; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(v, 0, 0, c.width, c.height);
+        const d = g.getImageData(0, 0, c.width, c.height).data; const lum = new Uint8ClampedArray(c.width * c.height); for (let i = 0, j = 0; i < d.length; i += 4, j++) lum[j] = (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000;
+        try { const r = reader.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.RGBLuminanceSource(lum, c.width, c.height)))); end(); if (N) N.vibrate(50); return res(r.getText()); } catch { /* keep scanning */ }
+      }
+      setTimeout(tick, 150);
+    };
+    tick();
+  });
+}
+async function snapshot() {
+  const s = await camera(); const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.srcObject = s; await v.play(); await sleep(700);
+  const k = Math.min(1, 1280 / (v.videoWidth || 1280)); const c = document.createElement('canvas'); c.width = (v.videoWidth || 1280) * k; c.height = (v.videoHeight || 720) * k;
+  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); s.getTracks().forEach(t => t.stop());
+  return c.toDataURL('image/jpeg', 0.85).split(',')[1];
+}
+
+/* ------------------------------------------------------------ voice */
+async function hear() {
+  if (N && !N.hasPermission('android.permission.RECORD_AUDIO')) await nat('requestPermission', 'android.permission.RECORD_AUDIO');
+  status('🎙 listening…'); stopSpeak();
+  try { const r = N ? await nat('listen', cfg.lang || '') : { text: prompt('Say something') || '' }; return (r.text || '').trim(); } finally { status(''); }
+}
+on('speech', p => { if (p.partial) status('🎙 ' + p.partial); });
+const speak = t => { if (cfg.speak && N && t) N.speak(String(t).replace(/[*_`#>]/g, '').slice(0, 3800), cfg.rate); };
+const stopSpeak = () => { if (N) N.stopSpeaking(); };
+
+/* ------------------------------------------------------------ main */
+const status = t => { $('#status').textContent = t || ''; };
+function setOnline(v) { $('#dot').classList.toggle('on', !!v); }
+function add(cls, text) { const d = document.createElement('div'); d.className = cls; d.textContent = text; const r = $('#reply'); r.appendChild(d); while (r.children.length > 60) r.firstChild.remove(); r.scrollTop = r.scrollHeight; return d; }
+let busy = false, lastReply = '';
+async function ask(text, images) {
+  if (busy) return; busy = true;
+  add('q', (images && images.length ? '👁 ' : '🎙 ') + (text || 'What am I looking at?'));
+  const a = add('a', '…'); status('thinking on your phone…');
+  try { const r = await api('/client/ask', { text, images }, { timeoutMs: 300000 }); lastReply = r.reply; a.textContent = r.reply; speak(r.reply); setOnline(true); }
+  catch (e) { a.textContent = '⚠ ' + e.message; }
+  finally { busy = false; status(''); $('#reply').scrollTop = 1e9; }
+}
+$('#ask').onclick = async () => { try { const t = await hear(); if (t) ask(t); else toast("Didn't catch that"); } catch (e) { toast(e.message); } };
+$('#look').onclick = async () => {
+  try { status('📷 looking…'); const b64 = await snapshot(); status('🎙 ask about it (or stay quiet)…'); let q = ''; try { q = await hear(); } catch { /* default question */ } ask(q || 'What am I looking at? Be brief.', [{ mime: 'image/jpeg', b64 }]); }
+  catch (e) { status(''); toast(e.message); }
+};
+const skill = (name, args) => api('/client/skill', { name, args }).then(r => r.result);
+$('#music').onclick = () => skill('music_control', { action: 'toggle' }).then(toast).catch(e => toast(e.message));
+$('#next').onclick = () => skill('music_control', { action: 'next' }).then(toast).catch(e => toast(e.message));
+$('#more').onclick = () => {
+  overlay(`<div class="row"><button class="f" data-m="np">🎵 Now playing</button><button class="f" data-m="cal">📅 Today</button></div>
+    <div class="row"><button class="f" data-m="auto">🤖 AutoGPT runs</button><button class="f" data-m="notif">🔔 Notifications</button></div>
+    <div class="row"><button class="f" data-m="stop">■ Stop agent</button><button class="f" data-m="set">⚙ Settings</button></div>
+    <div class="row"><button class="f" data-m="close">Close</button></div>`);
+  $$('#ovBox [data-m]').forEach(b => b.onclick = async () => {
+    const m = b.dataset.m;
+    if (m === 'close') return closeOverlay();
+    if (m === 'set') return settings();
+    if (m === 'stop') { stopSpeak(); api('/client/stop').catch(() => {}); return closeOverlay(); }
+    closeOverlay(); status('…');
+    try { const out = m === 'np' ? await skill('music_now_playing') : m === 'cal' ? await skill('calendar_events', { range: 'today' }) : m === 'auto' ? await skill('autogpt_status') : await skill('notifications_read', { limit: 8 }); add('a', out); speak(out.split('\n').slice(0, 3).join('. ')); }
+    catch (e) { toast(e.message); } finally { status(''); }
+  });
+};
+function settings() {
+  overlay(`<h3 style="margin:.1em 0">Settings</h3>
+    <div class="row"><button class="f" id="sSpeak">${cfg.speak ? '🔊 Speak answers: on' : '🔇 Speak answers: off'}</button><button class="f" id="sEv">${cfg.speakEvents ? '🔔 Speak notifications: on' : '🔕 Speak notifications: off'}</button></div>
+    <div class="row"><button class="f" id="sBig">A+</button><button class="f" id="sSmall">A−</button></div>
+    <div class="row"><button class="f" id="sNod">Calibrate nod</button><button class="f" id="sShake">Calibrate shake</button></div>
+    <p class="hint">Phone: ${esc(conn ? conn.name + ' · ' + conn.host + ':' + conn.port : '—')} · nod ${cfg.nodAxis} / shake ${cfg.shakeAxis}</p>
+    <div class="row"><button class="f" id="sForget">Forget phone</button><button class="primary f" id="sClose">Done</button></div>`);
+  $('#sSpeak').onclick = () => { cfg.speak = !cfg.speak; saveCfg(); settings(); };
+  $('#sEv').onclick = () => { cfg.speakEvents = !cfg.speakEvents; saveCfg(); settings(); };
+  $('#sBig').onclick = () => { cfg.fontSize = Math.min(40, cfg.fontSize + 2); saveCfg(); };
+  $('#sSmall').onclick = () => { cfg.fontSize = Math.max(14, cfg.fontSize - 2); saveCfg(); };
+  const cal = async k => { toast(k === 'nodAxis' ? 'Nod now…' : 'Shake your head now…'); const r = await nat('headGesture', 6000); if (r.axis === 'none') return toast('No movement detected'); cfg[k] = r.axis; saveCfg(); settings(); };
+  $('#sNod').onclick = () => cal('nodAxis'); $('#sShake').onclick = () => cal('shakeAxis');
+  $('#sForget').onclick = () => { store.set('conn', null); conn = null; closeOverlay(); show('connect'); search(); };
+  $('#sClose').onclick = closeOverlay;
+}
+
+/* ------------------------------------------------------------ events from the phone */
+let seq = 0, polling = false;
+async function poll() {
+  if (polling) return; polling = true;
+  while (conn) {
+    try {
+      const r = await api(`/client/events?since=${seq}&device=${encodeURIComponent(DEVICE)}`, null, { method: 'GET', timeoutMs: 35000 }); setOnline(true);
+      for (const e of r.events || []) { seq = Math.max(seq, e.seq); handleEvent(e); }
+      seq = Math.max(seq, r.seq || 0);
+    } catch (e) { setOnline(false); await sleep(4000); }
+  }
+  polling = false;
+}
+function handleEvent(e) {
+  if (e.type === 'message') { if (busy || e.text === lastReply) return; add('ev', `${e.agent || 'Nexus'}: ${e.text}`); if (cfg.speakEvents) speak(e.text.slice(0, 300)); if (N) N.vibrate(40); }
+  else if (e.type === 'notification') { add('ev', `🔔 ${e.app}: ${e.title}${e.text ? ' — ' + e.text : ''}`); if (cfg.speakEvents) speak(`${e.app}. ${e.title}`); if (N) N.vibrate(40); }
+  else if (e.type === 'confirm') confirmUI(e);
+}
+async function confirmUI(e) {
+  let done = false;
+  const answer = ok => { if (done) return; done = true; closeOverlay(); api('/client/confirm', { id: e.id, ok }).catch(() => {}); toast(ok ? 'Allowed' : 'Denied'); };
+  overlay(`<h3 style="margin:.1em 0;color:var(--accent)">Allow this?</h3><p>${esc(e.text)}</p><p class="hint">Nod = yes · shake = no · or tap</p><div class="row"><button class="primary f" id="cY">Allow</button><button class="f" id="cN">Deny</button></div>`);
+  $('#cY').onclick = () => answer(true); $('#cN').onclick = () => answer(false);
+  if (N) { N.vibrate(80); speak('Allow? ' + e.text.slice(0, 160)); }
+  const until = Date.now() + (e.timeoutMs || 60000);
+  while (!done && N && Date.now() < until) { const r = await nat('headGesture', 5000).catch(() => ({ axis: 'none' })); if (done) break; if (r.axis === cfg.nodAxis) answer(true); else if (r.axis === cfg.shakeAxis) answer(false); }
+  if (!done) { done = true; closeOverlay(); }
+}
+
+/* ------------------------------------------------------------ touchpad / keys */
+function focusables() { const scope = $('#ov').classList.contains('on') ? $('#ov') : $('.screen.on'); return scope ? Array.from(scope.querySelectorAll('button, input, .f')).filter(el => el.offsetParent !== null) : []; }
+function focusFirst() { setTimeout(() => { const f = focusables(); if (f.length && !f.includes(document.activeElement)) f[0].focus(); }, 30); }
+document.addEventListener('keydown', e => {
+  const a = document.activeElement;
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  if (a && a.tagName === 'INPUT' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  if (a && a.id === 'reply') return;
+  const l = focusables(); if (!l.length) return; let i = l.indexOf(a); const fwd = e.key === 'ArrowDown' || e.key === 'ArrowRight';
+  i = i < 0 ? 0 : (i + (fwd ? 1 : -1) + l.length) % l.length; e.preventDefault(); l[i].focus();
+});
+on('back', () => { if ($('#ov').classList.contains('on')) return closeOverlay(); if (busy) { stopSpeak(); api('/client/stop').catch(() => {}); return; } if (N) N.exitApp(); });
+on('key', p => { if (!conn) return; if (p.key === 'voice') $('#ask').click(); else if (p.key === 'camera') $('#look').click(); else if (p.key === 'menu') $('#more').click(); });
+setInterval(() => { $('#clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); try { const d = JSON.parse(N ? N.deviceInfo() : '{}'); if (d.battery != null) $('#batt').textContent = '🔋' + d.battery + '%'; } catch { /* */ } }, 10000);
+
+/* ------------------------------------------------------------ start */
+async function start() {
+  show('main'); $('#phone').textContent = conn.name || conn.host; $('#clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  try { const h = await api('/client/hello', {}, { timeoutMs: 8000 }); setOnline(true); seq = h.seq || 0; $('#phone').textContent = h.name; add('ev', `Connected to ${h.name} · agent ${h.current || '?'}${h.battery ? ` · phone 🔋${h.battery.percent}%` : ''}`); }
+  catch (e) { setOnline(false); add('ev', '⚠ Phone not reachable: ' + e.message + ' — is Nexus open on the phone and on the same Wi-Fi?'); }
+  poll();
+}
+window.NexusGlassesClient = { ask, pair, start, handleEvent, get conn() { return conn; } };
+if (conn && conn.token) start(); else { show('connect'); search(); }
+</script>
+</body>
+</html>

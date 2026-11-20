@@ -7,7 +7,7 @@ on:
 
 jobs:
   android:
-    name: Android release APK
+    name: Android APKs (Nexus Agent + Nexus Glasses)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,27 +19,14 @@ jobs:
 
       - uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
-
-      - name: Install ImageMagick
-        run: sudo apt-get install -y imagemagick
-
-      - name: Copy web assets and generate icons
-        run: |
-          mkdir -p android-webview/app/src/main/assets
-          cp dist/index.html dist/hud.html android-webview/app/src/main/assets/
-          for size in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
-            dir=${size%%:*}; px=${size##*:}
-            mkdir -p android-webview/app/src/main/res/mipmap-$dir
-            convert assets/icon.png -resize ${px}x${px} android-webview/app/src/main/res/mipmap-$dir/ic_launcher.png
-          done
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
 
       - name: Prepare signing key
         env:
-          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 || secrets.NEXUS_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || secrets.NEXUS_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || secrets.NEXUS_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || secrets.NEXUS_KEY_PASSWORD }}
         run: |
           KS="$RUNNER_TEMP/release.jks"
           if [ -n "$KEYSTORE_B64" ]; then
@@ -68,21 +55,21 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Build signed release APK
-        working-directory: android-webview
+      - name: Build signed release APKs
+        working-directory: android
         run: |
-          gradle wrapper
-          ./gradlew assembleRelease --no-daemon
-          APK=app/build/outputs/apk/release/app-release.apk
-          test -f "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
-          mkdir -p ../out && cp "$APK" ../out/nexus-agent-1.4.0.apk
+          gradle --no-daemon assembleRelease
+          AS="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          mkdir -p ../out
+          cp app/build/outputs/apk/release/app-release.apk ../out/nexus-agent-2.2.0.apk
+          cp glasses/build/outputs/apk/release/glasses-release.apk ../out/nexus-glasses-1.0.0.apk
+          for f in ../out/*.apk; do "$AS" verify --print-certs "$f" | head -3; done
           rm -f "$NEXUS_KEYSTORE_PATH"
 
       - uses: actions/upload-artifact@v4
         with:
           name: nexus-agent-android-release
-          path: out/nexus-agent-1.4.0.apk
+          path: out/*.apk
           retention-days: 90
 
   windows:
