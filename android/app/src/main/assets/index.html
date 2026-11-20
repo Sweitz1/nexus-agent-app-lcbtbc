@@ -726,7 +726,7 @@ let currentTab = 'chat';
 const extraTabs = {}; // tabs registered by skill packs (e.g. Media)
 function showTab(tab) {
   currentTab = tab;
-  $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('#tabs button').forEach(b => { b.classList.toggle('active', b.dataset.tab === tab); if (b.dataset.tab === tab && b.scrollIntoView) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + tab));
   (({ chat: () => { renderChatBar(); renderMessages(); }, agents: renderAgents, providers: renderProviders, files: renderFiles, skills: renderSkills, hooks: renderHooks, settings: renderSettings })[tab] || extraTabs[tab])();
 }

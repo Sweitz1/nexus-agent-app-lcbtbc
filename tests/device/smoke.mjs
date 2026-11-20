@@ -62,6 +62,10 @@ async function attach(pkg, port) {
     const d = await phone.evaluate('return JSON.parse(NexusNative.deviceInfo())');
     assert(Number(d.sdk) >= 35, 'expected API 35+, got ' + d.sdk); return `${d.manufacturer} ${d.model}, Android ${d.release} (API ${d.sdk}), app ${d.version}`;
   });
+  await check('Phone app opens in portrait on a phone (not forced to landscape)', async () => {
+    const r = await phone.evaluate('return { w: innerWidth, h: innerHeight }');
+    assert(r.h > r.w, `page is ${r.w}x${r.h} (landscape)`); return `${r.w}x${r.h} CSS px`;
+  });
   await check('Display mode on a phone screen: no binocular mirror, no temple mode', async () => {
     const d = await phone.evaluate('return JSON.parse(NexusNative.displayMode())');
     assert(!d.mirrorActive && !d.templeActive, JSON.stringify(d)); return `${d.width}x${d.height}, mirror ${d.mirrorEngine}, temple ${d.templeActive}`;
@@ -133,6 +137,9 @@ async function attach(pkg, port) {
       assert(names.some(n => /Juniper/.test(n)), JSON.stringify(names)); return JSON.stringify(names);
     });
     shot('06_glasses_roleplay');
+    await check('Glasses app follows the phone orientation when not on AR glasses', async () => {
+      const r = await glasses.evaluate('return { w: innerWidth, h: innerHeight }'); assert(r.h > r.w, `page is ${r.w}x${r.h} (landscape)`); return `${r.w}x${r.h}`;
+    });
     await check('Glasses display mode on a phone-shaped screen: no mirror', async () => {
       const d = await glasses.evaluate('return JSON.parse(NexusClient.displayMode())'); assert(!d.mirrorActive, JSON.stringify(d)); return `mirror ${d.mirrorEngine}`;
     });
@@ -148,8 +155,9 @@ async function attach(pkg, port) {
     adb('shell input keyevent KEYCODE_HOME'); await sleep(4000);
     const h = await (await fetch('http://127.0.0.1:18787/health')).json(); adb(`shell am start -W -n ${PHONE}/.MainActivity`); assert(h.ok, JSON.stringify(h)); return 'ok';
   });
-  await check('Phone app survives rotation', async () => {
+  await check('Phone app rotates to landscape and back, page keeps its state', async () => {
     adb('shell settings put system accelerometer_rotation 0'); adb('shell settings put system user_rotation 1'); await sleep(3000); shot('07_landscape');
+    const l = await phone.evaluate('return { w: innerWidth, h: innerHeight, nexus: !!window.Nexus }'); assert(l.w > l.h && l.nexus, 'landscape: ' + JSON.stringify(l));
     adb('shell settings put system user_rotation 0'); await sleep(2500);
     assert(adb(`shell pidof ${PHONE}`), 'process gone'); return 'ok';
   });

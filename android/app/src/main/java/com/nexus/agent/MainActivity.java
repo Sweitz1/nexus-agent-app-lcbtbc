@@ -89,6 +89,10 @@ public class MainActivity extends Activity {
         webView.setBackgroundColor(0xFF000000);
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
+        // Landscape on AR glasses (and when drawing one image per eye); on phones follow the user's rotation.
+        setRequestedOrientation(GlassesDisplay.looksLikeArGlasses() || GlassesDisplay.mirrorActive(this)
+                ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         setContentView(GlassesDisplay.wrap(this, webView));
         temple = GlassesDisplay.temple(this, false);
 

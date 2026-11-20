@@ -71,6 +71,10 @@ public class ClientActivity extends Activity {
         if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) WebView.setWebContentsDebuggingEnabled(true);
         web = new WebView(this);
         web.setBackgroundColor(0xFF000000);
+        // Landscape on AR glasses (and when drawing one image per eye); on phones follow the user's rotation.
+        setRequestedOrientation(GlassesDisplay.looksLikeArGlasses() || GlassesDisplay.mirrorActive(this)
+                ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         setContentView(GlassesDisplay.wrap(this, web));
         temple = GlassesDisplay.temple(this, false);
         web.setFocusable(true);
