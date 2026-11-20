@@ -2,7 +2,9 @@
 
 Nexus Agent is a private, multi-model agent app for Android. It is built for the **RayNeo X3 Pro** AR glasses and also runs on any Android 8+ phone or tablet.
 
-💬 **Community Discord:** [discord.gg/vzeSZMYCM](https://discord.gg/vzeSZMYCM). Questions, X3 Pro test results, bug reports and ideas are welcome. Both apps also have a *Join the Discord* button in their settings.
+💬 **Community Discord:** [discord.gg/vzeSZMYCM](https://discord.gg/vzeSZMYCM). Questions, X3 Pro test results and ideas are welcome.
+🐙 **GitHub:** [github.com/Sweitz1/nexus-agent-app-lcbtbc](https://github.com/Sweitz1/nexus-agent-app-lcbtbc). Downloads, source code and [bug reports](https://github.com/Sweitz1/nexus-agent-app-lcbtbc/issues).
+Both apps link to these from their settings.
 
 - **Multiple agents, multiple models.** Venice AI (including the `venice-uncensored` model), Anthropic Claude, xAI Grok, OpenAI, Google Gemini, OpenRouter and Groq, plus any OpenAI-compatible endpoint.
 - **Local and private.** You can point an agent at Ollama, LM Studio, llama.cpp or vLLM running on your own phone, PC or home server over Wi-Fi. No cloud is involved, and the agent needs no API key.

@@ -279,7 +279,7 @@ function settings() {
     <div class="row"><button class="f" id="sNod">Calibrate nod</button><button class="f" id="sShake">Calibrate shake</button></div>
     ${dm ? `<div class="row"><button class="f" id="sMir">👓 Mirror per eye: ${dm.mirror}${dm.mirror === 'auto' ? (dm.mirrorActive ? ' (on)' : ' (off)') : ''}</button><button class="f" id="sTmp">👆 Temple gestures: ${dm.temple}${dm.temple === 'auto' ? (dm.templeActive ? ' (on)' : ' (off)') : ''}</button></div>` : ''}
     <p class="hint">Phone: ${esc(conn ? conn.name + ' · ' + conn.host + ':' + conn.port + ((conn.hosts || []).length > 1 ? ` (+${conn.hosts.length - 1} more)` : '') : '—')} · nod ${cfg.nodAxis} / shake ${cfg.shakeAxis}</p>
-    <div class="row"><button class="f" id="sDiscord">💬 Community Discord</button></div><p class="hint">discord.gg/vzeSZMYCM</p>
+    <div class="row"><button class="f" id="sDiscord">💬 Community Discord</button><button class="f" id="sGithub">🐙 GitHub</button></div><p class="hint">discord.gg/vzeSZMYCM · github.com/Sweitz1/nexus-agent-app-lcbtbc</p>
     <div class="row"><button class="f" id="sForget">Forget phone</button><button class="primary f" id="sClose">Done</button></div>`);
   $('#sSpeak').onclick = () => { cfg.speak = !cfg.speak; saveCfg(); settings(); };
   $('#sEv').onclick = () => { cfg.speakEvents = !cfg.speakEvents; saveCfg(); settings(); };
@@ -290,6 +290,7 @@ function settings() {
   $('#sNod').onclick = () => cal('nodAxis'); $('#sShake').onclick = () => cal('shakeAxis');
   $('#sForget').onclick = () => { store.set('conn', null); conn = null; closeOverlay(); show('connect'); search(); };
   $('#sClose').onclick = closeOverlay;
+  $('#sGithub').onclick = () => { const u = 'https://github.com/Sweitz1/nexus-agent-app-lcbtbc'; if (N && N.openUrl) { if (!N.openUrl(u)) toast('No browser on this device — open ' + u + ' on your phone'); } else window.open(u, '_blank'); };
   $('#sDiscord').onclick = () => { const u = 'https://discord.gg/vzeSZMYCM'; if (N && N.openUrl) { if (!N.openUrl(u)) toast('No browser on this device — open ' + u + ' on your phone'); } else window.open(u, '_blank'); };
   $('#sWl').onclick = () => { cfg.worldLock = ({ off: '3dof', '3dof': '6dof', '6dof': 'off' })[cfg.worldLock] || 'off'; saveCfg(); trackStart(); settings(); };
   const pm = $('#sPpdM'), pp = $('#sPpdP');

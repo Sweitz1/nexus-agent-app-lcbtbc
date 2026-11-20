@@ -11,8 +11,8 @@ android {
         applicationId 'com.nexus.agent.glasses'
         minSdk 26
         targetSdk 34
-        versionCode 9
-        versionName '1.6.1'
+        versionCode 10
+        versionName '1.6.2'
         // RayNeo X3 Pro is arm64; -PnexusAbis=… adds the emulator ABI for the device test.
         ndk { abiFilters(*((project.findProperty('nexusAbis') ?: 'arm64-v8a,armeabi-v7a').toString().split(',').collect { it.trim() })) }
         externalNativeBuild { cmake { cppFlags '-std=c++17' } }

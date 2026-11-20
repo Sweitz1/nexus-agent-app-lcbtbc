@@ -970,6 +970,7 @@ function bindDisplayMode(v) {
   for (const [id, key] of [['#dmMirror', 'mirror'], ['#dmTemple', 'temple']]) { const el = $(id, v); if (el) el.onchange = () => N.setDisplayMode(key, el.value); }
 }
 const DISCORD_INVITE = 'https://discord.gg/vzeSZMYCM';
+const GITHUB_REPO = 'https://github.com/Sweitz1/nexus-agent-app-lcbtbc';
 function renderSettings() {
   const v = $('#view-settings'); const st = S.settings;
   const mem = Object.entries(S.memory);
@@ -1000,10 +1001,13 @@ function renderSettings() {
       <p class="hint">Device: ${esc(deviceLabel())}${N ? ' · native bridge ✓' : ' · browser preview'}</p></div>
     <div class="card"><h3>Community</h3>
       <p class="hint">Questions, X3 Pro test results, bug reports and ideas: join the Nexus Agent Discord.</p>
-      <div class="row"><button class="primary nogrow" id="discordJoin">💬 Join the Discord</button><span class="hint" style="align-self:center">${esc(DISCORD_INVITE)}</span></div></div>`;
+      <div class="row"><button class="primary nogrow" id="discordJoin">💬 Join the Discord</button><span class="hint" style="align-self:center">${esc(DISCORD_INVITE)}</span></div>
+      <p class="hint">Downloads, setup guide, source code and bug reports are on GitHub.</p>
+      <div class="row"><button class="nogrow" id="githubRepo">🐙 GitHub: Nexus Agent</button><span class="hint" style="align-self:center">${esc(GITHUB_REPO.replace('https://', ''))}</span></div></div>`;
   bind(v, st, k => { applySettings(); if (k === 'glasses') renderSettings(); });
   bindProSettings(v);
   bindDisplayMode(v);
+  $('#githubRepo').onclick = () => { if (N) { if (!N.openUrl(GITHUB_REPO)) toast('No app can open ' + GITHUB_REPO); } else window.open(GITHUB_REPO, '_blank'); };
   $('#discordJoin').onclick = () => { if (N) { if (!N.openUrl(DISCORD_INVITE)) toast('No app can open ' + DISCORD_INVITE); } else window.open(DISCORD_INVITE, '_blank'); };
   $('#clearMem').onclick = async () => { if (await confirmBox('Clear all long-term memory?')) { S.memory = {}; save(); renderSettings(); } };
   const showJSON = c => { const s = JSON.stringify(c, null, 1); if (N) N.shareText(s); else infoBox(`<code class="block">${esc(s)}</code>`); };
