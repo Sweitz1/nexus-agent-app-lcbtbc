@@ -352,6 +352,38 @@ The result is a verdict with the evidence and honest caveats. Audio gets the pro
 
 Nexus doesn't imitate or clone specific real people, celebrities and professional narrators included. Use a voice that its owner has published or licensed, a stock AI voice, or your own voice (`voice_clone_self`).
 
+## Roleplay (character chat) and SillyTavern
+
+The **Roleplay** tab is a character-chat mode in the style of TavernAI / SillyTavern, built into Nexus with its own interface:
+
+- **Character cards:** import and export SillyTavern / TavernAI cards. That covers PNG files with the card embedded and JSON files, in V1, V2 and V3 formats. You can create and edit cards with a description, personality, scenario, first message, alternate greetings, example dialogue, system prompt and post-history overrides, and tags.
+- **Lorebooks / World Info:** the lorebook inside each card, plus global or per-chat books. An entry is added to the prompt when one of its keywords appears in recent messages. Entries can be "always on", and keywords can be regular expressions. World Info JSON can be imported.
+- **Chats:** several chats per character and group chats. In a group chat, the next speaker is whoever you name, otherwise each character takes a turn. Every reply can be swiped, regenerated, continued, edited, branched or deleted. *Impersonate* writes your next message for you. You also get an author's note at a chosen depth and personas.
+- **Settings:** prompt macros (`{{char}}`, `{{user}}`, `{{time}}`, `{{date}}`, `{{random:a,b}}`, `{{roll:1d20}}`) and sampling settings (temperature, top-p, penalties, max tokens, context budget). *Show prompt* displays exactly what is sent.
+- **Models:** any configured provider works, including OpenAI-compatible ones and Claude. Venice and local models are the defaults.
+
+### Mature content (18+)
+
+- **Off by default.** Turning it on in *Roleplay → Settings* requires confirming that you are 18 or older. Mature content then applies only to chats you mark 18+, in the chat's ☰ menu.
+- **Optional PIN.** It hides 18+ characters and chats until unlocked, and it's needed to change the mature settings.
+- **Fixed rules that always apply:**
+  - no sexual content involving minors;
+  - cards that describe a minor are SFW-only, and messages describing a minor are refused in mature chats;
+  - no sexual content about real people.
+- **Private.** Roleplay chats stay in that tab. They are never forwarded to the glasses, car, Telegram, webhooks, AutoGPT or agents. Spoken replies in mature chats use the on-device voice.
+- **Provider policies still apply.** Nexus doesn't try to get around them. For adult fiction, choose a provider that allows it, such as Venice or a local model.
+
+### Using the real SillyTavern
+
+Nexus' local server also offers an OpenAI-compatible API, so SillyTavern running on a PC (or in Termux on Android) can use the models and keys on your phone:
+
+1. Turn on the local server: *Settings → Webhooks & server*.
+2. In SillyTavern, choose *API → Chat Completion → Custom (OpenAI-compatible)*.
+3. Set the endpoint to `http://<phone-ip>:8787/v1`, with the server token as the API key.
+4. Choose a model named `provider/model`, such as `venice/venice-uncensored`.
+
+`/v1/models` and `/v1/chat/completions` are supported, and streaming is answered in one chunk. *Roleplay → Settings* has a *Copy endpoint & key* button.
+
 ## Bluetooth, car, Android Auto and casting
 
 The card is under *Settings → Bluetooth, car & casting*. Each feature also works by voice through the skills listed.
@@ -568,6 +600,7 @@ android/
     js/skills-media.js  scanner, Telegram, Kino, audiobooks, text-to-audio, glasses skills, Media tab, player, RayNeo agent
     js/skills-narrator.js  narration styles, ElevenLabs Voice Library narrator finder, narrator voice for replies
     js/skills-connect.js   Bluetooth, car media session sync, Android Auto browse + messaging, DLNA casting, screen mirroring
+    js/skills-roleplay.js  Roleplay tab: character cards (PNG/JSON V1-V3), lorebooks, group chats, swipes, mature toggle, /v1 API for SillyTavern
     js/skills-shop.js   wake word control, Amazon/Walmart shopping + list, Plex, fast food & delivery
     js/skills-screen.js screen-control skills, consent and sensitive-action guard, settings
     js/skills-music.js  Spotify, YouTube Music, media sessions, lyrics, display-glasses HUD, Meta glasses

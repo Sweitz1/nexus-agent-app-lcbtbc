@@ -903,7 +903,7 @@ GET  ${esc(url)}/agents</code>
 
 /** Handles requests arriving at the native LAN server. */
 onNative('webhook', async ev => {
-  if (String(ev.path || '').startsWith('/client/')) return; // handled by the glasses-client server (js/server-phone.js)
+  if (/^\/(client|v1)\//.test(String(ev.path || ''))) return; // /client: glasses server (js/server-phone.js); /v1: OpenAI-compatible API (js/skills-roleplay.js)
   const reply = (status, data, type = 'application/json') => N.serverRespond(ev.reqId, status, type, typeof data === 'string' ? data : JSON.stringify(data));
   try {
     const q = Object.fromEntries(new URLSearchParams(ev.query || ''));
@@ -1093,6 +1093,7 @@ document.addEventListener('DOMContentLoaded', boot);
 <script src="js/skills-media.js"></script>
 <script src="js/skills-narrator.js"></script>
 <script src="js/skills-connect.js"></script>
+<script src="js/skills-roleplay.js"></script>
 <script src="js/skills-shop.js"></script>
 <script src="js/skills-screen.js"></script>
 <script src="js/skills-music.js"></script>
