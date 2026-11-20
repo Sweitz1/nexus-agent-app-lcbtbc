@@ -83,6 +83,8 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         goImmersive();
 
+        // Debug builds only: lets the device test suite inspect the page (chrome://inspect / DevTools protocol).
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) WebView.setWebContentsDebuggingEnabled(true);
         webView = new WebView(this);
         webView.setBackgroundColor(0xFF000000);
         webView.setFocusable(true);

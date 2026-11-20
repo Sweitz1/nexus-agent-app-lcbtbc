@@ -67,6 +67,8 @@ public class ClientActivity extends Activity {
         super.onCreate(b);
         immersive();
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // Debug builds only: lets the device test suite inspect the page (chrome://inspect / DevTools protocol).
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) WebView.setWebContentsDebuggingEnabled(true);
         web = new WebView(this);
         web.setBackgroundColor(0xFF000000);
         setContentView(GlassesDisplay.wrap(this, web));
