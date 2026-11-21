@@ -116,6 +116,17 @@ A private AI agent + companion characters, right in your AR glasses 🕶️
 🔗 https://github.com/Sweitz1/nexus-agent-app-lcbtbc/tree/ccr-ea3a135c-yzo362
 ```
 
+## Halo and Vela
+
+This repo holds two separate apps for the RayNeo X3 Pro, each on its own branch:
+
+| App | Branch | Android app IDs | Wake word |
+|---|---|---|---|
+| **Halo** (this README) | `ccr-ea3a135c-yzo362` | `com.halo.agent`, `com.halo.agent.glasses` | "Hey Halo" |
+| **Vela** | `ccr-0ea4ec43-78rs0l` | `com.nexus.agent`, `com.nexus.agent.glasses` | "Hey Vela" |
+
+They don't share app IDs, file providers, deep links or phone-to-glasses discovery, so both can be installed side by side. Each phone app pairs only with its own glasses client.
+
 ## Get the APK
 
 GitHub Actions builds everything on every push to this branch (**Actions → Build Release**):
