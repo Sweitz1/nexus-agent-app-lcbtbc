@@ -23,6 +23,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Bluetooth devices on the glasses (pairing headsets, keyboards, controllers). -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- Photos/videos captured with Meta (or other camera) glasses that sync to the gallery. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- APK services: see all installed apps (backup, inspect, integrate) and open the system

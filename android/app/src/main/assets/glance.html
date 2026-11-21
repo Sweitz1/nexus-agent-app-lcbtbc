@@ -52,6 +52,7 @@ html,body{height:100%;background:transparent;color:var(--text);font:600 var(--fs
 .portrait .head{flex-wrap:wrap}
 .portrait .hint{margin-left:0;white-space:normal}
 .portrait .foot span{display:block}
+#stage .wrap{transition:transform 70ms linear;will-change:transform}
 </style>
 </head>
 <body>
@@ -60,7 +61,7 @@ html,body{height:100%;background:transparent;color:var(--text);font:600 var(--fs
 'use strict';
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const B = window.HaloGlance || { action: a => console.log('glance action', a), ready: () => {} };
-let st = { state: 'hidden', layout: 'chibi' }, bars = [], lastTap = 0, tapTimer = null;
+let st = { state: 'hidden', layout: 'chibi' }, bars = [], lastTap = 0, tapTimer = null, pose0 = null, poseT = '';
 const N_BARS = 34;
 function waveHtml() { return `<div class="wave">${Array.from({ length: N_BARS }, () => '<i></i>').join('')}</div>`; }
 function setWave(level) {
@@ -97,6 +98,7 @@ function render() {
     s.innerHTML = `<div class="wrap">${sticker ? `<img class="sticker" src="${sticker}" alt="">` : ''}<div class="card">${card}</div></div>`;
   }
   if (st.state === 'listening') setWave(st.rms || 0.1);
+  const w = s.querySelector('.wrap'); if (w && st.anchor === 'world') w.style.transform = poseT;
   // Fit long answers into the card.
   const a = s.querySelector('.answer'); const c = s.querySelector('.card');
   if (a && c) { let f = 1.2; const max = portrait ? c.parentElement.clientHeight * 0.96 : window.innerHeight * 0.62; while (c.scrollHeight > max && f > 0.7) { f -= 0.05; a.style.fontSize = f + 'em'; } }
@@ -109,8 +111,24 @@ window.glanceUpdate = u => {
     st.transcript = u.transcript; const t = document.querySelector('.transcript');
     if (t) { t.classList.toggle('empty', !u.transcript); t.innerHTML = `${esc(u.transcript || 'Listening…')}<span class="caret"></span>`; return; }
   }
+  if (u.state && st.state === 'hidden') { pose0 = null; poseT = ''; }
+  if (u.anchor && u.anchor !== 'world') { pose0 = null; poseT = ''; }
   if (u.state && u.state !== st.state) bars = Array.from({ length: N_BARS }, () => 0.12 + Math.random() * 0.25);
   st = { ...st, ...u }; render();
+};
+// Pinned in space: the card stays where it opened while the head turns a little, and slides
+// along ("tag-along") once the head turns more than "range" degrees, so it never gets lost.
+const wrapDeg = d => ((d + 540) % 360) - 180;
+window.glancePose = (yaw, pitch) => {
+  if (st.anchor !== 'world' || st.state === 'hidden') return;
+  if (!pose0) pose0 = { y: yaw, p: pitch };
+  const R = Number(st.range) || 16, Rp = R * 0.7;
+  let dy = wrapDeg(yaw - pose0.y), dp = pitch - pose0.p;
+  if (Math.abs(dy) > R) { pose0.y = wrapDeg(pose0.y + (dy - Math.sign(dy) * R) * 0.15); dy = wrapDeg(yaw - pose0.y); }
+  if (Math.abs(dp) > Rp) { pose0.p += (dp - Math.sign(dp) * Rp) * 0.15; dp = pitch - pose0.p; }
+  const k = Number(st.ppd) || 21, sgn = st.invert ? -1 : 1;
+  poseT = `translate(${(-sgn * dy * k).toFixed(1)}px, ${(sgn * dp * k).toFixed(1)}px)`;
+  const w = document.querySelector('#stage .wrap'); if (w) w.style.transform = poseT;
 };
 // Touchpad: single tap = Enter/click, double tap = Back (native) or two quick taps.
 function tap() {

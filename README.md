@@ -471,6 +471,14 @@ A see-through card floats over whatever is on the glasses, so a video keeps play
 
 The sample character in the screenshots is original art (`docs/promo/figures.js`).
 
+**Pinned in place.** Settings → Glance card → Position → *Pinned in place*. Head tracking keeps the card fixed in the room while you glance around. If you turn more than about 16° away, it slides along, so it never gets lost. If the card moves the wrong way on your glasses, tick *Reverse motion*. *Pin strength* sets how many pixels the card shifts per degree of head turn.
+
+## Bluetooth devices
+
+**Settings → Bluetooth devices** lists what's paired with the glasses. It can scan for headphones, keyboards, game controllers or phones, then pair or forget them; Android shows its own confirmation when pairing.
+
+Agents can do the same with `bt_status`, `bt_scan`, `bt_pair` and `bt_unpair`. Pairing and forgetting ask you first. Android 12 and later ask once for the *Nearby devices* permission.
+
 ## Characters, skill libraries and Arkon
 
 These come from the companion pack (`js/skills-companion.js`).
@@ -531,6 +539,7 @@ android/
     js/skills-dev.js    APK services & app integrations, scraper, downloads, Python/code runner/templates/builds, GitHub
     js/skills-trust.js  Verizon Cloud, deepfake detection & provenance, consent-gated synthetic media of yourself
     js/skills-auto.js   AutoGPT: autonomous plan→act→review runs, budgets, scheduling, Auto tab, Agent Protocol client
+    js/skills-bluetooth.js  Bluetooth list / scan / pair / forget (skills + Settings card)
     js/skills-glance.js     Glance card controller (overlay over other apps, triggers, settings)
     glance.html             The glance card page (listening / answer, chibi or portrait look)
     js/skills-companion.js  Characters tab (SillyTavern cards, companion chat, SFW/mature), GitHub SKILL.md libraries, Arkon

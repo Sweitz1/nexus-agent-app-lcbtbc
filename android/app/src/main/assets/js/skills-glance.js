@@ -6,7 +6,7 @@
 'use strict';
 (() => {
   const st = () => S.settings;
-  const D = { glanceEnabled: false, glanceLayout: 'chibi', glanceCharacter: '', glanceAgent: '', glanceFontSize: 20, glanceAutoClose: 30, glanceSpeak: true, glanceKey: 0, glanceKeyName: '' };
+  const D = { glanceEnabled: false, glanceLayout: 'chibi', glanceCharacter: '', glanceAgent: '', glanceFontSize: 20, glanceAutoClose: 30, glanceSpeak: true, glanceKey: 0, glanceKeyName: '', glanceAnchor: 'head', glanceInvert: false, glancePpd: 21 };
   Object.keys(D).forEach(k => { if (st()[k] === undefined) st()[k] = D[k]; });
   // Keys that the temple-hold trigger must never swallow (they drive normal navigation).
   const RESERVED = new Set([4, 19, 20, 21, 22, 23, 61, 66, 111, 160]);
@@ -23,7 +23,9 @@
       if (r.error) { toast(r.error); return false; }
       const c = G.character();
       G.base = { layout: st().glanceLayout, agent: G.agent().name, fontSize: Number(st().glanceFontSize) || 20,
-        sticker: c ? (c.sticker || c.avatar || '') : '', portrait: c ? (c.portrait || '') : '' };
+        sticker: c ? (c.sticker || c.avatar || '') : '', portrait: c ? (c.portrait || '') : '',
+        anchor: st().glanceAnchor, invert: !!st().glanceInvert, ppd: Number(st().glancePpd) || 21 };
+      if (N.glancePose) N.glancePose(st().glanceAnchor === 'world');
       return true;
     },
     close() { G.token++; G.state = 'idle'; clearTimeout(G.closeTimer); try { N.stopListening(); } catch {} if (N && N.glanceHide) N.glanceHide(); },
@@ -137,6 +139,9 @@
         <div><label>Character</label><select id="glChar"><option value="">(none)</option>${chars.map(c => `<option value="${c.id}" ${c.id === st().glanceCharacter ? 'selected' : ''}>${esc(c.name)}${c.portrait || c.sticker ? '' : ' (no images yet)'}</option>`).join('')}</select></div>
         <div><label>Answers from</label><select id="glAgent"><option value="">(current agent)</option>${S.agents.map(a => `<option value="${a.id}" ${a.id === st().glanceAgent ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></div>
       </div>
+      <div class="row"><div><label>Position</label><select id="glAnchor"><option value="head" ${st().glanceAnchor !== 'world' ? 'selected' : ''}>Follows your head</option><option value="world" ${st().glanceAnchor === 'world' ? 'selected' : ''}>Pinned in place (head tracking)</option></select></div>
+        <div><label>Pin strength (px per degree)</label><input id="glPpd" type="number" min="5" max="60" value="${st().glancePpd}"></div></div>
+      <label class="inline"><input type="checkbox" id="glInv" ${st().glanceInvert ? 'checked' : ''}>Reverse motion (if the pinned card moves the wrong way)</label>
       <div class="row"><div><label>Text size (px)</label><input id="glFs" type="number" min="14" max="34" value="${st().glanceFontSize}"></div><div><label>Close answer after (s, 0 = never)</label><input id="glClose" type="number" min="0" max="300" value="${st().glanceAutoClose}"></div></div>
       <label class="inline"><input type="checkbox" id="glSpeak" ${st().glanceSpeak ? 'checked' : ''}>Read answers aloud</label>
       <label>Temple hold (from any app)</label>
@@ -152,6 +157,9 @@
     $('#glFs').onchange = e => set('glanceFontSize', Math.max(14, Math.min(34, Number(e.target.value) || 20)));
     $('#glClose').onchange = e => set('glanceAutoClose', Math.max(0, Number(e.target.value) || 0));
     $('#glSpeak').onchange = e => set('glanceSpeak', e.target.checked);
+    $('#glAnchor').onchange = e => set('glanceAnchor', e.target.value);
+    $('#glInv').onchange = e => set('glanceInvert', e.target.checked);
+    $('#glPpd').onchange = e => set('glancePpd', Math.max(5, Math.min(60, Number(e.target.value) || 21)));
     const pb = $('#glPerm'); if (pb) pb.onclick = () => N.requestOverlayPermission();
     $('#glLearn').onclick = () => { if (!screen) { toast('Turn on Screen control first (accessibility)'); if (N && N.openSettings) N.openSettings('accessibility'); return; } N.learnGlanceKey(true); toast('Now hold the temple button you want to use'); };
     const ko = $('#glKeyOff'); if (ko) ko.onclick = () => { set('glanceKey', 0); st().glanceKeyName = ''; save(); renderSettings(); };

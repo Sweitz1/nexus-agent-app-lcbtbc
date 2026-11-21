@@ -1236,6 +1236,29 @@ public class NativeBridge {
         try { activity.startActivity(i); } catch (Exception e) { glasses.openSettings("app"); }
     }
 
+    /** Streams head orientation into the glance card so it can stay pinned in space. */
+    @JavascriptInterface
+    public void glancePose(boolean on) { activity.runOnUiThread(() -> glance().pose(on)); }
+
+    // ------------------------------------------------------------------ Bluetooth devices
+    private BluetoothTools bt;
+    private BluetoothTools bt() { if (bt == null) bt = new BluetoothTools(activity); return bt; }
+
+    @JavascriptInterface
+    public boolean btNeedsPermission() { return BluetoothTools.needsRuntimePermissions(); }
+
+    @JavascriptInterface
+    public String btStatus() { return bt().status(); }
+
+    @JavascriptInterface
+    public void btScan(String id, int timeoutMs) { activity.runOnUiThread(() -> bt().scan(timeoutMs, (ok, j) -> activity.callback(id, ok, j))); }
+
+    @JavascriptInterface
+    public void btPair(String id, String address) { activity.runOnUiThread(() -> bt().pair(address, (ok, j) -> activity.callback(id, ok, j))); }
+
+    @JavascriptInterface
+    public String btUnpair(String address) { return bt().unpair(address); }
+
     /** While on, the wake word opens the glance card instead of bringing the app to the front. */
     @JavascriptInterface
     public void setGlanceMode(boolean on) { MainActivity.glanceMode = on; }

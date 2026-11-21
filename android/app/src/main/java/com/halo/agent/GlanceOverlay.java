@@ -25,6 +25,9 @@ class GlanceOverlay {
     private WebView web;
     private boolean ready = false;
     private String pending = null;
+    private android.hardware.SensorManager sm;
+    private android.hardware.SensorEventListener poseListener;
+    private long lastPose = 0;
 
     GlanceOverlay(MainActivity act) { this.act = act; }
 
@@ -77,7 +80,31 @@ class GlanceOverlay {
         web.evaluateJavascript("window.glanceUpdate&&window.glanceUpdate(" + json + ")", null);
     }
 
+    /** Head orientation (degrees) into glance.html ~30 times a second, for a card pinned in space. */
+    void pose(boolean on) {
+        if (sm == null) sm = (android.hardware.SensorManager) act.getSystemService(Context.SENSOR_SERVICE);
+        if (poseListener != null) { sm.unregisterListener(poseListener); poseListener = null; }
+        if (!on || sm == null) return;
+        android.hardware.Sensor s = sm.getDefaultSensor(android.hardware.Sensor.TYPE_GAME_ROTATION_VECTOR);
+        if (s == null) s = sm.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR);
+        if (s == null) { post("{\"poseError\":\"No rotation sensor\"}"); return; }
+        final float[] m = new float[9], o = new float[3];
+        poseListener = new android.hardware.SensorEventListener() {
+            @Override public void onSensorChanged(android.hardware.SensorEvent e) {
+                long now = android.os.SystemClock.uptimeMillis();
+                if (web == null || !ready || now - lastPose < 33) return;
+                lastPose = now;
+                android.hardware.SensorManager.getRotationMatrixFromVector(m, e.values);
+                android.hardware.SensorManager.getOrientation(m, o);
+                web.evaluateJavascript("window.glancePose&&window.glancePose(" + Math.toDegrees(o[0]) + "," + Math.toDegrees(o[1]) + "," + Math.toDegrees(o[2]) + ")", null);
+            }
+            @Override public void onAccuracyChanged(android.hardware.Sensor sensor, int a) { }
+        };
+        sm.registerListener(poseListener, s, android.hardware.SensorManager.SENSOR_DELAY_GAME);
+    }
+
     void hide() {
+        pose(false);
         if (web == null) return;
         try { ((WindowManager) act.getSystemService(Context.WINDOW_SERVICE)).removeView(web); } catch (Exception ignored) { }
         web.destroy();
