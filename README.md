@@ -448,6 +448,29 @@ Other ways in:
 - **Deep link:** `haloagent://ask?q=hello&agent=Grok&mode=council`
 - **Share:** sharing text from another app to *Halo* puts it in the prompt.
 
+## Glance card (ask without leaving what you're watching)
+
+![Glance card](docs/promo/glance-preview.png)
+
+A see-through card floats over whatever is on the glasses, so a video keeps playing behind it:
+
+1. **Hold the temple** (or say "Hey Halo", tap Bluetooth glasses, or press the assistant key).
+2. **Listening:** your words appear live with a waveform. **Tap** when you're done, or **double-tap** to cancel.
+3. **Answer:** your question, the answer (also read aloud), and **✓ chips** for anything the agent did, such as a saved reminder. **Tap** to ask again, or **double-tap** to close. The card also closes by itself after 30 s, which you can change.
+
+**Two looks**, with your own character:
+- **Chibi:** a small sticker perched on the card.
+- **Full-body portrait:** the character stands beside a narrow card.
+
+**Set up (Settings → Glance card):**
+1. Turn the glance card on.
+2. Tap **Allow** for *Display over other apps*.
+3. Pick the look, the character and which agent answers.
+4. For the temple hold from inside other apps, turn on **Screen control** (accessibility), tap **Learn** and hold the temple button you want to use. Navigation keys (tap, swipe, back) can't be used for this, so normal touchpad control keeps working.
+5. Give a character its images in **Characters → Edit → Chibi sticker / Full-body portrait**. Transparent PNGs look best.
+
+The sample character in the screenshots is original art (`docs/promo/figures.js`).
+
 ## Characters, skill libraries and Arkon
 
 These come from the companion pack (`js/skills-companion.js`).
@@ -508,6 +531,8 @@ android/
     js/skills-dev.js    APK services & app integrations, scraper, downloads, Python/code runner/templates/builds, GitHub
     js/skills-trust.js  Verizon Cloud, deepfake detection & provenance, consent-gated synthetic media of yourself
     js/skills-auto.js   AutoGPT: autonomous plan→act→review runs, budgets, scheduling, Auto tab, Agent Protocol client
+    js/skills-glance.js     Glance card controller (overlay over other apps, triggers, settings)
+    glance.html             The glance card page (listening / answer, chibi or portrait look)
     js/skills-companion.js  Characters tab (SillyTavern cards, companion chat, SFW/mature), GitHub SKILL.md libraries, Arkon
     js/server-phone.js  phone server for Halo Glasses: pairing, /client/* API, event stream, confirmations on the glasses
     hud.html            HUD shown on external display glasses

@@ -83,6 +83,7 @@
     finally { setBusy(false); }
   }
   onNative('wake', async e => {
+    if (window.HaloGlanceUI && window.HaloGlanceUI.wake(e)) return;
     if (e.phase === 'wake' || e.phase === 'tap') {
       stopSpeaking(); badge('🎙 Listening…'); if (N) N.vibrate(40);
       if (e.text === 'handoff' || e.phase === 'tap') {

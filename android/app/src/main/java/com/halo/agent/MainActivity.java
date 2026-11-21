@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
     WebView webView;
     NativeBridge bridge;
     static volatile boolean visible = false;
+    static volatile boolean glanceMode = false;
     private boolean pageReady = false;
     private final ArrayList<String> pendingEvents = new ArrayList<>();
 

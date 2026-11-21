@@ -169,7 +169,7 @@ public class WakeWordService extends Service implements RecognitionListener {
     }
 
     private void bringToFront() {
-        if (MainActivity.visible) return;
+        if (MainActivity.visible || MainActivity.glanceMode) return;
         Intent i = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         if (Build.VERSION.SDK_INT < 29 || Settings.canDrawOverlays(this)) {
             try { startActivity(i); return; } catch (Exception ignored) { }

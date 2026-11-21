@@ -87,6 +87,14 @@
       return cv.toDataURL('image/jpeg', 0.85);
     } catch { return ''; }
   }
+  async function shrinkPng(bytes, mime, maxH) {
+    try {
+      const url = URL.createObjectURL(new Blob([bytes], { type: mime })); const img = await loadImg(url); URL.revokeObjectURL(url);
+      const k = Math.min(1, maxH / img.height); const cv = document.createElement('canvas');
+      cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      return cv.toDataURL('image/png');
+    } catch { return ''; }
+  }
   async function cardImage(c) {
     const cv = document.createElement('canvas'); cv.width = 400; cv.height = 600; const g = cv.getContext('2d');
     g.fillStyle = '#07090d'; g.fillRect(0, 0, 400, 600);
@@ -257,7 +265,10 @@
     const f = (k, label, rows, ph = '') => `<label>${label}</label>` + (rows ? `<textarea data-k="${k}" rows="${rows}" placeholder="${esc(ph)}">${esc(c[k] || '')}</textarea>` : `<input data-k="${k}" value="${esc(c[k] || '')}" placeholder="${esc(ph)}">`);
     const box = $('#modalBox');
     box.innerHTML = `<h3>${id ? 'Edit ' + esc(c.name) : 'New character'}</h3>
-      <div class="row"><span class="nogrow" id="ceAv">${av(c)}</span><button class="small nogrow" id="cePic">Picture</button></div>
+      <div class="row"><span class="nogrow" id="ceAv">${av(c)}</span><button class="small nogrow" id="cePic">Picture</button>
+        <span class="nogrow" id="ceStk">${c.sticker ? `<img src="${c.sticker}" style="height:2.6em" alt="">` : ''}</span><button class="small nogrow" id="ceSticker">Chibi sticker</button>
+        <span class="nogrow" id="cePor">${c.portrait ? `<img src="${c.portrait}" style="height:2.6em" alt="">` : ''}</span><button class="small nogrow" id="cePortrait">Full-body portrait</button></div>
+      <p class="hint">Sticker and portrait appear on the glance card (Settings → Glance card). Transparent PNGs look best.</p>
       ${f('name', 'Name')}${f('description', 'Description', 4, 'Who they are, looks, background. {{char}} and {{user}} work here.')}${f('personality', 'Personality', 0, 'e.g. warm, sarcastic, loyal')}
       ${f('scenario', 'Scenario', 2)}${f('first_mes', 'First message', 3)}<label>Alternate greetings (one per line)</label><textarea id="ceAlt" rows="2">${esc((c.alternate_greetings || []).join('\n'))}</textarea>
       ${f('mes_example', 'Example dialogue', 3, '<START>\n{{user}}: Hi\n{{char}}: Hey you.')}
@@ -268,13 +279,16 @@
       <label class="inline"><input type="checkbox" id="ceAdult" ${c.adult ? 'checked' : ''}>This character is an adult (required for mature)</label>
       <div class="row"><button class="primary nogrow" id="ceSave">Save</button>${id ? '<button class="nogrow" id="cePng">Export PNG</button><button class="nogrow" id="ceJson">Export JSON</button><button class="danger nogrow" id="ceDel">Delete</button>' : ''}<button class="nogrow" id="ceX">Cancel</button></div>`;
     $('#modal').classList.add('show'); const close = () => { $('#modal').classList.remove('show'); modalClose = null; }; modalClose = close;
-    let avatar = c.avatar || '';
+    let avatar = c.avatar || '', sticker = c.sticker || '', portrait = c.portrait || '';
+    const pickPng = async (maxH, show) => { const [f] = await pickFilesBytes('image/*'); if (!f) return ''; const d = await shrinkPng(f.bytes, /\.jpe?g$/i.test(f.name) ? 'image/jpeg' : 'image/png', maxH); $(show).innerHTML = d ? `<img src="${d}" style="height:2.6em" alt="">` : ''; return d; };
+    $('#ceSticker').onclick = async () => { const d = await pickPng(360, '#ceStk'); if (d) sticker = d; };
+    $('#cePortrait').onclick = async () => { const d = await pickPng(900, '#cePor'); if (d) portrait = d; };
     $('#cePic').onclick = async () => { const [f] = await pickFilesBytes('image/*'); if (!f) return; avatar = await shrink(f.bytes, /\.png$/i.test(f.name) ? 'image/png' : 'image/jpeg'); $('#ceAv').innerHTML = av({ ...c, avatar }); };
     $('#ceX').onclick = close;
     $('#ceSave').onclick = () => {
       const out = { ...c }; $$('[data-k]', box).forEach(el => out[el.dataset.k] = el.value.trim());
       out.alternate_greetings = $('#ceAlt').value.split('\n').map(x => x.trim()).filter(Boolean); out.tags = $('#ceTags').value.split(',').map(x => x.trim()).filter(Boolean);
-      out.mature = $('#ceMature').checked; out.adult = $('#ceAdult').checked; out.agentId = $('#ceAgent').value; out.avatar = avatar;
+      out.mature = $('#ceMature').checked; out.adult = $('#ceAdult').checked; out.agentId = $('#ceAgent').value; out.avatar = avatar; out.sticker = sticker; out.portrait = portrait;
       if (!out.name) return toast('Give the character a name');
       if (out.mature && !out.adult) return toast('Mature characters must be confirmed as adults');
       CH.upsert(out); close(); toast(out.name + ' saved'); renderChars();

@@ -96,6 +96,7 @@ public class NativeBridge {
         HaloNotificationListener.sink = n -> activity.emit("notification", n.toString());
         WakeWordService.sink = e -> activity.emit("wake", e.toString());
         HaloAccessibilityService.sink = (t, d) -> { try { d.put("type", t); } catch (Exception ignored) { } activity.emit("screen", d.toString()); };
+        HaloAccessibilityService.keySink = (t, json) -> activity.emit(t, json);
         this.prefs = activity.getSharedPreferences("halo_secure", Context.MODE_PRIVATE);
         tts = new TextToSpeech(activity, status -> {
             ttsReady = status == TextToSpeech.SUCCESS;
@@ -403,7 +404,12 @@ public class NativeBridge {
                 recognizer.setRecognitionListener(new RecognitionListener() {
                     public void onReadyForSpeech(Bundle p) { activity.emit("speech_state", "{\"state\":\"listening\"}"); }
                     public void onBeginningOfSpeech() { }
-                    public void onRmsChanged(float v) { }
+                    public void onRmsChanged(float v) {
+                        long now = System.currentTimeMillis();
+                        if (now - lastRms < 70) return;
+                        lastRms = now;
+                        activity.emit("speech_rms", "{\"v\":" + Math.max(0f, Math.min(1f, (v + 2f) / 12f)) + "}");
+                    }
                     public void onBufferReceived(byte[] b) { }
                     public void onEndOfSpeech() { activity.emit("speech_state", "{\"state\":\"processing\"}"); }
                     public void onError(int error) { finishSpeech(false, "Speech error " + error); }
@@ -1197,6 +1203,50 @@ public class NativeBridge {
 
     @JavascriptInterface
     public void hudStop() { activity.hudStop(); }
+
+    // ------------------------------------------------------------------ glance card (overlay over other apps)
+    private GlanceOverlay glance;
+    private long lastRms = 0;
+
+    private GlanceOverlay glance() { if (glance == null) glance = new GlanceOverlay(activity); return glance; }
+
+    @JavascriptInterface
+    public boolean glanceAvailable() { return glance().canShow(); }
+
+    @JavascriptInterface
+    public String glanceShow() {
+        final String[] out = {"{}"};
+        java.util.concurrent.CountDownLatch l = new java.util.concurrent.CountDownLatch(1);
+        activity.runOnUiThread(() -> { try { out[0] = glance().show(); } catch (Exception e) { out[0] = errorJson(e); } l.countDown(); });
+        try { l.await(3, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException ignored) { }
+        return out[0];
+    }
+
+    @JavascriptInterface
+    public void glancePost(String json) { activity.runOnUiThread(() -> glance().post(json)); }
+
+    @JavascriptInterface
+    public void glanceHide() { activity.runOnUiThread(() -> glance().hide()); }
+
+    /** Opens the system screen where the user allows "Display over other apps". */
+    @JavascriptInterface
+    public void requestOverlayPermission() {
+        Intent i = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + activity.getPackageName()));
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try { activity.startActivity(i); } catch (Exception e) { glasses.openSettings("app"); }
+    }
+
+    /** While on, the wake word opens the glance card instead of bringing the app to the front. */
+    @JavascriptInterface
+    public void setGlanceMode(boolean on) { MainActivity.glanceMode = on; }
+
+    /** Key code that opens the glance from any app when held (needs the accessibility service). 0 = off. */
+    @JavascriptInterface
+    public void setGlanceKey(int code) { HaloAccessibilityService.glanceKey = code; }
+
+    /** Reports the next key the accessibility service sees as a "glance_key" event (to learn the temple hold). */
+    @JavascriptInterface
+    public void learnGlanceKey(boolean on) { HaloAccessibilityService.learnKey = on; }
 
     @JavascriptInterface
     public void hudPost(String json) { activity.hudPost(json); }

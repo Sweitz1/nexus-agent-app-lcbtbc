@@ -1041,7 +1041,7 @@ onNative('back', () => {
   if (currentTab !== 'chat') return showTab('chat');
   N && N.exitApp();
 });
-onNative('hwkey', p => { if (p.key === 'voice') { showTab('chat'); listen(); } if (p.key === 'menu') showTab(currentTab === 'settings' ? 'chat' : 'settings'); });
+onNative('hwkey', p => { if (p.key === 'voice') { if (window.HaloGlanceUI && window.HaloGlanceUI.start('key')) return; showTab('chat'); listen(); } if (p.key === 'menu') showTab(currentTab === 'settings' ? 'chat' : 'settings'); });
 onNative('share', p => { showTab('chat'); $('#input').value = p.text; autoGrow(); $('#input').focus(); });
 onNative('deeplink', p => {
   try {
@@ -1084,6 +1084,7 @@ document.addEventListener('DOMContentLoaded', boot);
 <script src="js/skills-trust.js"></script>
 <script src="js/skills-auto.js"></script>
 <script src="js/skills-companion.js"></script>
+<script src="js/skills-glance.js"></script>
 <script src="js/server-phone.js"></script>
 </body>
 </html>

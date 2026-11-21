@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halo glance</title>
+<style>
+/* Floats over other apps (video keeps playing behind). Transparent page; translucent glass card. */
+:root{--glass:rgba(24,40,48,.80);--edge:rgba(150,220,230,.30);--teal:#2fe0cf;--teal-d:#0b5d58;--text:#f2fbff;--dim:#b7cbd3;--dot:#ffcf3a;--fs:20px}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:transparent;color:var(--text);font:600 var(--fs)/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+#stage{position:absolute;inset:0;display:none}
+#stage.on{display:block}
+.card{background:var(--glass);border:1.5px solid var(--edge);border-radius:28px;box-shadow:0 10px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);padding:.75em 1em .7em;animation:pop .22s ease-out}
+@keyframes pop{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+.head{display:flex;align-items:center;gap:.6em;font-size:.82em;color:var(--dim)}
+.pill{background:var(--teal);color:#05332f;border-radius:99px;padding:.12em .7em;font-weight:700;display:inline-flex;align-items:center;gap:.35em;box-shadow:0 0 14px rgba(47,224,207,.45)}
+.pill:before{content:"";width:.45em;height:.45em;border-radius:50%;background:#05332f;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+.agent{color:var(--text);font-weight:700}
+.who{display:flex;align-items:center;gap:.4em;font-weight:800;color:var(--text);font-size:.86em;margin-bottom:.25em}
+.who:before{content:"";width:.5em;height:.5em;border-radius:50%;background:var(--dot);box-shadow:0 0 8px var(--dot)}
+.hint{margin-left:auto;font-size:.92em;white-space:nowrap}
+.transcript{font-size:1.22em;font-weight:800;margin:.35em 0 .3em;word-wrap:break-word}
+.transcript .caret{display:inline-block;width:.09em;height:1em;background:var(--text);vertical-align:-.12em;margin-left:.06em;animation:blink 1s steps(1) infinite}
+.transcript.empty{color:var(--dim);font-weight:600}
+.wave{display:flex;align-items:center;gap:3px;height:1.4em;margin:.15em 0 .1em}
+.wave i{flex:none;width:4px;border-radius:2px;background:var(--teal);box-shadow:0 0 6px rgba(47,224,207,.6);transition:height .09s}
+.q{color:var(--text);opacity:.92;font-size:.9em;margin:.1em 0 .35em}
+.answer{font-size:1.2em;font-weight:800;line-height:1.28}
+.chips{display:flex;flex-wrap:wrap;gap:.45em;margin:.6em 0 .2em}
+.chip{display:inline-flex;align-items:center;gap:.45em;border:2px solid rgba(47,224,207,.75);background:rgba(11,93,88,.55);color:#dffcf8;border-radius:99px;padding:.18em .8em .18em .25em;font-size:.85em;font-weight:700}
+.chip b{width:1.25em;height:1.25em;border-radius:50%;background:var(--teal);color:#05332f;display:inline-flex;align-items:center;justify-content:center;font-size:.8em}
+.foot{color:var(--dim);font-size:.8em;margin-top:.55em}
+.thinking{display:flex;gap:.35em;margin:.4em 0}
+.thinking i{width:.55em;height:.55em;border-radius:50%;background:var(--teal);animation:bounce 1s infinite}
+.thinking i:nth-child(2){animation-delay:.15s}.thinking i:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{transform:scale(.6);opacity:.5}40%{transform:scale(1);opacity:1}}
+.err{color:#ffb3c0}
+
+/* Layout: chibi sticker perched on the card */
+.chibi .wrap{position:absolute;left:4%;right:4%;bottom:4%;max-width:42em;margin:0 auto}
+.chibi .sticker{position:absolute;left:1.2em;bottom:calc(100% - .5em);height:5.4em;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));animation:float 3s ease-in-out infinite}
+.chibi.answer-state .wrap,.chibi.thinking-state .wrap{bottom:auto;top:5.9em}
+@keyframes float{50%{transform:translateY(-4px)}}
+
+/* Layout: full-body portrait beside a narrow card */
+.portrait .wrap{position:absolute;inset:3% 3%;display:flex;align-items:center;gap:2%}
+.portrait .figure{flex:1.15;height:100%;display:flex;align-items:center;justify-content:center;min-width:0}
+.portrait .figure img{max-height:100%;max-width:100%;object-fit:contain;filter:drop-shadow(0 8px 18px rgba(0,0,0,.55))}
+.portrait .card{flex:1;align-self:center;max-height:96%;overflow:hidden;border-radius:24px}
+.portrait .head{flex-wrap:wrap}
+.portrait .hint{margin-left:0;white-space:normal}
+.portrait .foot span{display:block}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+'use strict';
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const B = window.HaloGlance || { action: a => console.log('glance action', a), ready: () => {} };
+let st = { state: 'hidden', layout: 'chibi' }, bars = [], lastTap = 0, tapTimer = null;
+const N_BARS = 34;
+function waveHtml() { return `<div class="wave">${Array.from({ length: N_BARS }, () => '<i></i>').join('')}</div>`; }
+function setWave(level) {
+  const w = document.querySelectorAll('.wave i'); if (!w.length) return;
+  bars.push(Math.max(0, Math.min(1, level))); while (bars.length > N_BARS) bars.shift();
+  w.forEach((el, i) => { const v = bars[bars.length - N_BARS + i] ?? 0.05; const jitter = 0.55 + 0.45 * Math.abs(Math.sin(i * 1.7 + Date.now() / 160)); el.style.height = Math.max(12, Math.round((0.12 + v * jitter) * 100)) + '%'; });
+}
+function render() {
+  const s = document.getElementById('stage');
+  if (st.state === 'hidden') { s.className = ''; s.innerHTML = ''; return; }
+  const portrait = st.layout === 'portrait' && st.portrait;
+  s.className = 'on ' + (portrait ? 'portrait' : 'chibi') + ' ' + st.state + '-state';
+  if (st.fontSize) document.documentElement.style.setProperty('--fs', st.fontSize + 'px');
+  const agent = esc(st.agent || 'Halo');
+  let card;
+  if (st.state === 'listening') {
+    const t = st.transcript ? `${esc(st.transcript)}<span class="caret"></span>` : `Listening…<span class="caret"></span>`;
+    card = `<div class="head"><span class="pill">Listening</span><span class="agent">${portrait ? '' : agent}</span>${portrait ? '' : '<span class="hint">Tap: done · Double-tap: cancel</span>'}</div>
+      <div class="transcript ${st.transcript ? '' : 'empty'}">${t}</div>${waveHtml()}
+      ${portrait ? '<div class="foot"><span>Tap: done</span><span>Double-tap: cancel</span></div>' : ''}`;
+  } else if (st.state === 'thinking') {
+    card = `<div class="who">${agent}</div>${st.question ? `<div class="q">“${esc(st.question)}”</div>` : ''}<div class="thinking"><i></i><i></i><i></i></div>
+      <div class="foot">${portrait ? '<span>Double-tap: cancel</span>' : 'Double-tap: cancel'}</div>`;
+  } else {
+    const chips = (st.actions || []).slice(0, 3).map(a => `<span class="chip"><b>✓</b>${esc(a.label || a)}</span>`).join('');
+    card = `<div class="who">${agent}</div>${st.question ? `<div class="q">“${esc(st.question)}”</div>` : ''}
+      <div class="answer ${st.state === 'error' ? 'err' : ''}">${esc(st.answer || '')}</div>${chips ? `<div class="chips">${chips}</div>` : ''}
+      <div class="foot">${portrait ? '<span>Tap: ask again</span><span>Double-tap: close</span>' : 'Tap: ask again · Double-tap: close'}</div>`;
+  }
+  if (portrait) {
+    s.innerHTML = `<div class="wrap"><div class="figure"><img src="${st.portrait}" alt=""></div><div class="card">${card}</div></div>`;
+  } else {
+    const sticker = st.sticker || st.portrait || '';
+    s.innerHTML = `<div class="wrap">${sticker ? `<img class="sticker" src="${sticker}" alt="">` : ''}<div class="card">${card}</div></div>`;
+  }
+  if (st.state === 'listening') setWave(st.rms || 0.1);
+  // Fit long answers into the card.
+  const a = s.querySelector('.answer'); const c = s.querySelector('.card');
+  if (a && c) { let f = 1.2; const max = portrait ? c.parentElement.clientHeight * 0.96 : window.innerHeight * 0.62; while (c.scrollHeight > max && f > 0.7) { f -= 0.05; a.style.fontSize = f + 'em'; } }
+}
+// Called by the app: full state, or patches ({transcript}, {rms}).
+window.glanceUpdate = u => {
+  if (!u) return;
+  if (u.rms != null && Object.keys(u).length === 1) { st.rms = u.rms; setWave(u.rms); return; }
+  if (u.transcript != null && Object.keys(u).length === 1 && st.state === 'listening') {
+    st.transcript = u.transcript; const t = document.querySelector('.transcript');
+    if (t) { t.classList.toggle('empty', !u.transcript); t.innerHTML = `${esc(u.transcript || 'Listening…')}<span class="caret"></span>`; return; }
+  }
+  if (u.state && u.state !== st.state) bars = Array.from({ length: N_BARS }, () => 0.12 + Math.random() * 0.25);
+  st = { ...st, ...u }; render();
+};
+// Touchpad: single tap = Enter/click, double tap = Back (native) or two quick taps.
+function tap() {
+  const now = Date.now();
+  if (now - lastTap < 350) { clearTimeout(tapTimer); lastTap = 0; return B.action('double'); }
+  lastTap = now; tapTimer = setTimeout(() => B.action('tap'), 360);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tap(); }
+  else if (e.key === 'Escape' || e.key === 'Backspace') { e.preventDefault(); B.action('double'); }
+});
+document.addEventListener('click', tap);
+setInterval(() => { if (st.state === 'listening') setWave(st.rms ?? 0.08); }, 90);
+render();
+B.ready();
+</script>
+</body>
+</html>

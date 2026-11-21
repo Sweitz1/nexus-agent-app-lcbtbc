@@ -43,6 +43,13 @@ public class HaloAccessibilityService extends AccessibilityService {
 
     static volatile HaloAccessibilityService instance;
     static volatile Sink sink;
+    interface KeySink { void event(String type, String json); }
+    static volatile KeySink keySink;
+    /** Glance trigger: hold this key (from any app) to open the glance card. 0 = off. */
+    static volatile int glanceKey = 0;
+    static volatile boolean learnKey = false;
+    private long glanceDown = 0;
+    private boolean glanceFired = false;
     static volatile Pattern blocked = Pattern.compile("bank|wallet|paypal|venmo|squareup\\.cash|coinbase|binance|kraken|robinhood|chase|wellsfargo|bankofamerica|citi|capitalone|amex|bitwarden|lastpass|onepassword|1password|dashlane|keepass|authenticator|authy|\\.otp", Pattern.CASE_INSENSITIVE);
 
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -52,6 +59,29 @@ public class HaloAccessibilityService extends AccessibilityService {
     private TextView pill;
 
     @Override protected void onServiceConnected() { instance = this; }
+
+    /** Needs flagRequestFilterKeyEvents. Only the configured glance key is ever consumed. */
+    @Override
+    protected boolean onKeyEvent(android.view.KeyEvent e) {
+        KeySink ks = keySink;
+        if (learnKey && e.getAction() == android.view.KeyEvent.ACTION_DOWN && ks != null) {
+            learnKey = false;
+            ks.event("glance_key", "{\"code\":" + e.getKeyCode() + ",\"name\":\"" + android.view.KeyEvent.keyCodeToString(e.getKeyCode()) + "\"}");
+            return false;
+        }
+        if (glanceKey == 0 || e.getKeyCode() != glanceKey || ks == null) return false;
+        if (e.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+            if (e.getRepeatCount() == 0) { glanceDown = e.getEventTime(); glanceFired = false; }
+            else if (!glanceFired && e.getEventTime() - glanceDown >= 450) { glanceFired = true; ks.event("glance_trigger", "{\"source\":\"temple\"}"); }
+            return true;
+        }
+        if (e.getAction() == android.view.KeyEvent.ACTION_UP) {
+            if (!glanceFired && glanceDown != 0 && e.getEventTime() - glanceDown >= 450) ks.event("glance_trigger", "{\"source\":\"temple\"}");
+            glanceDown = 0; glanceFired = false;
+            return true;
+        }
+        return true;
+    }
 
     @Override public boolean onUnbind(android.content.Intent i) { instance = null; hidePill(); return super.onUnbind(i); }
 
