@@ -126,6 +126,8 @@
       assistant: { label: 'Personal assistant', make: () => ({ name: 'Nova', tags: ['assistant'], description: '{{char}} is a calm, organised personal assistant who keeps answers short and practical.', personality: 'concise, friendly, proactive', first_mes: 'Hi {{user}}. What can I take off your plate today?' }) },
       narrator: { label: 'Storyteller / game master', make: () => ({ name: 'The Narrator', tags: ['story'], description: '{{char}} runs an interactive story, plays every side character, and ends each reply with a choice or question for {{user}}.', scenario: 'A fantasy adventure that begins at a crossroads tavern.', first_mes: 'Rain drums on the roof of the Crossed Keys tavern. A hooded stranger slides into the seat across from you and sets down a sealed letter with your name on it. Do you open it?' }) },
     },
+    /** SFW image, or the mature variant in mature mode for characters confirmed as adults. */
+    img(c, k) { const mk = 'mature' + k[0].toUpperCase() + k.slice(1); return (c && CH.mature() && c.adult && c[mk]) ? c[mk] : ((c && c[k]) || ''); },
     persona: () => ({ name: st().personaName || 'User', description: st().personaDescription || '' }),
     macros(t, c) { return String(t || '').replace(/\{\{char\}\}|<BOT>/gi, c.name || 'Character').replace(/\{\{user\}\}|<USER>/gi, CH.persona().name); },
     fromCard(json) {
@@ -211,7 +213,7 @@
   $('#tabs [data-tab=chat]').after(tabBtn);
   const sec = document.createElement('section'); sec.id = 'view-chars'; sec.className = 'view'; $('main').appendChild(sec);
   extraTabs.chars = renderChars;
-  const av = c => c.avatar ? `<img src="${c.avatar}" style="width:2.6em;height:2.6em;min-width:0;border-radius:50%;object-fit:cover;flex:none" alt="">` : `<span style="width:2.6em;height:2.6em;min-width:0;border-radius:50%;background:#003b44;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex:none">${esc((c.name || '?').charAt(0))}</span>`;
+  const av = c => CH.img(c, 'avatar') ? `<img src="${CH.img(c, 'avatar')}" style="width:2.6em;height:2.6em;min-width:0;border-radius:50%;object-fit:cover;flex:none" alt="">` : `<span style="width:2.6em;height:2.6em;min-width:0;border-radius:50%;background:#003b44;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex:none">${esc((c.name || '?').charAt(0))}</span>`;
   const fmt = (t, c) => esc(CH.macros(t, c)).replace(/\*([^*\n]+)\*/g, '<i style="color:var(--dim)">$1</i>').replace(/\n/g, '<br>');
 
   function renderChars() {
@@ -265,9 +267,9 @@
     const f = (k, label, rows, ph = '') => `<label>${label}</label>` + (rows ? `<textarea data-k="${k}" rows="${rows}" placeholder="${esc(ph)}">${esc(c[k] || '')}</textarea>` : `<input data-k="${k}" value="${esc(c[k] || '')}" placeholder="${esc(ph)}">`);
     const box = $('#modalBox');
     box.innerHTML = `<h3>${id ? 'Edit ' + esc(c.name) : 'New character'}</h3>
-      <div class="row"><span class="nogrow" id="ceAv">${av(c)}</span><button class="small nogrow" id="cePic">Picture</button>
-        <span class="nogrow" id="ceStk">${c.sticker ? `<img src="${c.sticker}" style="height:2.6em" alt="">` : ''}</span><button class="small nogrow" id="ceSticker">Chibi sticker</button>
-        <span class="nogrow" id="cePor">${c.portrait ? `<img src="${c.portrait}" style="height:2.6em" alt="">` : ''}</span><button class="small nogrow" id="cePortrait">Full-body portrait</button></div>
+      <label>SFW images (shown everywhere)</label><div class="row" id="ceSfw"></div>
+      ${CH.mature() ? `<label>Mature images (18+, optional)</label><div class="row" id="ceMat"></div><p class="hint">Shown instead of the SFW set only in mature mode, and only for characters confirmed as adults below. Exported cards always use the SFW picture.</p>`
+        : '<p class="hint">Turn on mature mode (Characters → Enable mature…) to add an optional 18+ image set.</p>'}
       <p class="hint">Sticker and portrait appear on the glance card (Settings → Glance card). Transparent PNGs look best.</p>
       ${f('name', 'Name')}${f('description', 'Description', 4, 'Who they are, looks, background. {{char}} and {{user}} work here.')}${f('personality', 'Personality', 0, 'e.g. warm, sarcastic, loyal')}
       ${f('scenario', 'Scenario', 2)}${f('first_mes', 'First message', 3)}<label>Alternate greetings (one per line)</label><textarea id="ceAlt" rows="2">${esc((c.alternate_greetings || []).join('\n'))}</textarea>
@@ -279,18 +281,30 @@
       <label class="inline"><input type="checkbox" id="ceAdult" ${c.adult ? 'checked' : ''}>This character is an adult (required for mature)</label>
       <div class="row"><button class="primary nogrow" id="ceSave">Save</button>${id ? '<button class="nogrow" id="cePng">Export PNG</button><button class="nogrow" id="ceJson">Export JSON</button><button class="danger nogrow" id="ceDel">Delete</button>' : ''}<button class="nogrow" id="ceX">Cancel</button></div>`;
     $('#modal').classList.add('show'); const close = () => { $('#modal').classList.remove('show'); modalClose = null; }; modalClose = close;
-    let avatar = c.avatar || '', sticker = c.sticker || '', portrait = c.portrait || '';
-    const pickPng = async (maxH, show) => { const [f] = await pickFilesBytes('image/*'); if (!f) return ''; const d = await shrinkPng(f.bytes, /\.jpe?g$/i.test(f.name) ? 'image/jpeg' : 'image/png', maxH); $(show).innerHTML = d ? `<img src="${d}" style="height:2.6em" alt="">` : ''; return d; };
-    $('#ceSticker').onclick = async () => { const d = await pickPng(360, '#ceStk'); if (d) sticker = d; };
-    $('#cePortrait').onclick = async () => { const d = await pickPng(900, '#cePor'); if (d) portrait = d; };
-    $('#cePic').onclick = async () => { const [f] = await pickFilesBytes('image/*'); if (!f) return; avatar = await shrink(f.bytes, /\.png$/i.test(f.name) ? 'image/png' : 'image/jpeg'); $('#ceAv').innerHTML = av({ ...c, avatar }); };
+    // Image slots: SFW set (avatar / sticker / portrait) and an optional mature set.
+    const SLOTS = [{ k: 'avatar', label: 'Picture', maxH: 256, round: true }, { k: 'sticker', label: 'Chibi sticker', maxH: 360 }, { k: 'portrait', label: 'Full-body portrait', maxH: 900 }];
+    const imgs = {}; SLOTS.forEach(s => { imgs[s.k] = c[s.k] || ''; const mk = 'mature' + s.k[0].toUpperCase() + s.k.slice(1); imgs[mk] = c[mk] || ''; });
+    const drawSlots = (host, prefix) => {
+      const el = $(host); if (!el) return;
+      el.innerHTML = SLOTS.map(s => { const key = prefix ? prefix + s.k[0].toUpperCase() + s.k.slice(1) : s.k; const v = imgs[key];
+        return `<span class="nogrow" style="display:inline-flex;gap:.3em;align-items:center">${v ? `<img src="${v}" style="height:2.6em;${s.round ? 'width:2.6em;border-radius:50%;object-fit:cover' : ''}" alt="">` : ''}<button class="small" data-slot="${key}" data-max="${s.maxH}" data-round="${s.round ? 1 : ''}">${esc(s.label)}</button>${v ? `<button class="small" data-clear="${key}" aria-label="Remove">✕</button>` : ''}</span>`; }).join('');
+      $$('[data-slot]', el).forEach(b => b.onclick = async () => {
+        const [f] = await pickFilesBytes('image/*'); if (!f) return;
+        const mime = /\.jpe?g$/i.test(f.name) ? 'image/jpeg' : 'image/png';
+        const d = b.dataset.round ? await shrink(f.bytes, mime) : await shrinkPng(f.bytes, mime, Number(b.dataset.max));
+        if (d) { imgs[b.dataset.slot] = d; drawSlots(host, prefix); }
+      });
+      $$('[data-clear]', el).forEach(b => b.onclick = () => { imgs[b.dataset.clear] = ''; drawSlots(host, prefix); });
+    };
+    drawSlots('#ceSfw', ''); drawSlots('#ceMat', 'mature');
     $('#ceX').onclick = close;
     $('#ceSave').onclick = () => {
       const out = { ...c }; $$('[data-k]', box).forEach(el => out[el.dataset.k] = el.value.trim());
       out.alternate_greetings = $('#ceAlt').value.split('\n').map(x => x.trim()).filter(Boolean); out.tags = $('#ceTags').value.split(',').map(x => x.trim()).filter(Boolean);
-      out.mature = $('#ceMature').checked; out.adult = $('#ceAdult').checked; out.agentId = $('#ceAgent').value; out.avatar = avatar; out.sticker = sticker; out.portrait = portrait;
+      out.mature = $('#ceMature').checked; out.adult = $('#ceAdult').checked; out.agentId = $('#ceAgent').value; Object.assign(out, imgs);
       if (!out.name) return toast('Give the character a name');
       if (out.mature && !out.adult) return toast('Mature characters must be confirmed as adults');
+      if ((out.matureAvatar || out.matureSticker || out.maturePortrait) && !out.adult) return toast('Mature images need the character confirmed as an adult');
       CH.upsert(out); close(); toast(out.name + ' saved'); renderChars();
     };
     if (id) {

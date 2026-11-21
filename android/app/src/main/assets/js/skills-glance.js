@@ -21,9 +21,10 @@
     open() {
       const r = parseJSON(N.glanceShow(), {});
       if (r.error) { toast(r.error); return false; }
-      const c = G.character();
+      let c = G.character(); const C = window.HaloCharacters;
+      if (c && c.mature && !(C && C.mature())) c = null; // mature characters stay hidden in SFW mode
       G.base = { layout: st().glanceLayout, agent: G.agent().name, fontSize: Number(st().glanceFontSize) || 20,
-        sticker: c ? (c.sticker || c.avatar || '') : '', portrait: c ? (c.portrait || '') : '',
+        sticker: c ? (C.img(c, 'sticker') || C.img(c, 'avatar')) : '', portrait: c ? C.img(c, 'portrait') : '',
         anchor: st().glanceAnchor, invert: !!st().glanceInvert, ppd: Number(st().glancePpd) || 21,
         stereo: !!(N.getStereo && parseJSON(N.getStereo(), {}).active) };
       if (N.glancePose) N.glancePose(st().glanceAnchor === 'world');

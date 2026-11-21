@@ -81,6 +81,41 @@ Halo is a private, multi-model agent app for Android. It is built for the **RayN
   - Temple-touchpad / D-pad navigation: swipe to move focus, tap to select, back to close or stop.
   - Voice input, with the replies optionally read aloud.
 
+## Share Halo
+
+![Halo for RayNeo X3 Pro](docs/promo/halo-discord.png)
+
+| Glance card over a video | Both eyes on the X3 Pro | Community apps |
+|---|---|---|
+| ![Glance card](docs/promo/glance-preview.png) | ![Both eyes](docs/promo/x3-both-eyes-chibi.png) | ![Community apps](docs/promo/community-apps.png) |
+
+**Ready-to-paste Discord post.** Attach `docs/promo/halo-discord.png`, or paste the raw image link `https://raw.githubusercontent.com/Sweitz1/nexus-agent-app-lcbtbc/ccr-ea3a135c-yzo362/docs/promo/halo-discord.png`.
+
+```
+✨ **Halo for RayNeo X3 Pro** ✨
+A private AI agent + companion characters, right in your AR glasses 🕶️
+
+**🎭 Characters**
+• Make your own companion, assistant or storyteller, or start from a template
+• Upload your own character art (picture, chibi sticker, full-body portrait); SFW by default, optional 18+ set
+• Import & export **SillyTavern / Chub** character cards (PNG or JSON)
+• Talk hands-free 🎤 ("Hey Halo") and hear replies read aloud
+
+**👓 Glance card**
+• Ask without leaving your video: a see-through card with your character beside the answer
+• Pin it in place with head tracking · nod = yes, shake = no
+
+**🧠 Any model, your choice**
+• Claude · Venice · Grok · GPT · Gemini, or fully **local & private** with Ollama / LM Studio
+
+**🕶️ Made for the X3 Pro**
+• Both eyes, temple-touchpad gestures, shows up in the RayNeo launcher
+• Bluetooth pairing, and a **Community apps** tab to install other X3 Pro apps from their authors' GitHub releases
+
+📱 Android APK (+ Halo Glasses client) · 💻 Windows & Linux desktop apps
+🔗 https://github.com/Sweitz1/nexus-agent-app-lcbtbc/tree/ccr-ea3a135c-yzo362
+```
+
 ## Get the APK
 
 GitHub Actions builds everything on every push to this branch (**Actions → Build Release**):
@@ -509,6 +544,15 @@ These come from the companion pack (`js/skills-companion.js`).
 
 **Arkon knowledge hub (Settings):** connect a self-hosted [Arkon](https://github.com/nduckmink/arkon) wiki (see `arkon-local-setup.sh`). Agents can then use `arkon_search` and `arkon_read`. The password is kept in the app's secure key store.
 
+
+**Character images (SFW and mature sets).** In **Characters → Edit** you upload your own images for each character: a picture, a chibi sticker and a full-body portrait. That's the **SFW set**, used everywhere. In mature mode, a character confirmed as an adult can also have an optional **mature set**. It replaces the SFW images only while mature mode is on. Switch back to SFW and only the SFW images show, including on the glance card. Exported character cards always use the SFW picture.
+
+## Community apps
+
+The **Apps** tab lists RayNeo X3 Pro projects on GitHub, about 70 of them, with author, stars and license. Search for things like "browser", "game" or "bluetooth". **Install…** downloads the author's own released APK from their GitHub release, then Android asks you to confirm. Halo doesn't host, copy or check these apps, so only install ones you trust. Agents can use `community_apps` and `community_install`; installing asks you first.
+
+License badges: green means MIT/Apache-style; amber means GPL; "no license" means you can install the author's release, but its code can't be reused. If the glasses don't show the install prompt, install from a computer with `adb install -r -g <file>.apk`.
+
 ## Safety and privacy
 
 - The app has no analytics, no account and no backend. Requests go straight from the device to the providers you configure, or to your own LAN server.
@@ -552,6 +596,7 @@ android/
     js/skills-trust.js  Verizon Cloud, deepfake detection & provenance, consent-gated synthetic media of yourself
     js/skills-auto.js   AutoGPT: autonomous plan→act→review runs, budgets, scheduling, Auto tab, Agent Protocol client
     js/skills-bluetooth.js  Bluetooth list / scan / pair / forget (skills + Settings card)
+    js/skills-community.js  Apps tab: X3 Pro community apps from GitHub, install from their releases
     js/skills-glance.js     Glance card controller (overlay over other apps, triggers, settings)
     glance.html             The glance card page (listening / answer, chibi or portrait look)
     js/skills-companion.js  Characters tab (SillyTavern cards, companion chat, SFW/mature), GitHub SKILL.md libraries, Arkon
