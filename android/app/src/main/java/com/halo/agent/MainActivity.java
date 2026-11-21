@@ -57,6 +57,36 @@ public class MainActivity extends Activity {
     static volatile boolean glanceMode = false;
     private boolean pageReady = false;
     private final ArrayList<String> pendingEvents = new ArrayList<>();
+    private X3.Touchpad touchpad;
+
+    // ---- RayNeo X3 Pro: both eyes + temple touchpad ----
+    android.content.SharedPreferences displayPrefs() { return getSharedPreferences("halo_display", MODE_PRIVATE); }
+
+    @Override
+    protected void onPostCreate(Bundle b) {
+        super.onPostCreate(b);
+        android.content.SharedPreferences p = displayPrefs();
+        if (X3.stereoWanted(p.getString("stereo", "auto"))) X3.attachStereo(this, p.getString("method", "draw"));
+        touchpad = new X3.Touchpad(new X3.Touchpad.Listener() {
+            @Override public void onNext() { key(KeyEvent.KEYCODE_DPAD_DOWN); touch("next"); }
+            @Override public void onPrevious() { key(KeyEvent.KEYCODE_DPAD_UP); touch("previous"); }
+            @Override public void onSelect() { key(KeyEvent.KEYCODE_ENTER); touch("tap"); }
+            @Override public void onBack() { touch("double"); emit("back", "{}"); }
+        });
+    }
+
+    private void key(int code) {
+        webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, code));
+        webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, code));
+    }
+
+    private void touch(String g) { emit("touchpad", "{\"gesture\":\"" + g + "\"}"); }
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent e) {
+        if (touchpad != null && touchpad.onTouchEvent(e)) return true;
+        return super.dispatchTouchEvent(e);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

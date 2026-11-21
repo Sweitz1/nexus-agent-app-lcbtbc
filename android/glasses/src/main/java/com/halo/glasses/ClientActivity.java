@@ -151,6 +151,33 @@ public class ClientActivity extends Activity {
         return super.dispatchKeyEvent(e);
     }
 
+    // ---- RayNeo X3 Pro: both eyes + temple touchpad (see X3.java) ----
+    private X3.Touchpad touchpad;
+
+    @Override
+    protected void onPostCreate(Bundle b) {
+        super.onPostCreate(b);
+        android.content.SharedPreferences p = getSharedPreferences("halo_display", MODE_PRIVATE);
+        if (X3.stereoWanted(p.getString("stereo", "auto"))) X3.attachStereo(this, p.getString("method", "draw"));
+        touchpad = new X3.Touchpad(new X3.Touchpad.Listener() {
+            @Override public void onNext() { key(KeyEvent.KEYCODE_DPAD_DOWN); }
+            @Override public void onPrevious() { key(KeyEvent.KEYCODE_DPAD_UP); }
+            @Override public void onSelect() { key(KeyEvent.KEYCODE_ENTER); }
+            @Override public void onBack() { emit("back", "{}"); }
+        });
+    }
+
+    private void key(int code) {
+        web.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, code));
+        web.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, code));
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent e) {
+        if (touchpad != null && touchpad.onTouchEvent(e)) return true;
+        return super.dispatchTouchEvent(e);
+    }
+
     void exit() { runOnUiThread(() -> moveTaskToBack(true)); }
 
     @Override protected void onDestroy() { bridge.shutdown(); super.onDestroy(); }

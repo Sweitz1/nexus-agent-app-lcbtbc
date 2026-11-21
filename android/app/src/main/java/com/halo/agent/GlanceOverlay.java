@@ -50,6 +50,14 @@ class GlanceOverlay {
         web.setWebViewClient(new WebViewClient());
         web.setFocusable(true);
         web.setFocusableInTouchMode(true);
+        // X3 Pro temple touchpad: tap = done / ask again, double tap = cancel / close.
+        X3.Touchpad pad = new X3.Touchpad(new X3.Touchpad.Listener() {
+            @Override public void onNext() { }
+            @Override public void onPrevious() { }
+            @Override public void onSelect() { act.emit("glance", "{\"action\":\"tap\"}"); }
+            @Override public void onBack() { act.emit("glance", "{\"action\":\"double\"}"); }
+        });
+        web.setOnTouchListener((v, e) -> pad.onTouchEvent(e));
         // Temple touchpad: tap = Enter / D-pad center, double tap and swipe down = Back.
         web.setOnKeyListener((v, code, e) -> {
             if (e.getAction() != KeyEvent.ACTION_DOWN) return code == KeyEvent.KEYCODE_BACK;

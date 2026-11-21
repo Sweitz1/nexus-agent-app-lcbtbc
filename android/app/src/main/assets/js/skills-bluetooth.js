@@ -9,12 +9,18 @@
   const J = o => JSON.stringify(o, null, 1);
   const has = () => !!(N && N.btStatus);
 
+  const X3HELP = 'The permission prompt doesn\'t work on the X3 Pro: reinstall Halo with "adb install -g" to grant it.';
   async function perms() {
     needNative('Bluetooth');
     if (!N.btNeedsPermission()) return;
-    for (const p of ['android.permission.BLUETOOTH_SCAN', 'android.permission.BLUETOOTH_CONNECT'])
-      if (!(await ensurePermission(p))) throw new Error('Bluetooth permission was denied');
+    for (const p of ['android.permission.BLUETOOTH_SCAN', 'android.permission.BLUETOOTH_CONNECT']) {
+      if (N.hasPermission && N.hasPermission(p)) continue;
+      const ok = await Promise.race([ensurePermission(p), new Promise(r => setTimeout(() => r(null), 8000))]);
+      if (ok === null) throw new Error(x3() ? X3HELP : 'No answer from the permission prompt');
+      if (!ok) throw new Error('Bluetooth permission was denied' + (x3() ? '. ' + X3HELP : ''));
+    }
   }
+  const x3 = () => !!(N && N.isX3 && N.isX3());
   const BT = {
     async status() { await perms(); const s = parseJSON(N.btStatus(), {}); if (s.error) throw new Error(s.error); return s; },
     async scan(seconds = 10) { await perms(); return (await nativeAsync('btScan', Math.round(Math.max(3, Math.min(30, seconds)) * 1000))).devices || []; },
@@ -42,6 +48,22 @@
       run: async a => J(await BT.unpair(await resolve(a.device))) },
   );
 
+  /* ---------------------------------------------------------------- Glasses display (X3 Pro) */
+  const _rs0 = renderSettings;
+  window.renderSettings = renderSettings = function () {
+    _rs0();
+    const v = $('#view-settings'); if (!v || !N || !N.getStereo) return;
+    const s = parseJSON(N.getStereo(), {});
+    const card = document.createElement('div'); card.className = 'card';
+    card.innerHTML = `<h3>Glasses display</h3>
+      <p class="hint">${s.x3 ? 'RayNeo X3 Pro detected: its screen is two 640×480 eyes, so Halo draws itself in both.' : 'No X3 Pro detected. Turn this on only for glasses that show the left and right halves of the screen to each eye.'}</p>
+      <div class="row"><div><label>Both eyes</label><select id="dsMode"><option value="auto" ${s.mode === 'auto' ? 'selected' : ''}>Automatic (X3 Pro only)</option><option value="on" ${s.mode === 'on' ? 'selected' : ''}>On</option><option value="off" ${s.mode === 'off' ? 'selected' : ''}>Off</option></select></div>
+        <div><label>Right-eye copy</label><select id="dsMethod"><option value="draw" ${s.method !== 'copy' ? 'selected' : ''}>Live redraw (lighter)</option><option value="copy" ${s.method === 'copy' ? 'selected' : ''}>Frame copy (if the right eye is blank)</option></select></div></div>
+      <div class="row"><span class="hint">${s.active ? '✓ Showing in both eyes' : 'Single screen'}</span><button class="nogrow" id="dsApply">Apply (restarts the screen)</button></div>`;
+    v.appendChild(card);
+    $('#dsApply', card).onclick = () => N.setStereo($('#dsMode', card).value, $('#dsMethod', card).value);
+  };
+
   /* ---------------------------------------------------------------- Settings card */
   const _renderSettings = renderSettings;
   window.renderSettings = renderSettings = function () {
@@ -49,6 +71,9 @@
     const v = $('#view-settings'); if (!v) return;
     const card = document.createElement('div'); card.className = 'card';
     card.innerHTML = `<h3>Bluetooth devices</h3><p class="hint">Pair headphones, a keyboard, a game controller or your phone with the glasses.</p>
+      ${x3() ? `<p class="hint">On the X3 Pro the launcher only accepts pairing from the RayNeo phone. To allow other devices, run once from a computer:</p>
+        <code class="block">adb shell settings put global open_multi_paired_devices 1\nadb shell am force-stop com.ffalconxr.mercury.launcher</code>
+        <p class="hint">Keyboards, mice and controllers work after pairing. Headphones pair, but the glasses can't send audio to them. Devices that ask you to type a code may not pair. (Findings from the x3bluetooth project.)</p>` : ''}
       <div id="btBody" class="hint">${has() ? 'Tap Refresh.' : 'Android app only.'}</div>
       <div class="row"><button class="nogrow" id="btRefresh">Refresh</button><button class="primary nogrow" id="btScan">Scan for devices</button><button class="nogrow" id="btSet">Bluetooth settings</button></div>`;
     v.appendChild(card);

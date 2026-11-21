@@ -53,6 +53,8 @@ html,body{height:100%;background:transparent;color:var(--text);font:600 var(--fs
 .portrait .hint{margin-left:0;white-space:normal}
 .portrait .foot span{display:block}
 #stage .wrap{transition:transform 70ms linear;will-change:transform}
+/* RayNeo X3 Pro: the 1280x480 screen is two 640x480 eyes; draw the card in each. */
+.eye{position:absolute;top:0;bottom:0;width:50%;overflow:hidden}
 </style>
 </head>
 <body>
@@ -65,9 +67,9 @@ let st = { state: 'hidden', layout: 'chibi' }, bars = [], lastTap = 0, tapTimer 
 const N_BARS = 34;
 function waveHtml() { return `<div class="wave">${Array.from({ length: N_BARS }, () => '<i></i>').join('')}</div>`; }
 function setWave(level) {
-  const w = document.querySelectorAll('.wave i'); if (!w.length) return;
+  const waves = document.querySelectorAll('.wave'); if (!waves.length) return;
   bars.push(Math.max(0, Math.min(1, level))); while (bars.length > N_BARS) bars.shift();
-  w.forEach((el, i) => { const v = bars[bars.length - N_BARS + i] ?? 0.05; const jitter = 0.55 + 0.45 * Math.abs(Math.sin(i * 1.7 + Date.now() / 160)); el.style.height = Math.max(12, Math.round((0.12 + v * jitter) * 100)) + '%'; });
+  waves.forEach(wave => wave.querySelectorAll('i').forEach((el, i) => { const v = bars[bars.length - N_BARS + i] ?? 0.05; const jitter = 0.55 + 0.45 * Math.abs(Math.sin(i * 1.7 + Date.now() / 160)); el.style.height = Math.max(12, Math.round((0.12 + v * jitter) * 100)) + '%'; }));
 }
 function render() {
   const s = document.getElementById('stage');
@@ -91,25 +93,26 @@ function render() {
       <div class="answer ${st.state === 'error' ? 'err' : ''}">${esc(st.answer || '')}</div>${chips ? `<div class="chips">${chips}</div>` : ''}
       <div class="foot">${portrait ? '<span>Tap: ask again</span><span>Double-tap: close</span>' : 'Tap: ask again · Double-tap: close'}</div>`;
   }
+  let html;
   if (portrait) {
-    s.innerHTML = `<div class="wrap"><div class="figure"><img src="${st.portrait}" alt=""></div><div class="card">${card}</div></div>`;
+    html = `<div class="wrap"><div class="figure"><img src="${st.portrait}" alt=""></div><div class="card">${card}</div></div>`;
   } else {
     const sticker = st.sticker || st.portrait || '';
-    s.innerHTML = `<div class="wrap">${sticker ? `<img class="sticker" src="${sticker}" alt="">` : ''}<div class="card">${card}</div></div>`;
+    html = `<div class="wrap">${sticker ? `<img class="sticker" src="${sticker}" alt="">` : ''}<div class="card">${card}</div></div>`;
   }
+  s.innerHTML = st.stereo ? `<div class="eye" style="left:0">${html}</div><div class="eye" style="left:50%">${html}</div>` : html;
   if (st.state === 'listening') setWave(st.rms || 0.1);
-  const w = s.querySelector('.wrap'); if (w && st.anchor === 'world') w.style.transform = poseT;
+  if (st.anchor === 'world') s.querySelectorAll('.wrap').forEach(w => w.style.transform = poseT);
   // Fit long answers into the card.
-  const a = s.querySelector('.answer'); const c = s.querySelector('.card');
-  if (a && c) { let f = 1.2; const max = portrait ? c.parentElement.clientHeight * 0.96 : window.innerHeight * 0.62; while (c.scrollHeight > max && f > 0.7) { f -= 0.05; a.style.fontSize = f + 'em'; } }
+  s.querySelectorAll('.card').forEach(c => { const a = c.querySelector('.answer'); if (!a) return; let f = 1.2; const max = portrait ? c.parentElement.clientHeight * 0.96 : window.innerHeight * 0.62; while (c.scrollHeight > max && f > 0.7) { f -= 0.05; a.style.fontSize = f + 'em'; } });
 }
 // Called by the app: full state, or patches ({transcript}, {rms}).
 window.glanceUpdate = u => {
   if (!u) return;
   if (u.rms != null && Object.keys(u).length === 1) { st.rms = u.rms; setWave(u.rms); return; }
   if (u.transcript != null && Object.keys(u).length === 1 && st.state === 'listening') {
-    st.transcript = u.transcript; const t = document.querySelector('.transcript');
-    if (t) { t.classList.toggle('empty', !u.transcript); t.innerHTML = `${esc(u.transcript || 'Listening…')}<span class="caret"></span>`; return; }
+    st.transcript = u.transcript; const ts = document.querySelectorAll('.transcript');
+    if (ts.length) { ts.forEach(t => { t.classList.toggle('empty', !u.transcript); t.innerHTML = `${esc(u.transcript || 'Listening…')}<span class="caret"></span>`; }); return; }
   }
   if (u.state && st.state === 'hidden') { pose0 = null; poseT = ''; }
   if (u.anchor && u.anchor !== 'world') { pose0 = null; poseT = ''; }
@@ -128,7 +131,7 @@ window.glancePose = (yaw, pitch) => {
   if (Math.abs(dp) > Rp) { pose0.p += (dp - Math.sign(dp) * Rp) * 0.15; dp = pitch - pose0.p; }
   const k = Number(st.ppd) || 21, sgn = st.invert ? -1 : 1;
   poseT = `translate(${(-sgn * dy * k).toFixed(1)}px, ${(sgn * dp * k).toFixed(1)}px)`;
-  const w = document.querySelector('#stage .wrap'); if (w) w.style.transform = poseT;
+  document.querySelectorAll('#stage .wrap').forEach(w => w.style.transform = poseT);
 };
 // Touchpad: single tap = Enter/click, double tap = Back (native) or two quick taps.
 function tap() {

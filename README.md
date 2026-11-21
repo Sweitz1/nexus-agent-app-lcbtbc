@@ -107,24 +107,36 @@ Without a key, each build signs the app with a one-off key, so a new build won't
 
 ## Install on RayNeo X3 Pro
 
-The X3 Pro runs an Android-based OS, so the APK installs over ADB like on any other Android device.
+The X3 Pro runs an Android-based OS, so the APK installs over ADB. RayNeo has no store for third-party apps.
 
-1. **Turn on developer mode and USB debugging on the glasses.** Menu names vary by firmware. Usually it is *Settings → About → tap the build number 7 times*, then *Developer options → USB debugging*. Some firmware has this option in the RayNeo phone companion app instead.
-2. **Connect the glasses to a computer** with a USB-C cable and accept the debugging prompt on the glasses.
-3. **Install the APK:**
+1. **Turn on ADB on the glasses** in the glasses settings. On Windows, connecting may need a USB driver swap with Zadig, as described in community guides.
+2. **Connect the glasses** to a computer with a USB-C cable and accept the debugging prompt.
+3. **Install with permissions granted up front.** The glasses can't show Android's permission prompts, so `-g` grants them at install:
    ```bash
-   adb devices                      # the glasses should be listed
-   adb install -r halo.apk
-   adb shell monkey -p com.halo.agent 1   # launches the app
+   adb devices                          # the glasses should be listed
+   adb install -r -g halo-2.2.0.apk
+   adb shell monkey -p com.halo.agent 1 # launches Halo
    ```
 4. **Optional: install wirelessly** after the first USB connection:
    ```bash
    adb tcpip 5555
    adb connect <glasses-ip>:5555
-   adb install -r halo.apk
+   adb install -r -g halo-2.2.0.apk
    ```
 
-If the app doesn't appear in the RayNeo launcher, open it with the `monkey` command above or with an app-list or launcher app.
+Halo carries RayNeo's `com.rayneo.mercury.app` flag, so it appears in the glasses launcher.
+
+**On the glasses:**
+- **Both eyes:** the X3 Pro screen is two 640×480 eyes, and Halo draws itself in both automatically. If the right eye is blank on your firmware, go to **Settings → Glasses display → Right-eye copy → Frame copy**.
+- **Right temple touchpad:** swipe to move, tap to select, double-tap to go back. The left temple belongs to the system, for volume and brightness.
+- **Long hold:** holding still on the touchpad for about 700 ms opens RayNeo's quick menu. Apps can't change that, so Halo doesn't use long-press.
+
+**Bluetooth on the X3 Pro:** the launcher only accepts pairing from the RayNeo phone. To pair keyboards, mice or controllers, run this once from a computer:
+```bash
+adb shell settings put global open_multi_paired_devices 1
+adb shell am force-stop com.ffalconxr.mercury.launcher
+```
+To undo it, run `adb shell settings delete global open_multi_paired_devices`, then the same `force-stop`. Headphones pair, but the glasses can't send audio to them. These findings come from [x3bluetooth](https://github.com/Dun-John/x3bluetooth). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 On a phone, copy the APK to the phone, open it, and allow "install unknown apps" when asked.
 

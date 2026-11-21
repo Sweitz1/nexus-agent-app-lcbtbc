@@ -24,7 +24,8 @@
       const c = G.character();
       G.base = { layout: st().glanceLayout, agent: G.agent().name, fontSize: Number(st().glanceFontSize) || 20,
         sticker: c ? (c.sticker || c.avatar || '') : '', portrait: c ? (c.portrait || '') : '',
-        anchor: st().glanceAnchor, invert: !!st().glanceInvert, ppd: Number(st().glancePpd) || 21 };
+        anchor: st().glanceAnchor, invert: !!st().glanceInvert, ppd: Number(st().glancePpd) || 21,
+        stereo: !!(N.getStereo && parseJSON(N.getStereo(), {}).active) };
       if (N.glancePose) N.glancePose(st().glanceAnchor === 'world');
       return true;
     },
@@ -144,7 +145,8 @@
       <label class="inline"><input type="checkbox" id="glInv" ${st().glanceInvert ? 'checked' : ''}>Reverse motion (if the pinned card moves the wrong way)</label>
       <div class="row"><div><label>Text size (px)</label><input id="glFs" type="number" min="14" max="34" value="${st().glanceFontSize}"></div><div><label>Close answer after (s, 0 = never)</label><input id="glClose" type="number" min="0" max="300" value="${st().glanceAutoClose}"></div></div>
       <label class="inline"><input type="checkbox" id="glSpeak" ${st().glanceSpeak ? 'checked' : ''}>Read answers aloud</label>
-      <label>Temple hold (from any app)</label>
+      ${N && N.isX3 && N.isX3() ? '<p class="hint">On the X3 Pro, holding the temple opens RayNeo\'s quick menu and its touchpad isn\'t a key, so over other apps use <b>"Hey Halo"</b> or a Bluetooth keyboard/remote button (Learn works for those).</p>' : ''}
+      <label>Trigger button (from any app)</label>
       <div class="row"><span class="hint">${st().glanceKey ? 'Set: ' + esc(st().glanceKeyName) : 'Not set'}${screen ? '' : ' · needs Screen control (accessibility) on'}</span><button class="nogrow" id="glLearn">${st().glanceKey ? 'Change' : 'Learn'}</button>${st().glanceKey ? '<button class="nogrow" id="glKeyOff">Clear</button>' : ''}</div>
       <p class="hint">Pick a character's chibi sticker and full-body portrait in Characters → Edit. Transparent PNGs look best.</p>
       <div class="row"><button class="primary nogrow" id="glPreview">Preview</button></div>`;

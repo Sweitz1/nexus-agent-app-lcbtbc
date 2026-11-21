@@ -1259,6 +1259,24 @@ public class NativeBridge {
     @JavascriptInterface
     public String btUnpair(String address) { return bt().unpair(address); }
 
+    // ------------------------------------------------------------------ RayNeo X3 Pro display
+    @JavascriptInterface
+    public boolean isX3() { return X3.isX3(); }
+
+    @JavascriptInterface
+    public String getStereo() {
+        android.content.SharedPreferences p = activity.displayPrefs();
+        String mode = p.getString("stereo", "auto");
+        return "{\"mode\":\"" + mode + "\",\"method\":\"" + p.getString("method", "draw") + "\",\"active\":" + X3.stereoWanted(mode) + ",\"x3\":" + X3.isX3() + "}";
+    }
+
+    /** mode auto|on|off, method draw|copy. Restarts the screen to apply. */
+    @JavascriptInterface
+    public void setStereo(String mode, String method) {
+        activity.displayPrefs().edit().putString("stereo", mode).putString("method", method).apply();
+        activity.runOnUiThread(activity::recreate);
+    }
+
     /** While on, the wake word opens the glance card instead of bringing the app to the front. */
     @JavascriptInterface
     public void setGlanceMode(boolean on) { MainActivity.glanceMode = on; }
