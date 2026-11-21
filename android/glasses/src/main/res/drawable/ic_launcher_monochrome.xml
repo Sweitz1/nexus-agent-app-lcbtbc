@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vela app icon (generated; same geometry as docs/vela-icon.svg). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:pivotX="54" android:pivotY="47" android:scaleX="0.77" android:scaleY="0.77" android:translateY="6">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M31,29 L45,29 Q49.5,51 54,69 L54,82 Q43.5,58 31,29 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M77,29 L63,29 Q58.5,51 54,69 L54,82 Q64.5,58 77,29 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M54,12 Q55.4,19.6 63,21 Q55.4,22.4 54,30 Q52.6,22.4 45,21 Q52.6,19.6 54,12 Z" />
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="3" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M30,86 Q54,78 78,86" />
+    </group>
+</vector>

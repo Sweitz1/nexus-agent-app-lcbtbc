@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/vela-icon-512.png" width="128" alt="Vela icon"> &nbsp; <img src="docs/vela-glasses-icon-512.png" width="128" alt="Vela Glasses icon"></p>
+
 # Vela: multi-agent AI for RayNeo X3 Pro (Android APK)
 
 Vela is a private, multi-model agent app for Android. It is built for the **RayNeo X3 Pro** AR glasses and also runs on any Android 8+ phone or tablet.
