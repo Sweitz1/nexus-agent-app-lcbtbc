@@ -98,8 +98,8 @@ export default function SettingsScreen() {
             <UserIcon size={28} color={COLORS.primary} />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>Nexus User</Text>
-            <Text style={styles.profileEmail}>user@nexusagent.ai</Text>
+            <Text style={styles.profileName}>Halo User</Text>
+            <Text style={styles.profileEmail}>user@haloagent.ai</Text>
           </View>
           <ChevronRightIcon size={16} color={COLORS.textMuted} />
         </TouchableOpacity>
@@ -191,7 +191,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <Text style={styles.version}>Nexus Agent v1.0.0</Text>
+        <Text style={styles.version}>Halo v1.0.0</Text>
       </ScrollView>
     </View>
   );

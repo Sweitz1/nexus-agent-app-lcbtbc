@@ -1,19 +1,19 @@
-# Nexus Agent — Core App Metadata
+# Halo — Core App Metadata
 
-> **Note:** `app.json` was not present in the project root at the time this file was generated. Bundle ID and package name values below are placeholders derived from the app's deep-link scheme (`nexusagent://`). Replace them with the actual values from your `app.json` before submission.
+> **Note:** `app.json` was not present in the project root at the time this file was generated. Bundle ID and package name values below are placeholders derived from the app's deep-link scheme (`haloagent://`). Replace them with the actual values from your `app.json` before submission.
 
 ## Metadata Table
 
 | Field | iOS Value | Android Value |
 |-------|-----------|---------------|
-| **App name** | Nexus Agent | Nexus Agent |
+| **App name** | Halo | Halo |
 | **Subtitle / Short title** | Autonomous AI agents | *(not applicable — use short description)* |
 | **Subtitle character count** | 20 / 30 ✓ | — |
 | **Short description** | — | Run autonomous AI agents with custom tools, APIs, and full safety controls. |
 | **Short description char count** | — | 74 / 80 ✓ |
-| **Bundle ID** | `app.nexusagent` *(replace with value from app.json → `ios.bundleIdentifier`)* | — |
-| **Package name** | — | `app.nexusagent` *(replace with value from app.json → `android.package`)* |
-| **Deep-link scheme** | `nexusagent://` | `nexusagent://` |
+| **Bundle ID** | `app.haloagent` *(replace with value from app.json → `ios.bundleIdentifier`)* | — |
+| **Package name** | — | `app.haloagent` *(replace with value from app.json → `android.package`)* |
+| **Deep-link scheme** | `haloagent://` | `haloagent://` |
 | **Primary category** | Productivity | Tools |
 | **Secondary category** | Developer Tools | Productivity |
 | **Content rating** | 12+ | Teen (13+) |
@@ -24,7 +24,7 @@
 | **Minimum OS version** | iOS 16.0 | Android 8.0 (API 26) |
 | **Languages** | English (US) | English (US) |
 | **Version (initial)** | 1.0.0 | 1.0.0 |
-| **Copyright** | © 2025 Nexus Agent | — |
+| **Copyright** | © 2025 Halo | — |
 
 ## Age Rating Questionnaire Guidance
 
@@ -69,8 +69,8 @@ Expected result: **Teen (13+)**
 
 | Store | URL |
 |-------|-----|
-| App Store | `https://apps.apple.com/app/nexus-agent/idXXXXXXXXX` |
-| Google Play | `https://play.google.com/store/apps/details?id=app.nexusagent` |
+| App Store | `https://apps.apple.com/app/halo/idXXXXXXXXX` |
+| Google Play | `https://play.google.com/store/apps/details?id=app.haloagent` |
 | Privacy Policy | *(host and insert URL)* |
 | Terms of Service | *(host and insert URL)* |
 | Support | *(host and insert URL)* |

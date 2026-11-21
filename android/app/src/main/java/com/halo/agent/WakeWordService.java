@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -28,7 +28,7 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
- * Offline "Hey Nexus" wake word (Vosk). Listens with a tiny phrase grammar, so audio never
+ * Offline "Hey Halo" wake word (Vosk). Listens with a tiny phrase grammar, so audio never
  * leaves the device. After the wake phrase it either transcribes the command offline
  * (commandMode "vosk") or hands the microphone to the system recognizer ("system").
  * Runs as a microphone foreground service so it keeps listening with the screen off.
@@ -77,8 +77,8 @@ public class WakeWordService extends Service implements RecognitionListener {
                 grammar = g.toString();
                 trigger = Pattern.compile("(^|\\s)(" + re + ")(\\s|$)");
             } catch (Exception e) {
-                grammar = "[\"hey nexus\", \"[unk]\"]";
-                trigger = Pattern.compile("hey nexus");
+                grammar = "[\"hey halo\", \"[unk]\"]";
+                trigger = Pattern.compile("hey halo");
             }
             new Thread(() -> {
                 try {
@@ -99,11 +99,11 @@ public class WakeWordService extends Service implements RecognitionListener {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26) {
             nm.createNotificationChannel(new NotificationChannel(CH_RUN, "Wake word listening", NotificationManager.IMPORTANCE_LOW));
-            nm.createNotificationChannel(new NotificationChannel(CH_ALERT, "Hey Nexus", NotificationManager.IMPORTANCE_HIGH));
+            nm.createNotificationChannel(new NotificationChannel(CH_ALERT, "Hey Halo", NotificationManager.IMPORTANCE_HIGH));
         }
         PendingIntent open = PendingIntent.getActivity(this, 1, new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification n = builder(CH_RUN).setContentTitle("Listening for \"Hey Nexus\"")
+        Notification n = builder(CH_RUN).setContentTitle("Listening for \"Hey Halo\"")
                 .setContentText("Offline wake word · tap to open").setSmallIcon(android.R.drawable.ic_btn_speak_now)
                 .setContentIntent(open).setOngoing(true).build();
         if (Build.VERSION.SDK_INT >= 30) startForeground(7, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
@@ -176,7 +176,7 @@ public class WakeWordService extends Service implements RecognitionListener {
         }
         // Background activity starts are blocked: offer a tap-to-open alert instead.
         PendingIntent pi = PendingIntent.getActivity(this, 2, i.putExtra("wake", true), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification n = builder(CH_ALERT).setContentTitle("Hey Nexus").setContentText("Listening… (tap to open)").setSmallIcon(android.R.drawable.ic_btn_speak_now)
+        Notification n = builder(CH_ALERT).setContentTitle("Hey Halo").setContentText("Listening… (tap to open)").setSmallIcon(android.R.drawable.ic_btn_speak_now)
                 .setContentIntent(pi).setAutoCancel(true).setTimeoutAfter(15000).setCategory(Notification.CATEGORY_MESSAGE).build();
         ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(8, n);
     }

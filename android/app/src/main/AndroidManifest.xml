@@ -16,7 +16,7 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <!-- "Hey Nexus" wake word: microphone foreground service, its notification, and
+    <!-- "Hey Halo" wake word: microphone foreground service, its notification, and
          (optional, user-granted) bringing the app to the front when the phrase is heard. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
@@ -96,7 +96,7 @@
     </queries>
 
     <application
-        android:label="Nexus Agent"
+        android:label="Halo"
         android:icon="@drawable/ic_launcher"
         android:roundIcon="@drawable/ic_launcher"
         android:allowBackup="false"
@@ -131,20 +131,20 @@
                 <data android:mimeType="application/pdf" />
                 <data android:mimeType="application/zip" />
             </intent-filter>
-            <!-- Deep link: nexusagent://ask?q=hello&agent=Venice -->
+            <!-- Deep link: haloagent://ask?q=hello&agent=Venice -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="nexusagent" />
+                <data android:scheme="haloagent" />
             </intent-filter>
         </activity>
 
         <!-- Optional: lets agents read/announce notifications after the user grants access. -->
         <service
-            android:name=".NexusNotificationListener"
+            android:name=".HaloNotificationListener"
             android:exported="true"
-            android:label="Nexus Agent"
+            android:label="Halo"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
@@ -153,9 +153,9 @@
 
         <!-- Optional screen control for agents; the user enables it in Accessibility settings. -->
         <service
-            android:name=".NexusAccessibilityService"
+            android:name=".HaloAccessibilityService"
             android:exported="true"
-            android:label="Nexus Agent screen control"
+            android:label="Halo screen control"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
@@ -171,7 +171,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Local server for the user's own Nexus Glasses client and webhooks while the app is in the background" />
+                android:value="Local server for the user's own Halo Glasses client and webhooks while the app is in the background" />
         </service>
 
         <service
@@ -181,7 +181,7 @@
 
         <provider
             android:name=".WorkspaceProvider"
-            android:authorities="com.nexus.agent.files"
+            android:authorities="com.halo.agent.files"
             android:exported="false"
             android:grantUriPermissions="true" />
 

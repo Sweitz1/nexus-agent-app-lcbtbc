@@ -49,7 +49,7 @@ export async function githubRead(userId: string, params: any, permissions: any, 
   const pat = decrypt(account.patEncrypted);
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
   const response = await fetch(apiUrl, {
-    headers: { Authorization: `token ${pat}`, 'User-Agent': 'nexus-agent' },
+    headers: { Authorization: `token ${pat}`, 'User-Agent': 'halo' },
   });
   if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
 
@@ -72,7 +72,7 @@ export async function githubList(userId: string, params: any, permissions: any, 
   const pat = decrypt(account.patEncrypted);
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`;
   const response = await fetch(apiUrl, {
-    headers: { Authorization: `token ${pat}`, 'User-Agent': 'nexus-agent' },
+    headers: { Authorization: `token ${pat}`, 'User-Agent': 'halo' },
   });
   if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
 
@@ -100,7 +100,7 @@ export async function githubWrite(userId: string, params: any, permissions: any,
   try {
     const getRes = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`,
-      { headers: { Authorization: `token ${pat}`, 'User-Agent': 'nexus-agent' } }
+      { headers: { Authorization: `token ${pat}`, 'User-Agent': 'halo' } }
     );
     if (getRes.ok) {
       const existing = await getRes.json() as any;
@@ -121,7 +121,7 @@ export async function githubWrite(userId: string, params: any, permissions: any,
       method: 'PUT',
       headers: {
         Authorization: `token ${pat}`,
-        'User-Agent': 'nexus-agent',
+        'User-Agent': 'halo',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),

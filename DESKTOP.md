@@ -1,8 +1,8 @@
 > **The Android APK is now the full RayNeo X3 Pro app** (`android/`, documented in [README.md](README.md)). It includes everything below: characters, SillyTavern cards, mature/SFW content, GitHub skill libraries, Arkon and the glasses tools, plus Google services, music, shopping, the phone server and the glasses client. This page still covers the **desktop app** (Windows and Linux), which is built from `dist/index.html`, and the Linux setup scripts.
 
-# Nexus Agent — Android APK
+# Halo — Android APK
 
-**Nexus Agent** is a self-contained AutoGPT-style AI agent app that runs entirely on your Android device. It connects directly to OpenAI, Anthropic (Claude), Google Gemini, **Venice AI** (private, no-log), or a **local LLM** running on your phone or LAN — no backend server required. Everything runs in your browser engine on-device, with all data stored locally.
+**Halo** is a self-contained AutoGPT-style AI agent app that runs entirely on your Android device. It connects directly to OpenAI, Anthropic (Claude), Google Gemini, **Venice AI** (private, no-log), or a **local LLM** running on your phone or LAN — no backend server required. Everything runs in your browser engine on-device, with all data stored locally.
 
 ---
 
@@ -14,8 +14,8 @@
 
 ### Steps
 
-1. **Download** the `nexus-agent-debug.apk` from the GitHub Actions artifacts:
-   - Go to the repository → **Actions** → **Build Android APK** → latest successful run → **Artifacts** → download `nexus-agent-debug`
+1. **Download** the `halo-debug.apk` from the GitHub Actions artifacts:
+   - Go to the repository → **Actions** → **Build Android APK** → latest successful run → **Artifacts** → download `halo-debug`
 
 2. **Enable Unknown Sources** on your device:
    - Go to **Settings → Security** (or **Apps & Notifications → Special app access** on Android 8+)
@@ -34,7 +34,7 @@
 
 ### Add Your API Keys
 
-1. Open Nexus Agent
+1. Open Halo
 2. Tap **Providers** in the sidebar
 3. Enter one or more API keys:
    - **OpenAI** — get from [platform.openai.com](https://platform.openai.com)
@@ -51,10 +51,10 @@
 
 ## Linux desktop: fully local, no API keys
 
-Download the `nexus-agent-linux` artifact from **Actions → Build Release**. It contains:
+Download the `halo-linux` artifact from **Actions → Build Release**. It contains:
 
-- `Nexus Agent-1.4.0.AppImage`: run anywhere (`chmod +x` it, then double-click)
-- `nexus-agent_1.4.0_amd64.deb`: `sudo apt install ./nexus-agent_1.4.0_amd64.deb`
+- `Halo-1.4.0.AppImage`: run anywhere (`chmod +x` it, then double-click)
+- `halo_1.4.0_amd64.deb`: `sudo apt install ./halo_1.4.0_amd64.deb`
 - `linux-local-ai-setup.sh`: installs Ollama and pulls models sized for your machine
 
 ```bash
@@ -84,7 +84,7 @@ With no API keys set, the app uses **Local LLM** by default. Open Providers → 
 **Characters** (♡ in the menu) is a role-play and companion chat, separate from agent tasks. It uses your default provider; Local LLM keeps every chat on your own hardware.
 
 - **Create** characters from scratch or from a template: *Companion (girlfriend / boyfriend / partner)*, *Personal assistant* or *Storyteller / game master*. Fields follow the SillyTavern card format: description, personality, scenario, first message, alternate greetings, example dialogue, system prompt and post-history instructions. `{{char}}` and `{{user}}` work everywhere.
-- **Import** SillyTavern or Chub cards (`.png` with an embedded card, or `.json`; V1, V2 and V3). **Export** any character as a SillyTavern-compatible PNG or JSON (Characters → Edit → Export). On Android, exports go to `Downloads/NexusAgent`.
+- **Import** SillyTavern or Chub cards (`.png` with an embedded card, or `.json`; V1, V2 and V3). **Export** any character as a SillyTavern-compatible PNG or JSON (Characters → Edit → Export). On Android, exports go to `Downloads/Halo`.
 - **Chat**: regenerate, undo, cycle alternate greetings, start a new chat. Each character keeps its own history on the device. 🔊 reads replies aloud; 🎤 (Android) takes voice input.
 - **You**: set your name and an optional short description; characters see it as `{{user}}`.
 
@@ -137,8 +137,8 @@ The **Glasses & Dev** page adds matching controls:
 **Install with ADB:**
 ```bash
 adb devices
-adb install -r nexus-agent-1.4.0.apk
-adb shell monkey -p com.nexusagent.app 1
+adb install -r halo-1.4.0.apk
+adb shell monkey -p com.halo.app 1
 adb logcat -s chromium:V      # page console output while developing
 ```
 Enable developer mode and USB debugging on the glasses first. On most firmware: *Settings → About → tap the build number 7 times*, then *Developer options → USB debugging*. Menu names vary by firmware.
@@ -176,11 +176,11 @@ What it does:
 - Makes Ollama reachable from Docker, with flash attention and a smaller long-context memory footprint.
 - Creates local models under the names Arkon expects: `gpt-4o-mini` (default `qwen3:30b`, 128k context) and `text-embedding-3-small` (default `qwen3-embedding:4b` at 1536 dimensions). Override them with `LLM_BASE`, `LLM_CTX` and `EMBED_BASE`.
 - Generates random passwords and secrets, keeps Arkon's ports on `127.0.0.1`, starts the 7 containers, switches Arkon to the local models and tests them.
-- Saves the admin login to `~/arkon/.nexus-arkon-credentials`.
+- Saves the admin login to `~/arkon/.halo-arkon-credentials`.
 
 The script checks two things and warns if they fail: that the embedding model returns exactly 1536 numbers (if not, upload and search won't work), and that the chat model's trained context is long enough. Image captioning stays off.
 
-**Connect Nexus Agent:** go to Providers → **Arkon knowledge hub** and enter `http://127.0.0.1:5055` with the email and password from the credentials file, then tap **Save & test**. New tasks then get `arkon_search` and `arkon_read`.
+**Connect Halo:** go to Providers → **Arkon knowledge hub** and enter `http://127.0.0.1:5055` with the email and password from the credentials file, then tap **Save & test**. New tasks then get `arkon_search` and `arkon_read`.
 
 ---
 
@@ -214,7 +214,7 @@ Choose **Local LLM (on-device / LAN)** in Providers and set the server URL:
 ## Features
 
 ### Agent Loop
-Nexus Agent runs an iterative reasoning loop — give it a task and it will plan, use tools, evaluate results, and keep going until the task is complete (up to 12 iterations). Risky actions pause and ask for your approval before continuing.
+Halo runs an iterative reasoning loop — give it a task and it will plan, use tools, evaluate results, and keep going until the task is complete (up to 12 iterations). Risky actions pause and ask for your approval before continuing.
 
 ### Available Tools
 | Tool | What it does |
@@ -278,7 +278,7 @@ Nexus Agent runs an iterative reasoning loop — give it a task and it will plan
 
 | Property | Value |
 |----------|-------|
-| Package | `com.nexusagent.app` |
+| Package | `com.halo.app` |
 | Min SDK | Android 7.0 (API 24) |
 | Target SDK | Android 14 (API 35) |
 | Build type | Debug |

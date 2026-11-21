@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install or update SillyTavern (github.com/SillyTavern/SillyTavern, AGPL-3.0)
-# for use with local Ollama models, and copy Nexus Agent character cards into it.
+# for use with local Ollama models, and copy Halo character cards into it.
 #
 #   ./sillytavern-setup.sh                       # install or update in ~/SillyTavern
 #   ./sillytavern-setup.sh --import ~/Downloads  # also copy character card PNGs from a folder
@@ -81,8 +81,8 @@ Connect it to your local models (once):
   API Connections (plug icon) → API: Text Completion → API Type: Ollama
   → API URL: http://127.0.0.1:11434 → Connect → pick a model.
 
-Nexus Agent cards: Characters → Edit → Export PNG, then re-run this script with
-  --import <folder with the PNGs>   (on Android they're in Downloads/NexusAgent).
+Halo cards: Characters → Edit → Export PNG, then re-run this script with
+  --import <folder with the PNGs>   (on Android they're in Downloads/Halo).
 EOF
 
 if [ "$START" = 1 ]; then

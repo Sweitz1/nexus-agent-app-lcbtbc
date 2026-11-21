@@ -1,4 +1,4 @@
-/* Nexus Agent — music (Spotify Web API, YouTube Music, any app's media session, synced
+/* Halo — music (Spotify Web API, YouTube Music, any app's media session, synced
  * lyrics), display-glasses HUD (Lenovo Legion Glasses / Glasses T1, XREAL, Viture, Rokid,
  * RayNeo Air…) and Meta Ray-Ban / Oakley Meta glasses features. Loaded after skills-screen.js. */
 'use strict';
@@ -32,7 +32,7 @@
   const sessions = () => { if (!N || !N.mediaSessions) return []; const r = parseJSON(N.mediaSessions(), []); if (r && r.error) throw new Error(r.error); return r; };
 
   /* ================================================================== Spotify (Web API, PKCE) */
-  const SP_REDIRECT = 'nexusagent://spotify-callback';
+  const SP_REDIRECT = 'haloagent://spotify-callback';
   const SP_SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-modify-private playlist-modify-public user-library-read user-library-modify user-read-recently-played user-top-read';
   const spTok = () => parseJSON(getKey('svc_spotify'), null);
   const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -44,7 +44,7 @@
     const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(spVerifier)));
     const url = `https://accounts.spotify.com/authorize?${new URLSearchParams({ client_id: S.settings.spotifyClientId, response_type: 'code', redirect_uri: SP_REDIRECT, code_challenge_method: 'S256', code_challenge: challenge, scope: SP_SCOPES })}`;
     N ? N.openUrl(url) : window.open(url);
-    return 'Opened Spotify sign-in. Approve it and you will be sent back to Nexus.';
+    return 'Opened Spotify sign-in. Approve it and you will be sent back to Halo.';
   }
   async function spTokenRequest(params) {
     const r = await http('POST', 'https://accounts.spotify.com/api/token', { 'Content-Type': 'application/x-www-form-urlencoded' }, new URLSearchParams({ client_id: S.settings.spotifyClientId, ...params }).toString(), 20000);
@@ -60,7 +60,7 @@
   }
   onNative('deeplink', async p => {
     if (!String(p.url || '').startsWith(SP_REDIRECT)) return;
-    const u = new URL(p.url.replace('nexusagent://', 'https://x/')); const code = u.searchParams.get('code');
+    const u = new URL(p.url.replace('haloagent://', 'https://x/')); const code = u.searchParams.get('code');
     try { if (!code) throw new Error(u.searchParams.get('error') || 'no code'); toast(await spotifyFinish(code)); if (currentTab === 'settings') renderSettings(); }
     catch (e) { toast(e.message); }
   });
@@ -113,7 +113,7 @@
   /* ================================================================== lyrics */
   let lyricsTimer = null;
   async function findLyrics(title, artist) {
-    const r = parseJSON((await http('GET', `https://lrclib.net/api/search?track_name=${enc(title)}${artist ? '&artist_name=' + enc(artist) : ''}`, { 'User-Agent': 'NexusAgent/1.0 (https://github.com)' }, null, 15000)).body, []);
+    const r = parseJSON((await http('GET', `https://lrclib.net/api/search?track_name=${enc(title)}${artist ? '&artist_name=' + enc(artist) : ''}`, { 'User-Agent': 'Halo/1.0 (https://github.com)' }, null, 15000)).body, []);
     const hit = (r || []).find(x => x.syncedLyrics) || (r || [])[0];
     if (!hit) return null;
     const synced = hit.syncedLyrics ? hit.syncedLyrics.split('\n').map(l => { const m = l.match(/^\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$/); return m ? { t: (Number(m[1]) * 60 + Number(m[2])) * 1000, text: m[3] } : null; }).filter(Boolean) : null;
@@ -129,7 +129,7 @@
     lyricsTimer = setInterval(() => {
       let pos = null;
       try { const s = sessions().find(x => !pkg || x.package === pkg) || sessions()[0]; if (s) pos = s.positionMs; } catch { /* no access */ }
-      if (pos == null && window.NexusMedia && !NexusMedia.AP.paused) pos = NexusMedia.AP.currentTime * 1000;
+      if (pos == null && window.HaloMedia && !HaloMedia.AP.paused) pos = HaloMedia.AP.currentTime * 1000;
       if (pos == null) return;
       let idx = 0; for (let i = 0; i < ly.synced.length; i++) if (ly.synced[i].t <= pos + 300) idx = i;
       if (idx === lastIdx) return; lastIdx = idx;
@@ -151,7 +151,7 @@
   let npTimer = null;
   function hudNowPlaying() {
     clearInterval(npTimer);
-    const tick = () => { if (!hudOn()) return clearInterval(npTimer); let s = null; try { s = sessions().find(x => x.state === 'playing') || sessions()[0]; } catch { /* */ } if (!s && window.NexusMedia && NexusMedia.AP.src) { const a = NexusMedia.AP; s = { app: 'Nexus', title: document.querySelector('#miniT') ? $('#miniT').textContent.replace(/^[▶⏸] /, '') : '', state: a.paused ? 'paused' : 'playing', positionMs: a.currentTime * 1000, durationMs: a.duration * 1000 }; } hudPost({ mode: 'nowplaying', app: s ? s.app : 'Nothing playing', title: s && s.title, subtitle: s ? [s.artist, s.album].filter(Boolean).join(' · ') : '', playing: s ? s.state === 'playing' : false, progress: s && s.durationMs ? s.positionMs / s.durationMs : 0, fontSize: S.settings.hudFontSize, safe: S.settings.hudSafe }); };
+    const tick = () => { if (!hudOn()) return clearInterval(npTimer); let s = null; try { s = sessions().find(x => x.state === 'playing') || sessions()[0]; } catch { /* */ } if (!s && window.HaloMedia && HaloMedia.AP.src) { const a = HaloMedia.AP; s = { app: 'Halo', title: document.querySelector('#miniT') ? $('#miniT').textContent.replace(/^[▶⏸] /, '') : '', state: a.paused ? 'paused' : 'playing', positionMs: a.currentTime * 1000, durationMs: a.duration * 1000 }; } hudPost({ mode: 'nowplaying', app: s ? s.app : 'Nothing playing', title: s && s.title, subtitle: s ? [s.artist, s.album].filter(Boolean).join(' · ') : '', playing: s ? s.state === 'playing' : false, progress: s && s.durationMs ? s.positionMs / s.durationMs : 0, fontSize: S.settings.hudFontSize, safe: S.settings.hudSafe }); };
     tick(); npTimer = setInterval(tick, 1500);
   }
   onNative('display', e => { if (e.connected && S.settings.hudAuto) { try { toast(hudStart()); } catch (err) { /* not a presentation display */ } } });
@@ -186,7 +186,7 @@
   /* ================================================================== skills */
   BUILTIN_SKILLS.push(
     /* ---------------- Music (any app) */
-    { name: 'music_now_playing', group: 'Music', description: "What's playing right now in any app (Spotify, YouTube Music, Plex, podcasts, Nexus audiobooks…), with position.", parameters: P({}),
+    { name: 'music_now_playing', group: 'Music', description: "What's playing right now in any app (Spotify, YouTube Music, Plex, podcasts, Halo audiobooks…), with position.", parameters: P({}),
       run: async () => {
         let list = []; try { list = sessions(); } catch (e) { return e.message + '. Enable notification access (Settings → Media & audio → Grant notification access).'; }
         const out = list.map(s => `• ${s.app}: ${s.title || '(unknown)'}${s.artist ? ' — ' + s.artist : ''}${s.album ? ' · ' + s.album : ''} · ${s.state}${s.durationMs ? ` · ${mmss(s.positionMs)}/${mmss(s.durationMs)}` : ''}`);
@@ -249,7 +249,7 @@
         const addSongs = async (pid, songs) => { const uris = []; for (const s of (songs || []).slice(0, 50)) { const r = await spSearch(s, 'track', 1); if (r[0]) uris.push(r[0].uri); } if (uris.length) await sp('POST', `/playlists/${pid}/tracks`, { uris }); return uris.length; };
         if (a.action === 'list') return (await mine()).map(p => `• ${p.name} · ${p.tracks ? p.tracks.total : '?'} tracks\n  ${p.uri}`).join('\n') || 'No playlists.';
         if (a.action === 'show') { const p = await find(a.playlist); const t = (await sp('GET', `/playlists/${p.id}/tracks?limit=50`)).items || []; return `${p.name}:\n` + t.filter(x => x.track).map((x, i) => `${i + 1}. ${x.track.name} — ${(x.track.artists || []).map(y => y.name).join(', ')}`).join('\n'); }
-        if (a.action === 'create') { const me = await sp('GET', '/me'); const p = await sp('POST', `/users/${enc(me.id)}/playlists`, { name: a.name || 'Nexus mix', public: false, description: 'Made by Nexus Agent' }); const n = await addSongs(p.id, a.songs); return `Created "${p.name}" with ${n} songs · ${p.uri}`; }
+        if (a.action === 'create') { const me = await sp('GET', '/me'); const p = await sp('POST', `/users/${enc(me.id)}/playlists`, { name: a.name || 'Halo mix', public: false, description: 'Made by Halo' }); const n = await addSongs(p.id, a.songs); return `Created "${p.name}" with ${n} songs · ${p.uri}`; }
         if (a.action === 'add') { const p = await find(a.playlist); const n = await addSongs(p.id, a.songs); return `Added ${n} songs to ${p.name}`; }
         return 'Unknown action';
       } },
@@ -304,9 +304,9 @@
         let recent = ''; try { const r = await recentGlassesMedia({ count: 3 }); recent = r.list.map(m => `${m.name} (${m.album}, ${new Date(m.time).toLocaleString()})`).join('; '); } catch (e) { recent = e.message; }
         return J({ bluetooth_audio: bt.devices || [], voice_through_glasses: bt.voiceRoute, tap_to_talk: bt.tapToTalk, meta_ai_app: meta ? meta.label : 'not installed', latest_captures: recent || 'none' });
       } },
-    { name: 'meta_glasses_voice', group: 'Meta glasses', description: 'Use the glasses\' microphones for Nexus voice input and wake word (on), or go back to the phone mic (off). Answers already play through the glasses speakers when they are connected.', parameters: P({ on: Bool('true = use glasses mic') }, ['on']),
+    { name: 'meta_glasses_voice', group: 'Meta glasses', description: 'Use the glasses\' microphones for Halo voice input and wake word (on), or go back to the phone mic (off). Answers already play through the glasses speakers when they are connected.', parameters: P({ on: Bool('true = use glasses mic') }, ['on']),
       run: async a => { needNative(); S.settings.metaVoice = !!a.on; save(); return N.btVoiceRoute(!!a.on); } },
-    { name: 'glasses_tap_to_talk', group: 'Meta glasses', description: 'Tap the glasses (play/pause touch) to talk to Nexus instead of pausing music. Works with Meta Ray-Ban and most Bluetooth glasses/earbuds.', parameters: P({ on: Bool('') }, ['on']),
+    { name: 'glasses_tap_to_talk', group: 'Meta glasses', description: 'Tap the glasses (play/pause touch) to talk to Halo instead of pausing music. Works with Meta Ray-Ban and most Bluetooth glasses/earbuds.', parameters: P({ on: Bool('') }, ['on']),
       run: async a => { needNative(); S.settings.tapToTalk = !!a.on; save(); return N.tapToTalk(!!a.on); } },
     { name: 'meta_glasses_media', group: 'Meta glasses', description: 'Latest photos/videos taken with the glasses (after they sync to the phone gallery via the Meta AI app). import=true copies them into the workspace for describe/OCR/translate/share.', parameters: P({ count: Num('default 5'), type: Str('photo | video | any'), since_minutes: Num('optional'), import: Bool('copy into workspace'), all: Bool('include all gallery items, not only the glasses album') }),
       run: async a => {
@@ -347,8 +347,8 @@
       <label class="inline"><input type="checkbox" data-k="hudNotifications" data-t="bool">Show notifications on the glasses</label>
       <div class="row"><div><label>HUD font size px</label><input data-k="hudFontSize" data-t="num" type="number" min="16" max="80"></div><div><label>Edge margin (comfort zone) %</label><input data-k="hudSafe" data-t="num" type="number" min="0" max="25"></div></div>
       <h3 style="margin-top:.8em">Meta Ray-Ban / Oakley Meta glasses</h3>
-      <label class="inline"><input type="checkbox" id="metaVoice" ${S.settings.metaVoice ? 'checked' : ''}>Use the glasses microphones for Nexus (voice + "Hey Nexus")</label>
-      <label class="inline"><input type="checkbox" id="tapTalk" ${S.settings.tapToTalk ? 'checked' : ''}>Tap the glasses to talk to Nexus (instead of play/pause)</label>
+      <label class="inline"><input type="checkbox" id="metaVoice" ${S.settings.metaVoice ? 'checked' : ''}>Use the glasses microphones for Halo (voice + "Hey Halo")</label>
+      <label class="inline"><input type="checkbox" id="tapTalk" ${S.settings.tapToTalk ? 'checked' : ''}>Tap the glasses to talk to Halo (instead of play/pause)</label>
       <div class="row"><div><label>Gallery album pattern for glasses captures</label><input data-k="metaFolderHint"></div></div>
     </div>`;
   };
@@ -364,5 +364,5 @@
   };
   { const coreSecrets = secretIds; secretIds = () => [...coreSecrets(), { id: 'svc_youtube', name: 'YouTube Data API key' }]; }
 
-  window.NexusMusic = { spotifyFinish, spSearch, ytSearch, findLyrics, hudStart, hudOn, pkgFor };
+  window.HaloMusic = { spotifyFinish, spSearch, ytSearch, findLyrics, hudStart, hudOn, pkgFor };
 })();

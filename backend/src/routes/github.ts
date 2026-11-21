@@ -36,7 +36,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
     try {
       const response = await fetch('https://api.github.com/user', {
-        headers: { Authorization: `token ${pat}`, 'User-Agent': 'nexus-agent' },
+        headers: { Authorization: `token ${pat}`, 'User-Agent': 'halo' },
       });
 
       if (!response.ok) {
@@ -155,7 +155,7 @@ export function register(app: App, fastify: FastifyInstance) {
       const apiUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`;
 
       const response = await fetch(apiUrl, {
-        headers: { Authorization: `token ${pat}`, 'User-Agent': 'nexus-agent' },
+        headers: { Authorization: `token ${pat}`, 'User-Agent': 'halo' },
       });
 
       if (!response.ok) {
@@ -235,7 +235,7 @@ export function register(app: App, fastify: FastifyInstance) {
       const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
       const response = await fetch(apiUrl, {
-        headers: { Authorization: `token ${pat}`, 'User-Agent': 'nexus-agent' },
+        headers: { Authorization: `token ${pat}`, 'User-Agent': 'halo' },
       });
 
       if (!response.ok) {

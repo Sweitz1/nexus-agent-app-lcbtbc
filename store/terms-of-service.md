@@ -1,15 +1,15 @@
 # Terms of Service
 
-**Nexus Agent**
+**Halo**
 Last updated: 2025-07-14
 
 ---
 
 ## 1. Acceptance of Terms
 
-By downloading, installing, or using the Nexus Agent mobile application (the "App"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the App.
+By downloading, installing, or using the Halo mobile application (the "App"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the App.
 
-These Terms constitute a legally binding agreement between you and Nexus Agent ("we", "us", or "our"). We reserve the right to update these Terms at any time. Continued use of the App after changes are posted constitutes acceptance of the revised Terms.
+These Terms constitute a legally binding agreement between you and Halo ("we", "us", or "our"). We reserve the right to update these Terms at any time. Continued use of the App after changes are posted constitutes acceptance of the revised Terms.
 
 ---
 
@@ -21,7 +21,7 @@ You must be at least 13 years old to create an account. By creating an account y
 
 ### 2.2 Account Security
 
-You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately at legal@nexusagent.app if you suspect unauthorized access to your account. We are not liable for any loss resulting from unauthorized use of your account.
+You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately at legal@haloagent.app if you suspect unauthorized access to your account. We are not liable for any loss resulting from unauthorized use of your account.
 
 ### 2.3 Accurate Information
 
@@ -77,11 +77,11 @@ When you add an API key for a third-party AI provider (OpenAI, Anthropic, Google
 
 ### 4.2 No Liability for Third-Party Costs
 
-We are not responsible for any charges, overage fees, or account suspensions you incur with third-party API providers as a result of using Nexus Agent. The agent may make multiple API calls per task; you are responsible for understanding and accepting those costs before running tasks.
+We are not responsible for any charges, overage fees, or account suspensions you incur with third-party API providers as a result of using Halo. The agent may make multiple API calls per task; you are responsible for understanding and accepting those costs before running tasks.
 
 ### 4.3 Custom APIs
 
-When you register a custom REST API as an agent tool, you represent that you have the right to access that API and that using it through Nexus Agent does not violate any agreement you have with the API's owner.
+When you register a custom REST API as an agent tool, you represent that you have the right to access that API and that using it through Halo does not violate any agreement you have with the API's owner.
 
 ---
 
@@ -89,7 +89,7 @@ When you register a custom REST API as an agent tool, you represent that you hav
 
 ### 5.1 Autonomous Behavior
 
-Nexus Agent is designed to execute multi-step tasks autonomously. The agent may take actions — including calling external APIs, writing files, and making network requests — without prompting you for confirmation on every step, depending on your configuration.
+Halo is designed to execute multi-step tasks autonomously. The agent may take actions — including calling external APIs, writing files, and making network requests — without prompting you for confirmation on every step, depending on your configuration.
 
 ### 5.2 Your Responsibility to Review
 
@@ -168,4 +168,4 @@ Any dispute arising out of or relating to these Terms or the App shall first be 
 
 For legal inquiries regarding these Terms:
 
-**Email:** legal@nexusagent.app
+**Email:** legal@haloagent.app

@@ -1,15 +1,15 @@
-# Nexus Agent — Support
+# Halo — Support
 
 ## Getting Help
 
 If you run into an issue or have a question that isn't answered below, email us at:
 
-**support@nexusagent.app**
+**support@haloagent.app**
 
 We aim to respond within 2 business days. When writing in, please include:
 
 - The device model and OS version you're using
-- The version of Nexus Agent (visible in Settings)
+- The version of Halo (visible in Settings)
 - A brief description of what you were trying to do and what happened instead
 - Any error messages shown in the App
 
@@ -25,7 +25,7 @@ To remove a key at any time, go to **Settings → Model Providers**, select the 
 
 ---
 
-### Does Nexus Agent send my code or task data to third parties?
+### Does Halo send my code or task data to third parties?
 
 Only to the AI provider you have explicitly connected. When you run a task, the agent's inputs (your goal, intermediate results, tool outputs) are sent to whichever AI provider's API key you have configured — for example, OpenAI's API if you added an OpenAI key. We do not send your data to any provider you have not connected, and we do not use your task data to train our own models.
 
@@ -46,7 +46,7 @@ Deleting your account permanently removes all server-side data associated with y
 
 ### Why does the agent ask for approval before taking certain actions?
 
-Nexus Agent includes an approval gate system designed to keep you in control of actions that could have significant or irreversible consequences — for example, calling an external API, writing or deleting a file, or submitting data to a service.
+Halo includes an approval gate system designed to keep you in control of actions that could have significant or irreversible consequences — for example, calling an external API, writing or deleting a file, or submitting data to a service.
 
 When the agent reaches a step that requires approval, it pauses and shows you exactly what it intends to do. You can:
 
@@ -80,7 +80,7 @@ If a task fails repeatedly on the same step, try:
 
 ### Shell execution is not available in this release
 
-Arbitrary shell command execution is **blocked at the safety layer** in this version of Nexus Agent. The agent cannot run terminal commands, execute scripts, install software, or interact with your device's operating system. This is an intentional safety decision for the initial release.
+Arbitrary shell command execution is **blocked at the safety layer** in this version of Halo. The agent cannot run terminal commands, execute scripts, install software, or interact with your device's operating system. This is an intentional safety decision for the initial release.
 
 If you attempt to create a task that requires shell access, the agent will inform you that the shell tool is unavailable and will attempt to complete the goal using the available tools (web fetch, file operations, custom APIs, etc.).
 

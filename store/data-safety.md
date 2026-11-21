@@ -1,6 +1,6 @@
 # Google Play Data Safety
 
-This document provides the answers to fill in the **Data Safety** section of the Google Play Console for Nexus Agent. Use the tables below to complete each question in the form.
+This document provides the answers to fill in the **Data Safety** section of the Google Play Console for Halo. Use the tables below to complete each question in the form.
 
 ---
 

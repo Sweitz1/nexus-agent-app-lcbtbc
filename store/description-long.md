@@ -1,4 +1,4 @@
-# Nexus Agent — Long-Form Store Description
+# Halo — Long-Form Store Description
 
 > Use this copy for both the App Store (no character limit on long description) and Google Play (max 4000 chars). The character count is noted at the bottom of this file.
 
@@ -6,11 +6,11 @@
 
 ## Store Description
 
-Nexus Agent puts a fully autonomous AI agent in your pocket — one that can plan multi-step tasks, call your own APIs, read and write files, search the web, and remember context across sessions, all while keeping you in control of every risky action it takes.
+Halo puts a fully autonomous AI agent in your pocket — one that can plan multi-step tasks, call your own APIs, read and write files, search the web, and remember context across sessions, all while keeping you in control of every risky action it takes.
 
 **What you can do**
 
-- **Automate multi-step tasks.** Describe a goal in plain language. Nexus Agent breaks it into a plan, executes each step, reflects on the results, and adapts when something goes wrong — without you having to micromanage every action.
+- **Automate multi-step tasks.** Describe a goal in plain language. Halo breaks it into a plan, executes each step, reflects on the results, and adapts when something goes wrong — without you having to micromanage every action.
 - **Route across multiple AI providers.** Connect OpenAI, Anthropic Claude, or Google Gemini. Switch models per task or let the agent choose. Bring your own API keys — your usage, your costs, your data.
 - **Add your own REST APIs.** Register any HTTP endpoint as an agent tool. Set authentication (none, API key, bearer token, or OAuth), define which endpoints the agent is allowed to call, and require human confirmation before sensitive operations run.
 - **Integrate with GitHub.** Read repository contents and list files directly from the agent loop. Useful for code review tasks, documentation generation, and repository analysis.
@@ -28,7 +28,7 @@ Nexus Agent puts a fully autonomous AI agent in your pocket — one that can pla
 
 **For developers and power users**
 
-Nexus Agent is built for people who want real automation, not a chatbot with a task list. If you work with APIs, manage code repositories, process documents, or run repetitive research workflows, this is the tool that lets you describe what you want and get it done — with full visibility into every step the agent takes and full control over what it's allowed to do. The custom API system means you can wire up any service you already use: your own backend, a SaaS product with a REST API, an internal tool — if it has an endpoint, the agent can call it.
+Halo is built for people who want real automation, not a chatbot with a task list. If you work with APIs, manage code repositories, process documents, or run repetitive research workflows, this is the tool that lets you describe what you want and get it done — with full visibility into every step the agent takes and full control over what it's allowed to do. The custom API system means you can wire up any service you already use: your own backend, a SaaS product with a REST API, an internal tool — if it has an endpoint, the agent can call it.
 
 **What's included in this release**
 

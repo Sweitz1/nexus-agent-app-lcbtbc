@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import android.graphics.Bitmap;
 import android.media.MediaCodec;

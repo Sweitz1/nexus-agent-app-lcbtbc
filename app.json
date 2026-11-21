@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Nexus Agent",
-    "slug": "nexus-agent",
-    "scheme": "nexusagent",
+    "name": "Halo",
+    "slug": "halo",
+    "scheme": "haloagent",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,14 +14,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nexusagent.app"
+      "bundleIdentifier": "com.halo.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a0c"
       },
-      "package": "com.nexusagent.app"
+      "package": "com.halo.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"

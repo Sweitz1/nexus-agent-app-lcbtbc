@@ -1,4 +1,4 @@
-/* Nexus Agent — accessibility screen control: agents read and operate other apps
+/* Halo — accessibility screen control: agents read and operate other apps
  * (tap, type, scroll, swipe, navigate, screenshot). Loaded after skills-shop.js. */
 'use strict';
 (() => {
@@ -17,12 +17,12 @@
 
   const consented = new Set();   // `${runToken}:${package}`
   let pillTimer = null;
-  const pillOn = () => { if (!N || !N.screenIndicator) return; N.screenIndicator('🤖 Nexus is controlling — tap to stop'); clearTimeout(pillTimer); pillTimer = setTimeout(() => N.screenIndicator(''), 6000); };
+  const pillOn = () => { if (!N || !N.screenIndicator) return; N.screenIndicator('🤖 Halo is controlling — tap to stop'); clearTimeout(pillTimer); pillTimer = setTimeout(() => N.screenIndicator(''), 6000); };
   onNative('screen', e => { if (e.type === 'stop') { stopRun(); speak('Stopped.'); toast('Screen control stopped'); } });
 
   function need() {
     needNative('Screen control');
-    if (!N.screenEnabled()) throw new Error('Screen control is off. Ask the user to enable "Nexus Agent screen control" in Android Settings → Accessibility (or Settings → Screen control → Enable).');
+    if (!N.screenEnabled()) throw new Error('Screen control is off. Ask the user to enable "Halo screen control" in Android Settings → Accessibility (or Settings → Screen control → Enable).');
   }
   const sc = (op, extra = {}) => nativeAsync('screen', JSON.stringify({ op, ...extra }));
 
@@ -35,10 +35,10 @@
     if (away) { N.launchApp(pkg); await sleep(1200); }
     return ok;
   }
-  async function ensureConsent(ctx, pkg, nexusInFront) {
+  async function ensureConsent(ctx, pkg, haloInFront) {
     const key = `${ctx.token}:${pkg}`;
     if (consented.has(key) || ctx.origin === 'ui') return;
-    const ask = nexusInFront ? (h => { speak(plain(h.replace(/<[^>]+>/g, ' ')).slice(0, 200)); return confirmBox(h, 90000); }) : (h => confirmOnTop(h, pkg));
+    const ask = haloInFront ? (h => { speak(plain(h.replace(/<[^>]+>/g, ' ')).slice(0, 200)); return confirmBox(h, 90000); }) : (h => confirmOnTop(h, pkg));
     const ok = await ask(`<b>${esc(ctx.agent.name)}</b> wants to control <b>${esc(pkg)}</b> on your screen for this task (tap, type, scroll).<p class="hint">You'll still be asked before anything is bought, paid, sent or deleted. Tap the floating pill to stop at any time.</p>`, pkg);
     if (!ok) throw new Error('The user did not allow screen control for ' + pkg);
     consented.add(key);
@@ -125,8 +125,8 @@
       } },
     { name: 'screen_screenshot', group: 'Screen', description: 'Screenshot the screen (Android 11+). With a question, the vision model looks at it — useful when an app (games, maps, video, web views) does not expose readable elements.', parameters: P({ question: Str('optional: what to look for') }),
       run: async (a, ctx) => { need(); const r = await sc('screenshot', {}); return a.question ? `${r.path}\n` + await visionAsk([r.path], a.question + ' (This is a phone/glasses screenshot; describe positions as approximate x,y in pixels if relevant.)', ctx) : 'saved ' + r.path; } },
-    { name: 'screen_return', group: 'Screen', description: 'Finish screen control and bring Nexus back to the front.', parameters: P({}),
-      run: async () => { if (N && N.screenIndicator) N.screenIndicator(''); if (N) N.bringToFront(); last = null; return 'Back in Nexus.'; } },
+    { name: 'screen_return', group: 'Screen', description: 'Finish screen control and bring Halo back to the front.', parameters: P({}),
+      run: async () => { if (N && N.screenIndicator) N.screenIndicator(''); if (N) N.bringToFront(); last = null; return 'Back in Halo.'; } },
   );
 
   // Screen tasks take many small steps; finishing a run hides the pill and optionally returns.
@@ -147,7 +147,7 @@
     <p class="hint">Lets agents operate other apps for you — e.g. "reorder my usual from DoorDash", "turn on dark mode in Spotify". Nothing happens unless you ask; a floating pill shows while it works (tap it to stop). Password fields are never read or typed, and buying, paying, sending or deleting always asks you first.</p>
     <div class="row"><button class="${N && N.screenEnabled && N.screenEnabled() ? '' : 'primary'} nogrow" id="scEnable">${N && N.screenEnabled && N.screenEnabled() ? 'Enabled ✓ (open settings)' : 'Enable in Accessibility settings'}</button></div>
     <div class="row"><div><label>Max steps for screen tasks</label><input data-k="screenMaxSteps" data-t="num" type="number" min="10" max="100"></div>
-    <label class="inline nogrow"><input type="checkbox" data-k="screenReturn" data-t="bool">Return to Nexus when done</label></div>
+    <label class="inline nogrow"><input type="checkbox" data-k="screenReturn" data-t="bool">Return to Halo when done</label></div>
     <label>Blocked apps (package name pattern — banking, wallets, password managers)</label><textarea data-k="screenBlocklist" rows="2"></textarea>
     <div class="row"><button class="small nogrow" id="scReset">Reset block list</button></div></div>`;
   bindProSettings = v => {
@@ -158,5 +158,5 @@
     $('#scReset', card).onclick = () => { S.settings.screenBlocklist = DEFAULT_BLOCK; save(); if (N && N.screenBlocklist) N.screenBlocklist(DEFAULT_BLOCK); renderSettings(); };
   };
 
-  window.NexusScreen = { fmt, SENSITIVE, CARD };
+  window.HaloScreen = { fmt, SENSITIVE, CARD };
 })();

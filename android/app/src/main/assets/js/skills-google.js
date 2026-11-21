@@ -1,4 +1,4 @@
-/* Nexus Agent — Google services: Gmail, Google Calendar (as a calendar source), Drive, Docs,
+/* Halo — Google services: Gmail, Google Calendar (as a calendar source), Drive, Docs,
  * Sheets, Tasks, Contacts, YouTube (your account), Google Maps Platform (Places/Routes),
  * Google Translate, and quick launchers for Google apps. Loaded after skills-music.js. */
 'use strict';
@@ -97,7 +97,7 @@
     L.push(`Subject: ${encHeader(subject || '')}`, 'MIME-Version: 1.0'); if (inReplyTo) L.push(`In-Reply-To: ${inReplyTo}`); if (references) L.push(`References: ${references}`);
     const text = ['Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', wrap76(utf8b64(body || ''))].join('\r\n');
     if (!attachments.length) return L.join('\r\n') + '\r\n' + text;
-    const bnd = 'nexus_' + uid() + uid();
+    const bnd = 'halo_' + uid() + uid();
     const parts = [text];
     for (const p of attachments) {
       const name = cleanPath(p).replace(/^.*\//, ''); const b64 = await fsx.readB64(p);
@@ -378,7 +378,7 @@
         need('photos'); needNative('Downloads');
         const sess = await g('POST', 'https://photospicker.googleapis.com/v1/sessions', { pickingConfig: { maxItemCount: String(Math.min(2000, a.max || 20)) } });
         const url = sess.pickerUri + (/autoclose/.test(sess.pickerUri) ? '' : '/autoclose');
-        let qr = ''; try { qr = await window.NexusMedia.qrDataUrl(sess.pickerUri); } catch { /* optional */ }
+        let qr = ''; try { qr = await window.HaloMedia.qrDataUrl(sess.pickerUri); } catch { /* optional */ }
         $('#modalBox').innerHTML = `<h3>Pick from Google Photos</h3><p>Select photos in Google Photos, then tap <b>Done</b>. You can also scan this with your phone:</p>${qr ? `<img src="${esc(wsUrl(qr))}" alt="" style="width:11em;background:#fff;padding:.4em;border-radius:6px">` : ''}<div class="row"><button class="primary" id="gpOpen">Open Google Photos here</button><button id="gpNo">Cancel</button></div><p class="hint" id="gpSt">waiting for your selection…</p>`;
         $('#modal').classList.add('show'); let cancelled = false; modalClose = () => { cancelled = true; $('#modal').classList.remove('show'); modalClose = null; };
         $('#gpOpen').onclick = () => N.openUrl(url); $('#gpNo').onclick = () => modalClose(); N.openUrl(url);
@@ -393,11 +393,11 @@
         g('DELETE', `https://photospicker.googleapis.com/v1/sessions/${sess.id}`, null, { raw: true }).catch(() => {});
         return `Downloaded ${saved.length} item(s):\n` + saved.join('\n');
       } },
-    { name: 'gphotos_albums', group: 'Google Photos', description: 'List albums and items that Nexus uploaded to Google Photos (Google only lets apps list what they created).', parameters: P({ album: Str('optional album name to list items of') }),
+    { name: 'gphotos_albums', group: 'Google Photos', description: 'List albums and items that Halo uploaded to Google Photos (Google only lets apps list what they created).', parameters: P({ album: Str('optional album name to list items of') }),
       run: async a => {
         need('photos');
         const albums = (await g('GET', `${PH}/albums?excludeNonAppCreatedData=true&pageSize=50`)).albums || [];
-        if (!a.album) return albums.map(x => `• ${x.title} · ${x.mediaItemsCount || 0} items · ${x.productUrl}`).join('\n') || 'No albums created by Nexus yet.';
+        if (!a.album) return albums.map(x => `• ${x.title} · ${x.mediaItemsCount || 0} items · ${x.productUrl}`).join('\n') || 'No albums created by Halo yet.';
         const al = albums.find(x => x.title.toLowerCase().includes(a.album.toLowerCase())); if (!al) return 'Album not found.';
         return ((await g('POST', `${PH}/mediaItems:search`, { albumId: al.id, pageSize: 50 })).mediaItems || []).map(m => `• ${m.filename} · ${m.mimeType} · ${m.productUrl}`).join('\n') || 'Empty album.';
       } },
@@ -491,5 +491,5 @@
   { const coreRender = renderProSettings; renderProSettings = () => coreRender().replace('<option value="libre">LibreTranslate</option>', '<option value="libre">LibreTranslate</option><option value="google">Google Translate (API key)</option>'); }
   { const coreSecrets = secretIds; secretIds = () => [...coreSecrets(), { id: 'svc_google_secret', name: 'Google OAuth client secret' }, { id: 'svc_gcloud_key', name: 'Google Cloud API key' }]; }
 
-  window.NexusGoogle = { googleConnect, googlePaste, finishWithQuery, buildMime, g, connected };
+  window.HaloGoogle = { googleConnect, googlePaste, finishWithQuery, buildMime, g, connected };
 })();

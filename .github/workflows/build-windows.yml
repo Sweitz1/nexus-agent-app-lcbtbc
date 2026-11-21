@@ -34,6 +34,6 @@ jobs:
       - name: Upload MSI artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-agent-windows-msi
+          name: halo-windows-msi
           path: dist-electron/*.msi
           retention-days: 30

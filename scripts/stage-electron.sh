@@ -13,12 +13,12 @@ if command -v magick >/dev/null 2>&1; then
 fi
 cat > stage/package.json <<JSON
 {
-  "name": "nexus-agent",
-  "productName": "Nexus Agent",
+  "name": "halo",
+  "productName": "Halo",
   "version": "${VERSION}",
-  "description": "Nexus Agent: local-first AI agent with GitHub skills",
+  "description": "Halo: local-first AI agent with GitHub skills",
   "homepage": "https://github.com/Sweitz1/nexus-agent-app-lcbtbc",
-  "author": { "name": "Nexus Agent", "email": "nexus-agent@users.noreply.github.com" },
+  "author": { "name": "Halo", "email": "noreply@halo.invalid" },
   "main": "electron-main.js"
 }
 JSON

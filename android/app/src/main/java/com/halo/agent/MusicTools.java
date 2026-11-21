@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -25,7 +25,7 @@ class MusicTools {
 
     private List<MediaController> sessions() {
         MediaSessionManager m = (MediaSessionManager) ctx.getSystemService(Context.MEDIA_SESSION_SERVICE);
-        return m.getActiveSessions(new ComponentName(ctx, NexusNotificationListener.class));
+        return m.getActiveSessions(new ComponentName(ctx, HaloNotificationListener.class));
     }
 
     String list() throws Exception {

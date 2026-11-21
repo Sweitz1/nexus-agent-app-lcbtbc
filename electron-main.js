@@ -15,7 +15,7 @@ function createWindow() {
       webSecurity: false,
     },
     icon: path.join(__dirname, 'assets', 'icon.png'),
-    title: 'Nexus Agent',
+    title: 'Halo',
     backgroundColor: '#0a0a0c',
   });
 

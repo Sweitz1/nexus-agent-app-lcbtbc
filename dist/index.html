@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <meta name="color-scheme" content="dark"/>
-<title>Nexus Agent</title>
+<title>Halo</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -197,7 +197,7 @@ body.kbd :focus,body.devmode :focus{outline:3px solid var(--primary);outline-off
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-mark">N</div>
-      <div><div class="logo-name">Nexus Agent</div><div class="logo-tag">AI Automation</div></div>
+      <div><div class="logo-name">Halo</div><div class="logo-tag">AI Automation</div></div>
     </div>
     <nav>
       <div class="nav-group">Main</div>
@@ -250,8 +250,8 @@ const LS = {
 };
 
 const DB = {
-  tasks: () => LS.get('nx_tasks', []),
-  saveTasks: (t) => LS.set('nx_tasks', t),
+  tasks: () => LS.get('halo_tasks', []),
+  saveTasks: (t) => LS.set('halo_tasks', t),
   task: (id) => DB.tasks().find(t => t.id === id),
   createTask: (t) => {
     const tasks = DB.tasks();
@@ -274,26 +274,26 @@ const DB = {
       DB.saveTasks(tasks);
     }
   },
-  memory: () => LS.get('nx_memory', []),
+  memory: () => LS.get('halo_memory', []),
   addMemory: (entry) => {
     const mem = DB.memory();
     mem.unshift(entry);
-    LS.set('nx_memory', mem.slice(0, 500));
+    LS.set('halo_memory', mem.slice(0, 500));
   },
-  delMemory: (id) => LS.set('nx_memory', DB.memory().filter(m => m.id !== id)),
-  settings: () => LS.get('nx_settings', {}),
-  saveSettings: (s) => LS.set('nx_settings', s),
-  logs: () => LS.get('nx_logs', []),
+  delMemory: (id) => LS.set('halo_memory', DB.memory().filter(m => m.id !== id)),
+  settings: () => LS.get('halo_settings', {}),
+  saveSettings: (s) => LS.set('halo_settings', s),
+  logs: () => LS.get('halo_logs', []),
   addLog: (level, msg) => {
     const logs = DB.logs();
     logs.unshift({ id: uid(), level, message: msg, ts: Date.now() });
-    LS.set('nx_logs', logs.slice(0, 300));
+    LS.set('halo_logs', logs.slice(0, 300));
   },
-  perms: () => LS.get('nx_perms', {
+  perms: () => LS.get('halo_perms', {
     allow_web_access: true, allow_file_read: false, allow_github_read: true,
     allow_github_write: false, allow_memory_write: true, require_approval: true
   }),
-  savePerms: (p) => LS.set('nx_perms', p),
+  savePerms: (p) => LS.set('halo_perms', p),
 };
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -465,8 +465,8 @@ const SKILLS = {
     const s = DB.settings();
     return Array.isArray(s.skillSources) ? s.skillSources : this.DEFAULT_SOURCES;
   },
-  index() { try { return JSON.parse(localStorage.getItem('nx_skill_index') || '{"skills":[]}'); } catch { return { skills: [] }; } },
-  saveIndex(ix) { try { localStorage.setItem('nx_skill_index', JSON.stringify(ix)); } catch {} },
+  index() { try { return JSON.parse(localStorage.getItem('halo_skill_index') || '{"skills":[]}'); } catch { return { skills: [] }; } },
+  saveIndex(ix) { try { localStorage.setItem('halo_skill_index', JSON.stringify(ix)); } catch {} },
   parseSource(src) {
     const m = String(src).trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').match(/^([\w.-]+)\/([\w.-]+)(?:@([\w./-]+))?$/);
     if (!m) throw new Error(`Bad skill source "${src}". Use owner/repo or owner/repo@branch.`);
@@ -729,7 +729,7 @@ const TOOLS = {
 // ────────────────────────────────────────────────────────────────────────────
 // AGENT LOOP
 // ────────────────────────────────────────────────────────────────────────────
-const SYSTEM = `You are Nexus Agent, an AI agent that uses tools to complete tasks.
+const SYSTEM = `You are Halo, an AI agent that uses tools to complete tasks.
 
 Respond ONLY with valid JSON in this exact format:
 {
@@ -1121,7 +1121,7 @@ const PAGES = {
     window._memFilter = (f) => { filter = f; document.querySelectorAll('.filter-chip').forEach(el=>el.classList.toggle('on',el.textContent.replace(/ /g,'_')===f||el.textContent===f)); render(); };
     window._memRender = render;
     window._delMem = (id) => { DB.delMemory(id); render(); };
-    window._clearMemory = () => { if (confirm('Clear all memory?')) { LS.set('nx_memory',[]); render(); } };
+    window._clearMemory = () => { if (confirm('Clear all memory?')) { LS.set('halo_memory',[]); render(); } };
     render();
   },
 
@@ -1342,7 +1342,7 @@ const PAGES = {
       <div id="log-list" class="card" style="padding:0 0 0 0"></div>`;
 
     window._logFilter = (f) => { filter = f; render(); };
-    window._clearLogs = () => { LS.set('nx_logs',[]); render(); };
+    window._clearLogs = () => { LS.set('halo_logs',[]); render(); };
     render();
     pollTimer = setInterval(() => { if (currentPage === 'logs') render(); }, 5000);
   }
@@ -1431,7 +1431,7 @@ document.getElementById('task-overlay').addEventListener('click', e => {
 // ────────────────────────────────────────────────────────────────────────────
 // NATIVE BRIDGE (Android APK) with browser/Electron fallbacks
 // ────────────────────────────────────────────────────────────────────────────
-const NATIVE = window.NexusNative || null;
+const NATIVE = window.HaloNative || null;
 const DEVICE = (() => {
   try { return NATIVE ? JSON.parse(NATIVE.deviceInfo()) : {}; } catch { return {}; }
 })();
@@ -1452,8 +1452,8 @@ function voiceAvailable() { return !!(NATIVE && DEVICE.voiceInput); }
 function listen() {
   return new Promise((resolve, reject) => {
     if (!voiceAvailable()) return reject(new Error('Voice input needs a speech-recognition app on this device.'));
-    window.nexusVoiceResult = (t) => { window.nexusVoiceResult = null; resolve(t || ''); };
-    if (!NATIVE.startVoice()) { window.nexusVoiceResult = null; reject(new Error('Voice input is not available.')); }
+    window.haloVoiceResult = (t) => { window.haloVoiceResult = null; resolve(t || ''); };
+    if (!NATIVE.startVoice()) { window.haloVoiceResult = null; reject(new Error('Voice input is not available.')); }
   });
 }
 function saveDownload(name, blob) {
@@ -1491,15 +1491,15 @@ const CONTENT = {
 // ────────────────────────────────────────────────────────────────────────────
 const MATURE_TAGS = /^(nsfw|explicit|mature|18\+|adult|lewd|smut)$/i;
 const CHARS = {
-  all: () => LS.get('nx_chars', []),
-  save: (list) => LS.set('nx_chars', list),
+  all: () => LS.get('halo_chars', []),
+  save: (list) => LS.set('halo_chars', list),
   get: (id) => CHARS.all().find(c => c.id === id),
   upsert(c) {
     const list = CHARS.all(); const i = list.findIndex(x => x.id === c.id);
     if (i >= 0) list[i] = c; else list.unshift(c);
     CHARS.save(list); return c;
   },
-  remove(id) { CHARS.save(CHARS.all().filter(c => c.id !== id)); localStorage.removeItem(`nx_chat_${id}`); },
+  remove(id) { CHARS.save(CHARS.all().filter(c => c.id !== id)); localStorage.removeItem(`halo_chat_${id}`); },
   visible() { return CHARS.all().filter(c => !c.mature || CONTENT.isMature()); },
   blank() {
     return { id: uid(), name: '', description: '', personality: '', scenario: '', first_mes: '', mes_example: '',
@@ -1541,7 +1541,7 @@ const CHARS = {
     const d = json && (json.spec === 'chara_card_v2' || json.spec === 'chara_card_v3') ? (json.data || {}) : (json || {});
     if (!d.name) throw new Error('Not a character card (no name).');
     const tags = Array.isArray(d.tags) ? d.tags.map(String) : [];
-    const nx = (d.extensions && d.extensions.nexus) || {};
+    const nx = (d.extensions && (d.extensions.halo || d.extensions.nexus)) || {};
     const c = { ...CHARS.blank(),
       name: String(d.name), description: d.description || '', personality: d.personality || '', scenario: d.scenario || '',
       first_mes: d.first_mes || '', mes_example: d.mes_example || '', creator_notes: d.creator_notes || '',
@@ -1556,8 +1556,8 @@ const CHARS = {
     const data = { name: c.name, description: c.description, personality: c.personality, scenario: c.scenario,
       first_mes: c.first_mes, mes_example: c.mes_example, creator_notes: c.creator_notes, system_prompt: c.system_prompt,
       post_history_instructions: c.post_history_instructions, alternate_greetings: c.alternate_greetings || [],
-      tags: c.tags || [], creator: c.creator || 'Nexus Agent', character_version: c.character_version || '1.0',
-      extensions: { nexus: { mature: !!c.mature, adult: !!c.adult } } };
+      tags: c.tags || [], creator: c.creator || 'Halo', character_version: c.character_version || '1.0',
+      extensions: { halo: { mature: !!c.mature, adult: !!c.adult } } };
     // V1 fields at the top level too, as SillyTavern writes them.
     return { name: c.name, description: c.description, personality: c.personality, scenario: c.scenario,
       first_mes: c.first_mes, mes_example: c.mes_example, spec: 'chara_card_v2', spec_version: '2.0', data };
@@ -1666,8 +1666,8 @@ async function renderCardImage(c, avatarBlob) {
 // CHAT
 // ────────────────────────────────────────────────────────────────────────────
 const CHAT = {
-  get: (id) => LS.get(`nx_chat_${id}`, []),
-  set: (id, msgs) => LS.set(`nx_chat_${id}`, msgs.slice(-300)),
+  get: (id) => LS.get(`halo_chat_${id}`, []),
+  set: (id, msgs) => LS.set(`halo_chat_${id}`, msgs.slice(-300)),
   start(c, greetingIdx = 0) {
     const greetings = [c.first_mes, ...(c.alternate_greetings || [])].filter(Boolean);
     const msgs = greetings.length ? [{ role: 'assistant', content: greetings[greetingIdx % greetings.length], ts: Date.now(), greeting: greetingIdx }] : [];
@@ -1734,7 +1734,7 @@ const GLASSES = {
       .filter(el => el.offsetParent !== null && !(document.body.classList.contains('glasses') && !document.body.classList.contains('menu-open') && el.closest('.sidebar')));
   }
 };
-window.nexusBack = () => {
+window.haloBack = () => {
   if (document.querySelector('.overlay.open')) { closeModal(); return true; }
   if (document.body.classList.contains('menu-open')) { document.body.classList.remove('menu-open'); return true; }
   if (currentPage === 'chat') { navigate('characters'); return true; }
@@ -1748,7 +1748,7 @@ document.addEventListener('keydown', (e) => {
   document.body.classList.add('kbd');
   const a = document.activeElement;
   const typing = a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit', 'range'].includes(a.type)));
-  if (e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack') { if (window.nexusBack()) e.preventDefault(); return; }
+  if (e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack') { if (window.haloBack()) e.preventDefault(); return; }
   if (e.key === 'Enter' && a && a.getAttribute('tabindex') === '0' && !typing) { e.preventDefault(); a.click(); return; }
   if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
   if (typing && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
@@ -2013,15 +2013,15 @@ Object.assign(PAGES, {
         <div class="form-label" style="margin-top:12px">Key tester: press keys or swipe the touchpad</div>
         <pre class="dev-pre" id="dev-keylog">${esc(GLASSES.keyLog.join('\n') || 'No keys yet.')}</pre>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button class="btn btn-ghost btn-sm" onclick="speak('Hello from Nexus Agent on your glasses.')">Test speech</button>
+          <button class="btn btn-ghost btn-sm" onclick="speak('Hello from Halo on your glasses.')">Test speech</button>
           <button class="btn btn-ghost btn-sm" onclick="listen().then(t=>toast('Heard: '+(t||'(nothing)'))).catch(e=>toast(e.message,'var(--warn)'))">Test voice input</button>
           <button class="btn btn-ghost btn-sm" onclick="window._exportBackup()">Export backup</button>
           <label class="btn btn-ghost btn-sm" tabindex="0" style="cursor:pointer">Import backup<input type="file" id="bk-file" accept=".json,application/json" style="display:none"></label>
         </div>
         <div class="form-label" style="margin-top:14px">Install / update over ADB</div>
         <pre class="dev-pre">adb devices
-adb install -r nexus-agent-1.4.0.apk
-adb shell monkey -p com.nexusagent.app 1
+adb install -r halo-1.4.0.apk
+adb shell monkey -p com.halo.app 1
 adb logcat -s chromium:V  # page console output</pre>
       </div>`;
     c.querySelectorAll('[data-gk]').forEach(el => el.onchange = () => {
@@ -2030,16 +2030,16 @@ adb logcat -s chromium:V  # page console output</pre>
     const fs = document.getElementById('g-fs');
     fs.oninput = () => { document.getElementById('g-fs-v').textContent = fs.value; DB.saveSettings({ ...DB.settings(), glassesFontSize: Number(fs.value) }); GLASSES.apply(); };
     window._exportBackup = () => {
-      const data = {}; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('nx_')) data[k] = localStorage.getItem(k); }
-      saveDownload(`nexus-backup-${new Date().toISOString().slice(0, 10)}.json`, new Blob([JSON.stringify({ nexusBackup: 1, data })], { type: 'application/json' }))
+      const data = {}; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('halo_')) data[k] = localStorage.getItem(k); }
+      saveDownload(`halo-backup-${new Date().toISOString().slice(0, 10)}.json`, new Blob([JSON.stringify({ haloBackup: 1, data })], { type: 'application/json' }))
         .then(p => toast(p ? `Saved ${p}. It includes your API keys: keep it private.` : 'Export failed', 'var(--warn)'));
     };
     document.getElementById('bk-file').onchange = async (e) => {
       try {
         const j = JSON.parse(await e.target.files[0].text());
-        if (!j.nexusBackup || typeof j.data !== 'object') throw new Error('Not a Nexus backup file.');
-        if (!confirm('Replace this device\'s Nexus data with the backup?')) return;
-        Object.entries(j.data).forEach(([k, v]) => { if (k.startsWith('nx_')) localStorage.setItem(k, v); });
+        if (!(j.haloBackup || j.nexusBackup) || typeof j.data !== 'object') throw new Error('Not a Halo backup file.');
+        if (!confirm('Replace this device\'s Halo data with the backup?')) return;
+        Object.entries(j.data).forEach(([k, v]) => { const key = k.startsWith('nx_') ? 'halo_' + k.slice(3) : k; if (key.startsWith('halo_')) localStorage.setItem(key, v); });
         toast('Backup restored.'); GLASSES.apply(); navigate('home');
       } catch (err) { toast(err.message, 'var(--danger)'); }
     };
@@ -2059,8 +2059,8 @@ function openModal(title, html) {
 // media keys, settings shortcuts, head pose / nod-shake, notifications, HUD
 // ────────────────────────────────────────────────────────────────────────────
 const NATIVE_CB = {};
-window.__nexusCb = (id, ok, payload) => { const p = NATIVE_CB[id]; if (!p) return; delete NATIVE_CB[id]; ok ? p.resolve(payload) : p.reject(new Error((payload && payload.error) || 'native call failed')); };
-window.__nexusEvent = (type, payload) => {
+window.__haloCb = (id, ok, payload) => { const p = NATIVE_CB[id]; if (!p) return; delete NATIVE_CB[id]; ok ? p.resolve(payload) : p.reject(new Error((payload && payload.error) || 'native call failed')); };
+window.__haloEvent = (type, payload) => {
   if (type === 'display') { DB.addLog('info', `Display: ${JSON.stringify(payload)}`); if (currentPage === 'glasses') PAGES.glasses(); }
 };
 function nativeAsync(method, ...args) {
@@ -2071,7 +2071,7 @@ function nativeAsync(method, ...args) {
   });
 }
 function needNative(what = 'This tool') {
-  if (!NATIVE || !NATIVE.deviceStatus) throw new Error(`${what} needs the Nexus Agent Android app (glasses or phone).`);
+  if (!NATIVE || !NATIVE.deviceStatus) throw new Error(`${what} needs the Halo Android app (glasses or phone).`);
 }
 const parseJ = (s, d = {}) => { try { return JSON.parse(s); } catch { return d; } };
 
@@ -2111,7 +2111,7 @@ Object.assign(TOOLS, {
     async run() { return GTOOLS.status(); } },
   glasses_volume: { desc: 'Set media volume. Args: {"percent": 0-100}', risky: false,
     async run({ percent }) { needNative(); return NATIVE.setVolume(Math.round(Number(percent) || 0)); } },
-  glasses_brightness: { desc: 'Set display brightness for Nexus. Args: {"percent": 1-100} or {"auto": true} to follow the system', risky: false,
+  glasses_brightness: { desc: 'Set display brightness for Halo. Args: {"percent": 1-100} or {"auto": true} to follow the system', risky: false,
     async run({ percent, auto }) { needNative(); return NATIVE.setBrightness(auto ? -1 : Math.max(1, Math.min(100, Number(percent) || 50)) / 100); } },
   media_control: { desc: 'Control the music/podcast app playing on the device. Args: {"action": "play|pause|play_pause|next|previous|stop"}', risky: false,
     async run({ action }) { needNative(); return NATIVE.mediaKey(String(action || 'play_pause')); } },
@@ -2124,7 +2124,7 @@ Object.assign(TOOLS, {
   notifications_read: { desc: 'Recent notifications on this device (needs notification access). Args: {"app": "optional filter", "limit": 15, "since_minutes": optional}', risky: false,
     async run({ app = '', limit = 15, since_minutes } = {}) {
       needNative('Notifications');
-      if (!NATIVE.notificationAccess()) return { error: 'Notification access is off. Ask the user to enable it: glasses_settings panel "notifications" → Nexus Agent.' };
+      if (!NATIVE.notificationAccess()) return { error: 'Notification access is off. Ask the user to enable it: glasses_settings panel "notifications" → Halo.' };
       const since = since_minutes ? Date.now() - since_minutes * 60000 : 0; const f = String(app).toLowerCase();
       return parseJ(NATIVE.notificationsList(150), []).filter(n => n.time >= since && (!f || n.app.toLowerCase().includes(f) || n.package.includes(f))).slice(0, limit)
         .map(n => ({ time: new Date(n.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), app: n.app, title: n.title, text: String(n.text).slice(0, 220), key: n.key }));
@@ -2168,9 +2168,9 @@ PAGES.glasses = function () {
     <div class="form-group"><label class="form-label">Brightness (this app): <span id="gb-v">${disp.appBrightness === 'system' ? 'system' : disp.appBrightness + '%'}</span></label>
       <div style="display:flex;gap:8px;align-items:center"><input type="range" min="1" max="100" value="${disp.appBrightness === 'system' ? 70 : disp.appBrightness}" id="gb" style="flex:1"><button class="btn btn-ghost btn-xs" id="gb-auto">System</button></div></div>
     <div class="form-label">Media</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${['previous', 'play_pause', 'next', 'stop'].map(a => `<button class="btn btn-ghost btn-sm" onclick="toast(NexusNative.mediaKey('${a}'))">${{ previous: '⏮', play_pause: '⏯', next: '⏭', stop: '⏹' }[a]}</button>`).join('')}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${['previous', 'play_pause', 'next', 'stop'].map(a => `<button class="btn btn-ghost btn-sm" onclick="toast(HaloNative.mediaKey('${a}'))">${{ previous: '⏮', play_pause: '⏯', next: '⏭', stop: '⏹' }[a]}</button>`).join('')}</div>
     <div class="form-label">System settings</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${['wifi', 'bluetooth', 'display', 'sound', 'battery', 'notifications', 'developer'].map(p => `<button class="btn btn-ghost btn-xs" onclick="toast(NexusNative.openSettings('${p}'))">${p}</button>`).join('')}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${['wifi', 'bluetooth', 'display', 'sound', 'battery', 'notifications', 'developer'].map(p => `<button class="btn btn-ghost btn-xs" onclick="toast(HaloNative.openSettings('${p}'))">${p}</button>`).join('')}</div>
     <div class="form-label">Head gestures</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
       <button class="btn btn-ghost btn-sm" id="cal-nod">Calibrate nod</button><button class="btn btn-ghost btn-sm" id="cal-shake">Calibrate shake</button>
@@ -2178,13 +2178,13 @@ PAGES.glasses = function () {
       <span style="font-size:12px;color:var(--muted)">nod axis ${esc(s.nodAxis || 'x')} · shake axis ${esc(s.shakeAxis || 'y')}</span></div>
     <div class="form-label">Notifications</div>
     <div style="font-size:13px;margin-bottom:12px">${NATIVE.notificationAccess() ? '✓ Access on: the agent can read notifications (notifications_read).' : 'Access off.'}
-      <button class="btn btn-ghost btn-xs" onclick="toast(NexusNative.openSettings('notifications'))">${NATIVE.notificationAccess() ? 'Manage' : 'Turn on'}</button></div>
+      <button class="btn btn-ghost btn-xs" onclick="toast(HaloNative.openSettings('notifications'))">${NATIVE.notificationAccess() ? 'Manage' : 'Turn on'}</button></div>
     <div class="form-label">HUD on USB-C display glasses</div>
     <div style="font-size:13px;margin-bottom:6px">${hud.connected ? `Connected: ${esc(hud.name)} ${hud.width}×${hud.height} @${hud.refreshHz}Hz${hud.hud ? ' · HUD on' : ''}` : 'No external display. Plug in Lenovo Legion/T1, XREAL, Viture, Rokid or RayNeo Air glasses over USB-C.'}</div>
     ${hud.connected ? `<div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="TOOLS.hud_control.run({action:'clock'}).then(toast).catch(e=>toast(e.message,'var(--warn)'))">Clock</button>
-      <button class="btn btn-ghost btn-sm" onclick="TOOLS.hud_control.run({action:'text',title:'Nexus',text:'Hello from Nexus Agent'}).then(toast).catch(e=>toast(e.message,'var(--warn)'))">Test text</button>
-      <button class="btn btn-ghost btn-sm" onclick="NexusNative.hudStop();setTimeout(()=>PAGES.glasses(),300)">Stop HUD</button></div>` : ''}
+      <button class="btn btn-ghost btn-sm" onclick="TOOLS.hud_control.run({action:'text',title:'Halo',text:'Hello from Halo'}).then(toast).catch(e=>toast(e.message,'var(--warn)'))">Test text</button>
+      <button class="btn btn-ghost btn-sm" onclick="HaloNative.hudStop();setTimeout(()=>PAGES.glasses(),300)">Stop HUD</button></div>` : ''}
     <div class="toggle-row" style="margin-top:8px"><div class="toggle-info"><div class="label">Mirror chat replies to the HUD</div><div class="desc">Character replies also appear on connected display glasses.</div></div>
       <label class="tog"><input type="checkbox" data-gk="hudMirror" ${s.hudMirror ? 'checked' : ''}><div class="tog-track"></div><div class="tog-thumb"></div></label></div>`;
   c.insertBefore(card, c.children[1]);

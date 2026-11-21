@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import android.app.ActivityManager;
 import android.bluetooth.BluetoothManager;

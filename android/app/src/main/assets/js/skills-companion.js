@@ -1,4 +1,4 @@
-/* Nexus Agent: companion pack. Characters (SillyTavern-compatible cards), companion /
+/* Halo: companion pack. Characters (SillyTavern-compatible cards), companion /
  * role-play chat with SFW and opt-in mature (18+) content, GitHub SKILL.md libraries,
  * and the Arkon knowledge hub. Loaded after skills-auto.js.
  *
@@ -99,11 +99,11 @@
   /* ================================================================== characters */
   const MATURE_TAGS = /^(nsfw|explicit|mature|18\+|adult|lewd|smut)$/i;
   const CH = {
-    all: () => LSJ.get('nexus_characters', []),
-    save: l => LSJ.set('nexus_characters', l),
+    all: () => LSJ.get('halo_characters', []),
+    save: l => LSJ.set('halo_characters', l),
     get: id => CH.all().find(c => c.id === id),
     upsert(c) { const l = CH.all(); const i = l.findIndex(x => x.id === c.id); if (i >= 0) l[i] = c; else l.unshift(c); CH.save(l); return c; },
-    remove(id) { CH.save(CH.all().filter(c => c.id !== id)); localStorage.removeItem('nexus_charchat_' + id); },
+    remove(id) { CH.save(CH.all().filter(c => c.id !== id)); localStorage.removeItem('halo_charchat_' + id); },
     mature: () => st().contentMode === 'mature' && !!st().ageConfirmedAt,
     visible: () => CH.all().filter(c => !c.mature || CH.mature()),
     blank: () => ({ id: uid(), name: '', description: '', personality: '', scenario: '', first_mes: '', mes_example: '', creator_notes: '', system_prompt: '', post_history_instructions: '', alternate_greetings: [], tags: [], creator: '', character_version: '1.0', avatar: '', mature: false, adult: false, agentId: '' }),
@@ -123,7 +123,7 @@
     fromCard(json) {
       const d = json && (json.spec === 'chara_card_v2' || json.spec === 'chara_card_v3') ? (json.data || {}) : (json || {});
       if (!d.name) throw new Error('Not a character card (no name).');
-      const tags = Array.isArray(d.tags) ? d.tags.map(String) : []; const nx = (d.extensions && d.extensions.nexus) || {};
+      const tags = Array.isArray(d.tags) ? d.tags.map(String) : []; const nx = (d.extensions && (d.extensions.halo || d.extensions.nexus)) || {};
       return { ...CH.blank(), name: String(d.name), description: d.description || '', personality: d.personality || '', scenario: d.scenario || '', first_mes: d.first_mes || '', mes_example: d.mes_example || '',
         creator_notes: d.creator_notes || '', system_prompt: d.system_prompt || '', post_history_instructions: d.post_history_instructions || '',
         alternate_greetings: Array.isArray(d.alternate_greetings) ? d.alternate_greetings.map(String) : [], tags, creator: d.creator || '', character_version: d.character_version || '',
@@ -131,22 +131,23 @@
     },
     toCard(c) {
       const data = { name: c.name, description: c.description, personality: c.personality, scenario: c.scenario, first_mes: c.first_mes, mes_example: c.mes_example, creator_notes: c.creator_notes,
-        system_prompt: c.system_prompt, post_history_instructions: c.post_history_instructions, alternate_greetings: c.alternate_greetings || [], tags: c.tags || [], creator: c.creator || 'Nexus Agent',
-        character_version: c.character_version || '1.0', extensions: { nexus: { mature: !!c.mature, adult: !!c.adult } } };
+        system_prompt: c.system_prompt, post_history_instructions: c.post_history_instructions, alternate_greetings: c.alternate_greetings || [], tags: c.tags || [], creator: c.creator || 'Halo',
+        character_version: c.character_version || '1.0', extensions: { halo: { mature: !!c.mature, adult: !!c.adult } } };
       return { name: c.name, description: c.description, personality: c.personality, scenario: c.scenario, first_mes: c.first_mes, mes_example: c.mes_example, spec: 'chara_card_v2', spec_version: '2.0', data };
     },
     async importBytes(name, bytes) {
-      // Backups from the older Nexus Agent app (com.nexusagent.app) carry characters and chats.
+      // Backups from the older Halo app (com.halo.app) carry characters and chats.
       if (!(bytes[0] === 0x89 && bytes[1] === 0x50)) {
         const j = JSON.parse(new TextDecoder().decode(bytes));
-        if (j.nexusBackup && j.data) {
-          const chars = parseJSON(j.data.nx_chars, []); let n = 0;
-          for (const c of chars) { CH.upsert({ ...CH.blank(), ...c }); const chat = j.data['nx_chat_' + c.id]; if (chat) localStorage.setItem('nexus_charchat_' + c.id, chat); n++; }
-          const old = parseJSON(j.data.nx_settings, {});
+        if ((j.haloBackup || j.nexusBackup) && j.data) {
+          const D = k => j.data['halo_' + k] ?? j.data['nx_' + k];
+          const chars = parseJSON(D('chars'), []); let n = 0;
+          for (const c of chars) { CH.upsert({ ...CH.blank(), ...c }); const chat = D('chat_' + c.id); if (chat) localStorage.setItem('halo_charchat_' + c.id, chat); n++; }
+          const old = parseJSON(D('settings'), {});
           ['personaName', 'personaDescription'].forEach(k => { if (old[k] && !st()[k]) st()[k] = old[k]; });
           if (Array.isArray(old.skillSources)) st().skillSources = old.skillSources;
           if (old.arkonUrl) { st().arkonUrl = old.arkonUrl; st().arkonEmail = old.arkonEmail || ''; if (old.arkonPassword) setKey('svc_arkon', old.arkonPassword); }
-          save(); return `${n} character(s) from a Nexus backup`;
+          save(); return `${n} character(s) from a Halo backup`;
         }
         return CH.upsert(CH.fromCard(j)).name;
       }
@@ -155,12 +156,12 @@
     async exportPng(c) { return saveBytes((c.name || 'character').replace(/\s+/g, '_') + '.png', PNGCARD.write(await cardImage(c), JSON.stringify(CH.toCard(c))), 'image/png'); },
     exportJson(c) { return saveBytes((c.name || 'character').replace(/\s+/g, '_') + '.json', new TextEncoder().encode(JSON.stringify(CH.toCard(c), null, 2)), 'application/json'); },
   };
-  window.NexusCharacters = CH;
+  window.HaloCharacters = CH;
 
   /* ================================================================== chat */
   const CHAT = {
-    get: id => LSJ.get('nexus_charchat_' + id, []),
-    set: (id, m) => LSJ.set('nexus_charchat_' + id, m.slice(-300)),
+    get: id => LSJ.get('halo_charchat_' + id, []),
+    set: (id, m) => LSJ.set('halo_charchat_' + id, m.slice(-300)),
     start(c, gi = 0) { const g = [c.first_mes, ...(c.alternate_greetings || [])].filter(Boolean); const m = g.length ? [{ role: 'assistant', content: g[gi % g.length], greeting: gi }] : []; CHAT.set(c.id, m); return m; },
     rule(c) {
       return CH.mature() && c.mature
@@ -322,10 +323,10 @@
 
   /* ================================================================== GitHub skill libraries (SKILL.md) */
   const LIB = {
-    index: () => LSJ.get('nexus_skill_index', { skills: [] }),
+    index: () => LSJ.get('halo_skill_index', { skills: [] }),
     parse(src) { const m = String(src).trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').match(/^([\w.-]+)\/([\w.-]+)(?:@([\w./-]+))?$/); if (!m) throw new Error(`Bad skill source "${src}". Use owner/repo or owner/repo@branch.`); return { owner: m[1], repo: m[2], ref: m[3] || 'HEAD' }; },
     raw: (o, r, ref, path) => `https://raw.githubusercontent.com/${o}/${r}/${ref}/${path.split('/').map(encodeURIComponent).join('/')}`,
-    async get(url, json) { const h = { 'User-Agent': 'NexusAgent' }; const gh = getKey('svc_github') || getKey('github'); if (gh && url.includes('api.github.com')) h.Authorization = 'token ' + gh; const r = await http('GET', url, h, null, 30000); if (r.status >= 400) throw new Error(`GitHub ${r.status}${r.status === 403 ? ' (rate limit)' : ''}`); return json ? parseJSON(r.body, {}) : r.body; },
+    async get(url, json) { const h = { 'User-Agent': 'Halo' }; const gh = getKey('svc_github') || getKey('github'); if (gh && url.includes('api.github.com')) h.Authorization = 'token ' + gh; const r = await http('GET', url, h, null, 30000); if (r.status >= 400) throw new Error(`GitHub ${r.status}${r.status === 403 ? ' (rate limit)' : ''}`); return json ? parseJSON(r.body, {}) : r.body; },
     front(text) {
       const m = text.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/); const meta = {};
       if (m) { const lines = m[1].split('\n'); for (let i = 0; i < lines.length; i++) { const kv = lines[i].match(/^([A-Za-z_-]+):\s*(.*)$/); if (!kv) continue; let val = kv[2].trim();
@@ -347,7 +348,7 @@
         } catch (e) { errors.push(`${src}: ${e.message}`); }
       }
       skills.sort((a, b) => a.name.localeCompare(b.name));
-      const ix = { skills, errors, updatedAt: Date.now() }; LSJ.set('nexus_skill_index', ix); return ix;
+      const ix = { skills, errors, updatedAt: Date.now() }; LSJ.set('halo_skill_index', ix); return ix;
     },
     async ensure() { const ix = LIB.index(); if (ix.skills.length && Date.now() - (ix.updatedAt || 0) < 864e5) return ix; try { return await LIB.refresh(); } catch { return ix; } },
     find(name) { const n = String(name || '').toLowerCase().trim(); const all = LIB.index().skills; return all.find(s => s.name.toLowerCase() === n) || all.find(s => s.name.toLowerCase().includes(n)); },

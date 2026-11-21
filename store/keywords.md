@@ -1,4 +1,4 @@
-# Nexus Agent — Keywords & ASO
+# Halo — Keywords & ASO
 
 ## iOS Keywords Field
 

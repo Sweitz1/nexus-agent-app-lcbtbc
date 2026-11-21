@@ -1,7 +1,7 @@
 {
-  "appId": "com.nexusagent.app",
-  "productName": "Nexus Agent",
-  "copyright": "Copyright \u00a9 2026 Nexus Agent",
+  "appId": "com.halo.app",
+  "productName": "Halo",
+  "copyright": "Copyright \u00a9 2026 Halo",
   "directories": {
     "output": "dist-electron"
   },
@@ -31,14 +31,14 @@
     "oneClick": false,
     "perMachine": false,
     "runAfterFinish": true,
-    "shortcutName": "Nexus Agent"
+    "shortcutName": "Halo"
   },
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "perMachine": false,
     "runAfterFinish": true,
-    "shortcutName": "Nexus Agent"
+    "shortcutName": "Halo"
   },
   "linux": {
     "target": [
@@ -58,7 +58,7 @@
     "category": "Utility",
     "icon": "assets/icon.png",
     "synopsis": "Local-first AI agent",
-    "maintainer": "Nexus Agent <nexus-agent@users.noreply.github.com>"
+    "maintainer": "Halo <noreply@halo.invalid>"
   },
   "deb": {
     "depends": [

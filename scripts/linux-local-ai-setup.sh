@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Nexus Agent: set up fully local AI on Linux (no API keys, no subscription).
+# Halo: set up fully local AI on Linux (no API keys, no subscription).
 #
 # Installs Ollama if needed, checks your GPU and RAM, and pulls models that fit.
 #
@@ -9,7 +9,7 @@
 #   ./linux-local-ai-setup.sh --model hf.co/<user>/<repo>-GGUF:Q4_K_M   # straight from Hugging Face
 #   ./linux-local-ai-setup.sh --dry-run             # show the plan, change nothing
 #
-# Then open Nexus Agent → Providers → Local LLM → "Detect installed models".
+# Then open Halo → Providers → Local LLM → "Detect installed models".
 set -euo pipefail
 
 PROFILE="auto"
@@ -98,7 +98,7 @@ done
 
 cat <<EOF
 
-Done. In Nexus Agent:
+Done. In Halo:
   Providers → Local LLM (on-device / LAN) → Edit
     Server URL: http://127.0.0.1:11434/v1
     Tap "Detect installed models", pick one, Save, then "Set as Default".

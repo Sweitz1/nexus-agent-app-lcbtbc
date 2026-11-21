@@ -1,6 +1,6 @@
 # App Store / Play Store Review Notes
 
-**App name:** Nexus Agent
+**App name:** Halo
 **Version:** 1.0.0
 **Platform:** iOS and Android
 
@@ -85,7 +85,7 @@ The Delete Account flow is available at **Settings → Danger Zone → Delete Ac
 
 ### The app requires a user-supplied LLM API key to run tasks
 
-Nexus Agent does not bundle any AI model or API key. To run agent tasks, a user must add their own API key for at least one supported provider (OpenAI, Anthropic, or Google Gemini). The demo account above has an OpenAI key pre-configured so reviewers do not need to supply their own.
+Halo does not bundle any AI model or API key. To run agent tasks, a user must add their own API key for at least one supported provider (OpenAI, Anthropic, or Google Gemini). The demo account above has an OpenAI key pre-configured so reviewers do not need to supply their own.
 
 If you choose to test with your own account instead of the demo account, you will need to add an API key in **Settings → Model Providers** before creating tasks.
 
@@ -111,7 +111,7 @@ The only network calls the app makes are:
 
 ### Deep-link scheme
 
-The app uses the `nexusagent://` deep-link scheme for OAuth callback handling (Google and Apple sign-in). This is declared in the app manifest and is used only for authentication redirects.
+The app uses the `haloagent://` deep-link scheme for OAuth callback handling (Google and Apple sign-in). This is declared in the app manifest and is used only for authentication redirects.
 
 ### Encryption note (iOS Export Compliance)
 
@@ -123,4 +123,4 @@ The app uses AES-256-GCM to encrypt API keys at rest on the server side. All cli
 
 If you have questions during the review process, please contact:
 
-**Email:** support@nexusagent.app
+**Email:** support@haloagent.app

@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import org.json.JSONObject;
 
@@ -83,7 +83,7 @@ final class RawHttp {
                     req.append(k).append(": ").append(headers.optString(k).replace("\r", "").replace("\n", "")).append("\r\n");
                 }
             }
-            if (!hasUa) req.append("User-Agent: NexusAgent/1.0 (Android; RayNeo)\r\n");
+            if (!hasUa) req.append("User-Agent: Halo/1.0 (Android; RayNeo)\r\n");
             req.append("Content-Length: ").append(payload.length).append("\r\n\r\n");
             OutputStream out = sock.getOutputStream();
             out.write(req.toString().getBytes(StandardCharsets.UTF_8));

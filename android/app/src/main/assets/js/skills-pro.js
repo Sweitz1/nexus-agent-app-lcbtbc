@@ -1,4 +1,4 @@
-/* Nexus Agent — pro skills: files, coding, engineering, images, PDF, OCR, zip, video,
+/* Halo — pro skills: files, coding, engineering, images, PDF, OCR, zip, video,
  * Apple Maps, phone, translation. Loaded after the core script in index.html and shares
  * its globals (S, N, http, BUILTIN_SKILLS, runAgent, ...). */
 'use strict';
@@ -309,7 +309,7 @@ const WINANSI_MAP = { '‘': "'", '’': "'", '“': '"', '”': '"', '–': '-'
 const pdfSafe = s => String(s).replace(/[‘’“”–—…• →←≤≥≠×\t]/g, c => WINANSI_MAP[c]).replace(/[^\x20-\x7E\xA1-\xFF\n]/g, '?');
 async function pdfCreate({ output, title, content, images = [], page_size = 'letter', font_size = 11 }) {
   const { PDFDocument, StandardFonts, rgb } = await pdflib();
-  const doc = await PDFDocument.create(); if (title) doc.setTitle(pdfSafe(title)); doc.setCreator('Nexus Agent');
+  const doc = await PDFDocument.create(); if (title) doc.setTitle(pdfSafe(title)); doc.setCreator('Halo');
   const font = await doc.embedFont(StandardFonts.Helvetica), bold = await doc.embedFont(StandardFonts.HelveticaBold), mono = await doc.embedFont(StandardFonts.Courier);
   const [W, H] = page_size === 'a4' ? [595.28, 841.89] : [612, 792]; const M = 54;
   let page = null, y = 0;

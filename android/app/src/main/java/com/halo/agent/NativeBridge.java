@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import android.content.ActivityNotFoundException;
 import android.content.Context;
@@ -51,9 +51,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * JavaScript bridge exposed as window.NexusNative.
+ * JavaScript bridge exposed as window.HaloNative.
  *
- * Async methods take a callback id and answer through window.__nexusCb(id, ok, payload).
+ * Async methods take a callback id and answer through window.__haloCb(id, ok, payload).
  * Network calls are made natively so the web UI is not limited by CORS (needed for
  * direct calls to Anthropic, xAI, Venice and LAN-hosted local models).
  */
@@ -93,10 +93,10 @@ public class NativeBridge {
         this.glasses = new GlassesTools(activity);
         this.music = new MusicTools(activity);
         this.apk = new ApkTools(activity, workspace);
-        NexusNotificationListener.sink = n -> activity.emit("notification", n.toString());
+        HaloNotificationListener.sink = n -> activity.emit("notification", n.toString());
         WakeWordService.sink = e -> activity.emit("wake", e.toString());
-        NexusAccessibilityService.sink = (t, d) -> { try { d.put("type", t); } catch (Exception ignored) { } activity.emit("screen", d.toString()); };
-        this.prefs = activity.getSharedPreferences("nexus_secure", Context.MODE_PRIVATE);
+        HaloAccessibilityService.sink = (t, d) -> { try { d.put("type", t); } catch (Exception ignored) { } activity.emit("screen", d.toString()); };
+        this.prefs = activity.getSharedPreferences("halo_secure", Context.MODE_PRIVATE);
         tts = new TextToSpeech(activity, status -> {
             ttsReady = status == TextToSpeech.SUCCESS;
             if (ttsReady) {
@@ -202,7 +202,7 @@ public class NativeBridge {
                         c.setRequestProperty(k, headers.optString(k));
                     }
                 }
-                if (!hasUa) c.setRequestProperty("User-Agent", "NexusAgent/1.0 (Android; RayNeo)");
+                if (!hasUa) c.setRequestProperty("User-Agent", "Halo/1.0 (Android; RayNeo)");
                 String body = req.has("body") && !req.isNull("body") ? req.optString("body") : null;
                 if (body != null && !method.equals("GET") && !method.equals("HEAD")) {
                     byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
@@ -487,8 +487,8 @@ public class NativeBridge {
         try {
             android.net.nsd.NsdManager nsd = (android.net.nsd.NsdManager) activity.getSystemService(Context.NSD_SERVICE);
             android.net.nsd.NsdServiceInfo info = new android.net.nsd.NsdServiceInfo();
-            info.setServiceName("Nexus " + Build.MODEL);
-            info.setServiceType("_nexus._tcp");
+            info.setServiceName("Halo " + Build.MODEL);
+            info.setServiceType("_halo._tcp");
             info.setPort(port);
             nsdListener = new android.net.nsd.NsdManager.RegistrationListener() {
                 public void onServiceRegistered(android.net.nsd.NsdServiceInfo i) { }
@@ -748,7 +748,7 @@ public class NativeBridge {
             if (req.optBoolean("dropAuthOnRedirect")) {
                 // GitHub artifacts/logs/assets redirect to pre-signed storage URLs that reject the API token.
                 c.setInstanceFollowRedirects(false);
-                c.setRequestProperty("User-Agent", "NexusAgent/1.0 (Android; RayNeo)");
+                c.setRequestProperty("User-Agent", "Halo/1.0 (Android; RayNeo)");
                 JSONObject h0 = req.optJSONObject("headers");
                 if (h0 != null) { Iterator<String> it = h0.keys(); while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h0.optString(k)); } }
                 int st0 = c.getResponseCode();
@@ -768,7 +768,7 @@ public class NativeBridge {
                 c.setConnectTimeout(20000);
                 c.setReadTimeout(120000);
                 c.setInstanceFollowRedirects(true);
-                c.setRequestProperty("User-Agent", "NexusAgent/1.0 (Android; RayNeo)");
+                c.setRequestProperty("User-Agent", "Halo/1.0 (Android; RayNeo)");
                 JSONObject h = req.optJSONObject("headers");
                 if (h != null) { Iterator<String> it = h.keys(); while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.optString(k)); } }
                 String method = req.optString("method", "GET").toUpperCase(Locale.ROOT);
@@ -825,7 +825,7 @@ public class NativeBridge {
             JSONObject spec = new JSONObject(specJson);
             URL url = new URL(spec.getString("url"));
             if (!"https".equals(url.getProtocol()) && !"http".equals(url.getProtocol())) throw new IllegalArgumentException("Only http/https");
-            String boundary = "----nexus" + System.nanoTime();
+            String boundary = "----halo" + System.nanoTime();
             HttpURLConnection c = (HttpURLConnection) url.openConnection();
             try {
                 c.setConnectTimeout(20000);
@@ -834,7 +834,7 @@ public class NativeBridge {
                 c.setDoOutput(true);
                 c.setChunkedStreamingMode(65536);
                 c.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-                c.setRequestProperty("User-Agent", "NexusAgent/1.0 (Android; RayNeo)");
+                c.setRequestProperty("User-Agent", "Halo/1.0 (Android; RayNeo)");
                 JSONObject h = spec.optJSONObject("headers");
                 if (h != null) { Iterator<String> it = h.keys(); while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.optString(k)); } }
                 try (OutputStream os = new java.io.BufferedOutputStream(c.getOutputStream())) {
@@ -999,7 +999,7 @@ public class NativeBridge {
         return byteRate > 0 ? pcm.length * 1000L / byteRate : 0;
     }
 
-    // ------------------------------------------------------------------ wake word ("Hey Nexus")
+    // ------------------------------------------------------------------ wake word ("Hey Halo")
 
     @JavascriptInterface
     public boolean wakeModelInstalled(String name) { return WakeWordService.installed(activity, name); }
@@ -1091,7 +1091,7 @@ public class NativeBridge {
     @JavascriptInterface
     public void wakeResume() { WakeWordService.resume(); }
 
-    /** "Display over other apps" lets the wake word bring Nexus to the front from the background. */
+    /** "Display over other apps" lets the wake word bring Halo to the front from the background. */
     @JavascriptInterface
     public boolean canDrawOverlays() { return Build.VERSION.SDK_INT < 23 || android.provider.Settings.canDrawOverlays(activity); }
 
@@ -1107,7 +1107,7 @@ public class NativeBridge {
     // ------------------------------------------------------------------ screen control (accessibility)
 
     @JavascriptInterface
-    public boolean screenEnabled() { return NexusAccessibilityService.instance != null; }
+    public boolean screenEnabled() { return HaloAccessibilityService.instance != null; }
 
     @JavascriptInterface
     public void screenOpenSettings() {
@@ -1115,16 +1115,16 @@ public class NativeBridge {
     }
 
     @JavascriptInterface
-    public void screenBlocklist(String regex) { NexusAccessibilityService.setBlocklist(regex); }
+    public void screenBlocklist(String regex) { HaloAccessibilityService.setBlocklist(regex); }
 
     @JavascriptInterface
     public void screenIndicator(String text) {
-        NexusAccessibilityService s = NexusAccessibilityService.instance;
+        HaloAccessibilityService s = HaloAccessibilityService.instance;
         if (s == null) return;
         if (text == null || text.isEmpty()) s.hidePill(); else s.showPill(text);
     }
 
-    /** Brings Nexus back to the front after a screen-control task. */
+    /** Brings Halo back to the front after a screen-control task. */
     @JavascriptInterface
     public void bringToFront() {
         activity.runOnUiThread(() -> {
@@ -1140,8 +1140,8 @@ public class NativeBridge {
     @JavascriptInterface
     public void screen(String id, String specJson) {
         async(id, () -> {
-            NexusAccessibilityService s = NexusAccessibilityService.instance;
-            if (s == null) throw new IllegalStateException("Screen control is off. Enable \"Nexus Agent screen control\" in Android Settings → Accessibility.");
+            HaloAccessibilityService s = HaloAccessibilityService.instance;
+            if (s == null) throw new IllegalStateException("Screen control is off. Enable \"Halo screen control\" in Android Settings → Accessibility.");
             JSONObject sp = new JSONObject(specJson);
             String op = sp.getString("op");
             String r;
@@ -1257,7 +1257,7 @@ public class NativeBridge {
 
     /**
      * "Tap the glasses to talk": owns the media-button route with a silent media session, so a
-     * tap on the glasses (play/pause) opens Nexus voice input instead of pausing music.
+     * tap on the glasses (play/pause) opens Halo voice input instead of pausing music.
      */
     @JavascriptInterface
     public String tapToTalk(boolean on) {
@@ -1268,7 +1268,7 @@ public class NativeBridge {
                 return;
             }
             if (tapSession != null) return;
-            tapSession = new android.media.session.MediaSession(activity, "NexusTapToTalk");
+            tapSession = new android.media.session.MediaSession(activity, "HaloTapToTalk");
             tapSession.setCallback(new android.media.session.MediaSession.Callback() {
                 @Override public boolean onMediaButtonEvent(Intent i) {
                     KeyEvent k = i.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
@@ -1293,7 +1293,7 @@ public class NativeBridge {
             silentTrack.write(new short[rate], 0, rate);
             silentTrack.play();
         });
-        return on ? "Tap-to-talk on: tap your glasses (play/pause) to talk to Nexus" : "Tap-to-talk off";
+        return on ? "Tap-to-talk on: tap your glasses (play/pause) to talk to Halo" : "Tap-to-talk off";
     }
 
     // ------------------------------------------------------------------ photos/videos from the gallery (e.g. Meta glasses captures)
@@ -1390,7 +1390,7 @@ public class NativeBridge {
         }
     }
 
-    /** Waits for the browser redirect; resolves {query} and brings Nexus back to the front. */
+    /** Waits for the browser redirect; resolves {query} and brings Halo back to the front. */
     @JavascriptInterface
     public void oauthWait(String id, int port, int timeoutMs) {
         async(id, () -> {
@@ -1408,7 +1408,7 @@ public class NativeBridge {
                         String[] parts = line.toString().trim().split(" ");
                         String target = parts.length > 1 ? parts[1] : "/";
                         if (target.startsWith("/favicon")) { sock.getOutputStream().write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".getBytes(StandardCharsets.UTF_8)); continue; }
-                        String html = "<!doctype html><meta name=viewport content='width=device-width'><body style='font-family:sans-serif;background:#000;color:#e6f7ff;text-align:center;padding:3em'><h2>✅ Signed in</h2><p>You can return to Nexus Agent.</p></body>";
+                        String html = "<!doctype html><meta name=viewport content='width=device-width'><body style='font-family:sans-serif;background:#000;color:#e6f7ff;text-align:center;padding:3em'><h2>✅ Signed in</h2><p>You can return to Halo.</p></body>";
                         byte[] b = html.getBytes(StandardCharsets.UTF_8);
                         sock.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + b.length + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
                         sock.getOutputStream().write(b);
@@ -1510,7 +1510,7 @@ public class NativeBridge {
             String name = (fileName == null || fileName.isEmpty() ? Uri.parse(url).getLastPathSegment() : fileName);
             if (name == null || name.isEmpty()) name = "download_" + System.currentTimeMillis();
             name = name.replaceAll("[\\\\/:*?\"<>|]", "_");
-            r.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "Nexus/" + name);
+            r.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "Halo/" + name);
             r.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             r.setTitle(name);
             if (headersJson != null && !headersJson.isEmpty()) {
@@ -1519,7 +1519,7 @@ public class NativeBridge {
                 while (it.hasNext()) { String k = it.next(); r.addRequestHeader(k, h.optString(k)); }
             }
             long dl = dm.enqueue(r);
-            return "{\"id\":" + dl + ",\"file\":" + JSONObject.quote("Download/Nexus/" + name) + "}";
+            return "{\"id\":" + dl + ",\"file\":" + JSONObject.quote("Download/Halo/" + name) + "}";
         } catch (Exception e) {
             return errorJson(e);
         }
@@ -1594,7 +1594,7 @@ public class NativeBridge {
     }
 
     /**
-     * Saves a workspace file into shared storage (Pictures/Movies/Music/Download, subfolder Nexus) so
+     * Saves a workspace file into shared storage (Pictures/Movies/Music/Download, subfolder Halo) so
      * the gallery and backup apps (Google Photos, Verizon Cloud, Samsung Cloud…) pick it up.
      */
     @JavascriptInterface
@@ -1612,7 +1612,7 @@ public class NativeBridge {
                 case "audio": coll = android.provider.MediaStore.Audio.Media.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY); dir = android.os.Environment.DIRECTORY_MUSIC; break;
                 default: coll = android.provider.MediaStore.Downloads.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY); dir = android.os.Environment.DIRECTORY_DOWNLOADS;
             }
-            String folder = s.optString("folder", "Nexus").replaceAll("[^\\w .-]", "_");
+            String folder = s.optString("folder", "Halo").replaceAll("[^\\w .-]", "_");
             android.content.ContentValues v = new android.content.ContentValues();
             v.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, f.getName());
             v.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime);
@@ -1666,10 +1666,10 @@ public class NativeBridge {
     }
 
     @JavascriptInterface
-    public String notificationsList(int limit) { return NexusNotificationListener.list(Math.max(1, Math.min(limit, 150))); }
+    public String notificationsList(int limit) { return HaloNotificationListener.list(Math.max(1, Math.min(limit, 150))); }
 
     @JavascriptInterface
-    public boolean notificationDismiss(String key) { return NexusNotificationListener.dismiss(key); }
+    public boolean notificationDismiss(String key) { return HaloNotificationListener.dismiss(key); }
 
     // ------------------------------------------------------------------ zip & video
 
@@ -1718,7 +1718,7 @@ public class NativeBridge {
             activity.startActivity(chooser);
             return "Email draft opened in the mail app";
         } catch (ActivityNotFoundException e) {
-            return "No email app on this device. Add an email account in Nexus settings to send directly.";
+            return "No email app on this device. Add an email account in Halo settings to send directly.";
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }

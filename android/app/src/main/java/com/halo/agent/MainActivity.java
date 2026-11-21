@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import android.Manifest;
 import android.app.Activity;
@@ -30,8 +30,8 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Hosts the Nexus Agent web UI (assets/index.html) in a WebView and exposes the
- * native bridge ({@link NativeBridge}) as window.NexusNative.
+ * Hosts the Halo web UI (assets/index.html) in a WebView and exposes the
+ * native bridge ({@link NativeBridge}) as window.HaloNative.
  *
  * Tuned for the RayNeo X3 Pro AR glasses: black (transparent) background, immersive
  * full screen, temple-touchpad key events forwarded to the UI as arrow/enter/back.
@@ -79,7 +79,7 @@ public class MainActivity extends Activity {
         ws.setTextZoom(100);
 
         bridge = new NativeBridge(this);
-        webView.addJavascriptInterface(bridge, "NexusNative");
+        webView.addJavascriptInterface(bridge, "HaloNative");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -112,7 +112,7 @@ public class MainActivity extends Activity {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onConsoleMessage(ConsoleMessage m) {
-                android.util.Log.d("NexusWeb", m.message() + " @" + m.lineNumber());
+                android.util.Log.d("HaloWeb", m.message() + " @" + m.lineNumber());
                 return true;
             }
 
@@ -363,9 +363,9 @@ public class MainActivity extends Activity {
         return r;
     }
 
-    /** Sends an event to the web layer: window.__nexusEvent(type, payloadObject). */
+    /** Sends an event to the web layer: window.__haloEvent(type, payloadObject). */
     void emit(String type, String jsonPayload) {
-        final String js = "window.__nexusEvent&&window.__nexusEvent(" + JSONObject.quote(type) + "," + jsonPayload + ")";
+        final String js = "window.__haloEvent&&window.__haloEvent(" + JSONObject.quote(type) + "," + jsonPayload + ")";
         runOnUiThread(() -> {
             if (pageReady) {
                 webView.evaluateJavascript(js, null);
@@ -375,9 +375,9 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** Resolves a pending JS promise: window.__nexusCb(id, ok, payloadObject). */
+    /** Resolves a pending JS promise: window.__haloCb(id, ok, payloadObject). */
     void callback(String id, boolean ok, String jsonPayload) {
-        final String js = "window.__nexusCb&&window.__nexusCb(" + JSONObject.quote(id) + "," + ok + "," + jsonPayload + ")";
+        final String js = "window.__haloCb&&window.__haloCb(" + JSONObject.quote(id) + "," + ok + "," + jsonPayload + ")";
         runOnUiThread(() -> webView.evaluateJavascript(js, null));
     }
 

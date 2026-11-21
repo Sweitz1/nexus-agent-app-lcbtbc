@@ -2,13 +2,13 @@ plugins {
     id 'com.android.application'
 }
 
-// Nexus Glasses: lightweight client for AR glasses. Talks to the Nexus phone app over Wi-Fi.
+// Halo Glasses: lightweight client for AR glasses. Talks to the Halo phone app over Wi-Fi.
 android {
-    namespace 'com.nexus.glasses'
+    namespace 'com.halo.glasses'
     compileSdk 34
 
     defaultConfig {
-        applicationId 'com.nexus.agent.glasses'
+        applicationId 'com.halo.agent.glasses'
         minSdk 26
         targetSdk 34
         versionCode 1

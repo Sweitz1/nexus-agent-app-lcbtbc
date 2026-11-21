@@ -10,7 +10,7 @@
 #
 # Arkon is downloaded from its own GitHub repo onto this machine. Its licence
 # (PolyForm Internal Use) allows running and changing it for your own use, not
-# redistributing it, so nothing from Arkon is stored in the Nexus Agent repo.
+# redistributing it, so nothing from Arkon is stored in the Halo repo.
 #
 #   ./arkon-local-setup.sh              # full setup
 #   ./arkon-local-setup.sh --dry-run    # show what would happen
@@ -86,7 +86,7 @@ if [ "$CONFIG_OLLAMA" = 1 ] && command -v systemctl >/dev/null 2>&1 && systemctl
     sudo mkdir -p "$(dirname "$CONF")"
     sudo tee "$CONF" >/dev/null <<'EOF'
 [Service]
-# Added by Nexus Agent's arkon-local-setup.sh so Docker containers can reach Ollama.
+# Added by Halo's arkon-local-setup.sh so Docker containers can reach Ollama.
 Environment="OLLAMA_HOST=0.0.0.0:11434"
 # Halve the memory used by long contexts.
 Environment="OLLAMA_FLASH_ATTENTION=1"
@@ -148,7 +148,7 @@ else
 fi
 
 # ── 5. Private config (kept on re-runs so passwords don't change) ───────────
-CRED="$ARKON_DIR/.nexus-arkon-credentials"
+CRED="$ARKON_DIR/.halo-arkon-credentials"
 if [ "$DRY_RUN" = 1 ]; then
   echo "    (dry run) write $ARKON_DIR/.env.docker, .env and docker-compose.override.yml with random secrets"
 else
@@ -190,7 +190,7 @@ EOF
 
   say "Writing docker-compose.override.yml (Ollama access, ports on this PC only)"
   cat > docker-compose.override.yml <<'EOF'
-# Written by Nexus Agent's arkon-local-setup.sh. Safe to delete to undo.
+# Written by Halo's arkon-local-setup.sh. Safe to delete to undo.
 x-ollama: &ollama
   extra_hosts:
     - "host.docker.internal:host-gateway"
@@ -259,7 +259,7 @@ Arkon is running (finished with $WARNINGS warning(s)).
   Login:    $EMAIL  /  password in $CRED
   Vision:   left off (no local vision model is wired up)
 
-In Nexus Agent → Providers → Arkon knowledge hub: enter the API URL
+In Halo → Providers → Arkon knowledge hub: enter the API URL
 $API with the same email and password, then enable the arkon_* tools on a task.
 
 Stop:   docker compose -f $ARKON_DIR/docker-compose.yml down

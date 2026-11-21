@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import org.json.JSONObject;
 
@@ -53,7 +53,7 @@ class WebhookServer extends Thread {
     }
 
     WebhookServer(MainActivity activity, int port, String token) throws IOException {
-        super("nexus-webhook-server");
+        super("halo-webhook-server");
         this.activity = activity;
         this.port = port;
         this.token = token == null ? "" : token;
@@ -139,7 +139,7 @@ class WebhookServer extends Thread {
                 write(out, 200, "text/html; charset=utf-8", readAsset("remote.html"));
                 return;
             }
-            if (path.equals("/health")) { write(out, 200, "application/json", "{\"ok\":true,\"app\":\"nexus-agent\"}"); return; }
+            if (path.equals("/health")) { write(out, 200, "application/json", "{\"ok\":true,\"app\":\"halo\"}"); return; }
 
             // Glasses-client pairing exchanges a short PIN for the token, so it is the one open path
             // (the JS side rate-limits it and the PIN expires after a few minutes).
@@ -148,7 +148,7 @@ class WebhookServer extends Thread {
                 String supplied = "";
                 String auth = headers.optString("authorization", "");
                 if (auth.toLowerCase(Locale.ROOT).startsWith("bearer ")) supplied = auth.substring(7).trim();
-                if (supplied.isEmpty()) supplied = headers.optString("x-nexus-token", "");
+                if (supplied.isEmpty()) supplied = headers.optString("x-halo-token", "");
                 if (supplied.isEmpty()) supplied = queryParam(query, "token");
                 if (!constantTimeEquals(token, supplied)) {
                     write(out, 401, "application/json", "{\"error\":\"invalid or missing token\"}");
@@ -199,7 +199,7 @@ class WebhookServer extends Thread {
             while ((n = is.read(buf)) > 0) bos.write(buf, 0, n);
             return bos.toString("UTF-8");
         } catch (IOException e) {
-            return "<h1>Nexus Agent</h1>";
+            return "<h1>Halo</h1>";
         }
     }
 
@@ -221,7 +221,7 @@ class WebhookServer extends Thread {
                 + "Content-Type: " + type + "\r\n"
                 + "Content-Length: " + b.length + "\r\n"
                 + "Access-Control-Allow-Origin: *\r\n"
-                + "Access-Control-Allow-Headers: Content-Type, Authorization, X-Nexus-Token\r\n"
+                + "Access-Control-Allow-Headers: Content-Type, Authorization, X-Halo-Token\r\n"
                 + "Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS\r\n"
                 + "Connection: close\r\n\r\n";
         out.write(head.getBytes(StandardCharsets.UTF_8));

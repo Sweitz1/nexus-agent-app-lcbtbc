@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>Nexus Agent</title>
+<title>Halo</title>
 <style>
 :root{
   --bg:#000;--panel:#07090d;--panel2:#0d1117;--line:#1c2430;--text:#e6f7ff;--dim:#8aa0b2;
@@ -92,7 +92,7 @@ body.glasses header .brand{display:none}
 </head>
 <body>
 <header id="tabs">
-  <span class="brand">⬡ NEXUS</span>
+  <span class="brand">⬡ HALO</span>
   <button data-tab="chat" class="active">Chat</button>
   <button data-tab="agents">Agents</button>
   <button data-tab="providers">Models</button>
@@ -139,9 +139,9 @@ body.glasses header .brand{display:none}
 <script>
 'use strict';
 /* ====================================================================== native bridge */
-const N = (window.NexusNative && window.NexusNative.isNative && window.NexusNative.isNative()) ? window.NexusNative : null;
+const N = (window.HaloNative && window.HaloNative.isNative && window.HaloNative.isNative()) ? window.HaloNative : null;
 const _cbs = {}; let _cbn = 0;
-window.__nexusCb = (id, ok, payload) => {
+window.__haloCb = (id, ok, payload) => {
   const c = _cbs[id]; if (!c) return; delete _cbs[id];
   ok ? c.res(payload) : c.rej(new Error((payload && payload.error) || 'native error'));
 };
@@ -149,7 +149,7 @@ function nativeAsync(fn, ...args) {
   return new Promise((res, rej) => { const id = 'cb' + (++_cbn); _cbs[id] = { res, rej }; N[fn](id, ...args); });
 }
 const eventHandlers = {};
-window.__nexusEvent = (type, payload) => { (eventHandlers[type] || []).forEach(h => { try { h(payload || {}); } catch (e) { console.error(e); } }); };
+window.__haloEvent = (type, payload) => { (eventHandlers[type] || []).forEach(h => { try { h(payload || {}); } catch (e) { console.error(e); } }); };
 function onNative(type, fn) { (eventHandlers[type] = eventHandlers[type] || []).push(fn); }
 
 async function http(method, url, headers = {}, body = null, timeoutMs = 120000) {
@@ -219,7 +219,7 @@ function defaultState() {
     A('Claude', 'anthropic', 'claude-sonnet-5-5', 'You are Claude, a thoughtful, precise assistant. Use tools when they help.'),
     A('Grok', 'xai', 'grok-4', 'You are Grok: witty, bold and to the point. Use tools when they help.'),
     A('Local', 'ollama', 'llama3.1:8b', 'You are a private assistant running fully on the user\'s own hardware. Be concise.', { tools: false, council: false }),
-    A('Nexus', 'anthropic', 'claude-sonnet-5-5', 'You are Nexus, the orchestrator. Break tasks down, delegate to other agents with ask_agent when another model is a better fit (Venice for unfiltered answers, Grok for real-time/witty takes, Local for private data), use your skills (web, files, code, PDF, OCR, images, video, zip, maps, phone, translation; camera_photo shows you what the user is looking at), then give one clear final answer. You are displayed on AR glasses: keep answers short and scannable.', { council: false }),
+    A('Halo', 'anthropic', 'claude-sonnet-5-5', 'You are Halo, the orchestrator. Break tasks down, delegate to other agents with ask_agent when another model is a better fit (Venice for unfiltered answers, Grok for real-time/witty takes, Local for private data), use your skills (web, files, code, PDF, OCR, images, video, zip, maps, phone, translation; camera_photo shows you what the user is looking at), then give one clear final answer. You are displayed on AR glasses: keep answers short and scannable.', { council: false }),
   ];
   return {
     v: 1, providers, agents, customSkills: [], disabledSkills: [], webhooks: [], memory: {},
@@ -242,13 +242,13 @@ function extraSettingDefaults(agents) {
     cameraCountdown: 3, mapsApp: 'apple',
   };
 }
-let S = (() => { const s = parseJSON(localStorage.getItem('nexus_state'), null); return s && s.v === 1 ? s : defaultState(); })();
+let S = (() => { const s = parseJSON(localStorage.getItem('halo_state'), null); return s && s.v === 1 ? s : defaultState(); })();
 S.settings = { ...extraSettingDefaults(S.agents), ...S.settings };
 S.autoApprove = S.autoApprove || [];
-let _saveT; function save() { clearTimeout(_saveT); _saveT = setTimeout(() => { try { localStorage.setItem('nexus_state', JSON.stringify(S)); } catch (e) { toast('Save failed: ' + e.message); } }, 250); }
+let _saveT; function save() { clearTimeout(_saveT); _saveT = setTimeout(() => { try { localStorage.setItem('halo_state', JSON.stringify(S)); } catch (e) { toast('Save failed: ' + e.message); } }, 250); }
 
-const getKey = pid => (N ? N.storeGet('key_' + pid) : localStorage.getItem('nexus_key_' + pid)) || '';
-const setKey = (pid, v) => { v = (v || '').trim(); if (N) { v ? N.storeSet('key_' + pid, v) : N.storeRemove('key_' + pid); } else { v ? localStorage.setItem('nexus_key_' + pid, v) : localStorage.removeItem('nexus_key_' + pid); } };
+const getKey = pid => (N ? N.storeGet('key_' + pid) : localStorage.getItem('halo_key_' + pid)) || '';
+const setKey = (pid, v) => { v = (v || '').trim(); if (N) { v ? N.storeSet('key_' + pid, v) : N.storeRemove('key_' + pid); } else { v ? localStorage.setItem('halo_key_' + pid, v) : localStorage.removeItem('halo_key_' + pid); } };
 const agentById = id => S.agents.find(a => a.id === id);
 const agentByName = n => S.agents.find(a => a.name.toLowerCase() === String(n || '').toLowerCase().trim()) || S.agents.find(a => a.id === n);
 const providerById = id => S.providers.find(p => p.id === id);
@@ -271,7 +271,7 @@ function authHeaders(p, key) {
     return h;
   }
   const h = key ? { Authorization: 'Bearer ' + key } : {};
-  if (p.baseUrl.includes('openrouter.ai')) { h['HTTP-Referer'] = 'https://nexus-agent.local'; h['X-Title'] = 'Nexus Agent'; }
+  if (p.baseUrl.includes('openrouter.ai')) { h['HTTP-Referer'] = 'https://halo.local'; h['X-Title'] = 'Halo'; }
   return h;
 }
 const base = p => p.baseUrl.replace(/\/+$/, '');
@@ -550,7 +550,7 @@ async function execSkill(name, args, ctx) {
 /* ====================================================================== outgoing webhooks */
 async function fireWebhook(w, event, agentName, data) {
   const headers = { 'Content-Type': 'application/json', ...parseJSON(w.headers, {}) };
-  const payload = { source: 'nexus-agent', event, agent: agentName, data, ts: new Date().toISOString() };
+  const payload = { source: 'halo', event, agent: agentName, data, ts: new Date().toISOString() };
   return http(w.method || 'POST', w.url, headers, JSON.stringify(payload), 30000);
 }
 function notifyReplyHooks(agentName, prompt, text, origin) {
@@ -874,7 +874,7 @@ function renderHooks() {
       <label>Access token</label><div class="row"><input data-k="token"><button class="small" id="regen">New</button></div>
       <label class="inline"><input type="checkbox" data-k="showInChat" data-t="bool">Show webhook conversations in chat</label>
       <p>📱 <b>Phone remote console</b> (type, paste API keys, import config): open <b>${esc(url)}</b> on a phone on the same Wi-Fi.</p>
-      <p class="hint">Endpoints (send the token as <code>Authorization: Bearer …</code>, <code>X-Nexus-Token</code> or <code>?token=</code>):</p>
+      <p class="hint">Endpoints (send the token as <code>Authorization: Bearer …</code>, <code>X-Halo-Token</code> or <code>?token=</code>):</p>
       <code class="block">POST ${esc(url)}/run      {"prompt":"…","agent":"Claude","mode":"solo|council|chain"}
 GET  ${esc(url)}/run?q=…&amp;agent=Grok
 POST ${esc(url)}/hook/&lt;name&gt; any JSON → default agent handles the event
@@ -895,7 +895,7 @@ GET  ${esc(url)}/agents</code>
       <label>URL</label><input data-k="url" inputmode="url"><label>Headers JSON</label><input data-k="headers" placeholder="{}">
       <label class="inline"><input type="checkbox" data-k="onReply" data-t="bool">Send on every agent reply</label><span class="hint res"></span>`;
     list.appendChild(card); bind(card, w, k => k === 'name' && renderHooks());
-    $('[data-act=test]', card).onclick = async () => { const r = $('.res', card); r.textContent = 'sending…'; try { const x = await fireWebhook(w, 'test', 'Nexus', { text: 'Hello from Nexus Agent' }); r.textContent = 'HTTP ' + x.status; } catch (e) { r.textContent = '✗ ' + e.message; } };
+    $('[data-act=test]', card).onclick = async () => { const r = $('.res', card); r.textContent = 'sending…'; try { const x = await fireWebhook(w, 'test', 'Halo', { text: 'Hello from Halo' }); r.textContent = 'HTTP ' + x.status; } catch (e) { r.textContent = '✗ ' + e.message; } };
     $('[data-act=del]', card).onclick = () => { S.webhooks = S.webhooks.filter(x => x !== w); save(); renderHooks(); };
   });
   $('#addHook').onclick = () => { S.webhooks.push({ id: uid(), name: 'hook' + (S.webhooks.length + 1), method: 'POST', url: 'https://', headers: '{}', onReply: false }); save(); renderHooks(); };
@@ -944,12 +944,12 @@ onNative('webhook', async ev => {
 
 /* ====================================================================== UI: settings */
 function exportConfig(withKeys) {
-  const c = { nexus: 1, providers: S.providers, agents: S.agents, customSkills: S.customSkills, disabledSkills: S.disabledSkills, webhooks: S.webhooks, emailAccounts: S.emailAccounts, caldavAccounts: S.caldavAccounts, autoApprove: S.autoApprove, settings: { ...S.settings, server: { ...S.settings.server, token: undefined } } };
+  const c = { halo: 1, providers: S.providers, agents: S.agents, customSkills: S.customSkills, disabledSkills: S.disabledSkills, webhooks: S.webhooks, emailAccounts: S.emailAccounts, caldavAccounts: S.caldavAccounts, autoApprove: S.autoApprove, settings: { ...S.settings, server: { ...S.settings.server, token: undefined } } };
   if (withKeys) c.keys = Object.fromEntries(secretIds().map(x => [x.id, getKey(x.id)]).filter(x => x[1]));
   return c;
 }
 function importConfig(c) {
-  if (!c || c.nexus !== 1) throw new Error('Not a Nexus config');
+  if (!c || (c.halo !== 1 && c.nexus !== 1)) throw new Error('Not a Halo config');
   ['providers', 'agents', 'customSkills', 'disabledSkills', 'webhooks', 'emailAccounts', 'caldavAccounts', 'autoApprove'].forEach(k => { if (Array.isArray(c[k])) S[k] = c[k]; });
   if (c.settings) { const tok = S.settings.server.token; S.settings = { ...S.settings, ...c.settings, server: { ...S.settings.server, ...(c.settings.server || {}), token: tok } }; }
   if (c.keys) Object.entries(c.keys).forEach(([k, v]) => setKey(k, v));
@@ -996,7 +996,7 @@ function renderSettings() {
     $('#impNo').onclick = close; $('#impGo').onclick = () => { try { importConfig(JSON.parse($('#impTxt').value)); close(); } catch (e) { toast(e.message); } };
     $('#impTxt').focus();
   };
-  $('#reset').onclick = async () => { if (await confirmBox('Erase all agents, chats, settings and keys?')) { S.providers.forEach(p => setKey(p.id, '')); localStorage.removeItem('nexus_state'); location.reload(); } };
+  $('#reset').onclick = async () => { if (await confirmBox('Erase all agents, chats, settings and keys?')) { S.providers.forEach(p => setKey(p.id, '')); localStorage.removeItem('halo_state'); location.reload(); } };
 }
 function applySettings() {
   const st = S.settings;
@@ -1068,7 +1068,7 @@ showTab('chat');
 if (S.settings.glasses) $('#mic').focus();
 $('#cam').onclick = () => takePhoto({ attach: true }).catch(e => toast(e.message));
 $('#attach').onclick = () => importFiles().then(files => { pendingAttachments.push(...files); renderChips(); }).catch(e => toast(e.message));
-window.Nexus = { S, dispatch, runAgent, execSkill, exportConfig, importConfig, allSkills }; // for debugging / tests
+window.Halo = { S, dispatch, runAgent, execSkill, exportConfig, importConfig, allSkills }; // for debugging / tests
 }
 // Boot after every script (including js/skills-pro.js) has loaded.
 document.addEventListener('DOMContentLoaded', boot);

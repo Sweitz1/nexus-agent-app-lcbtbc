@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Nexus Glasses</title>
+<title>Halo Glasses</title>
 <style>
 :root{--bg:#000;--panel:#05080b;--line:#163040;--text:#e8fbff;--dim:#86a0b2;--accent:#00e5ff;--accent2:#b388ff;--ok:#39ff88;--bad:#ff5577;--fs:22px}
 *{box-sizing:border-box}
@@ -38,8 +38,8 @@ video{width:100%;max-height:60vh;border-radius:10px;background:#000}
 <body>
 <!-- connect / pair -->
 <section id="connect" class="screen">
-  <h2 style="margin:.2em 0;color:var(--accent)">⬡ Nexus Glasses</h2>
-  <p class="hint">Open Nexus on your phone (same Wi-Fi or its hotspot) → Settings → <b>Pair glasses</b>.</p>
+  <h2 style="margin:.2em 0;color:var(--accent)">⬡ Halo Glasses</h2>
+  <p class="hint">Open Halo on your phone (same Wi-Fi or its hotspot) → Settings → <b>Pair glasses</b>.</p>
   <div id="found"></div>
   <div class="row"><button class="primary f" id="scan">📷 Scan phone QR</button><button class="f" id="search">🔍 Search again</button></div>
   <div class="row"><input id="addr" class="f" placeholder="phone address, e.g. 192.168.1.20:8787"><input id="pin" class="f" placeholder="6-digit code" inputmode="numeric"></div>
@@ -70,7 +70,7 @@ video{width:100%;max-height:60vh;border-radius:10px;background:#000}
 const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const N = window.NexusClient && NexusClient.isNative && NexusClient.isNative() ? window.NexusClient : null;
+const N = window.HaloClient && HaloClient.isNative && HaloClient.isNative() ? window.HaloClient : null;
 const cbs = {}; let cbn = 0; const evs = {};
 window.__cb = (id, ok, p) => { const c = cbs[id]; if (!c) return; delete cbs[id]; ok ? c.res(p) : c.rej(new Error((p && p.error) || 'error')); };
 window.__ev = (t, p) => (evs[t] || []).forEach(f => { try { f(p || {}); } catch (e) { console.error(e); } });
@@ -100,7 +100,7 @@ async function api(path, body, { method = 'POST', timeoutMs = 60000 } = {}) {
 /* ------------------------------------------------------------ connect & pair */
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); focusFirst(); }
 async function search() {
-  $('#cstatus').textContent = 'Looking for Nexus on this Wi-Fi…'; $('#found').innerHTML = '';
+  $('#cstatus').textContent = 'Looking for Halo on this Wi-Fi…'; $('#found').innerHTML = '';
   let list = []; try { list = N ? await nat('discover', 5000) : []; } catch (e) { $('#cstatus').textContent = e.message; }
   $('#found').innerHTML = list.map((p, i) => `<button class="f" data-i="${i}" style="width:100%;margin:.2em 0">📱 ${esc(p.name)} · ${esc(p.host)}:${p.port}</button>`).join('');
   $$('#found [data-i]').forEach(b => b.onclick = () => { const p = list[Number(b.dataset.i)]; $('#addr').value = `${p.host}:${p.port}`; $('#pin').focus(); });
@@ -123,7 +123,7 @@ $('#pinVoice').onclick = async () => { try { const t = await hear(); $('#pin').v
 $('#scan').onclick = async () => {
   try {
     const t = await scanQR(); const j = JSON.parse(t);
-    if (!j.nexus || !j.host || !j.pin) throw new Error('Not a Nexus pairing code');
+    if (!(j.halo || j.nexus) || !j.host || !j.pin) throw new Error('Not a Halo pairing code');
     pair(j.host, j.port || 8787, j.pin);
   } catch (e) { toast(e.message); }
 };
@@ -238,7 +238,7 @@ async function poll() {
   polling = false;
 }
 function handleEvent(e) {
-  if (e.type === 'message') { if (busy || e.text === lastReply) return; add('ev', `${e.agent || 'Nexus'}: ${e.text}`); if (cfg.speakEvents) speak(e.text.slice(0, 300)); if (N) N.vibrate(40); }
+  if (e.type === 'message') { if (busy || e.text === lastReply) return; add('ev', `${e.agent || 'Halo'}: ${e.text}`); if (cfg.speakEvents) speak(e.text.slice(0, 300)); if (N) N.vibrate(40); }
   else if (e.type === 'notification') { add('ev', `🔔 ${e.app}: ${e.title}${e.text ? ' — ' + e.text : ''}`); if (cfg.speakEvents) speak(`${e.app}. ${e.title}`); if (N) N.vibrate(40); }
   else if (e.type === 'confirm') confirmUI(e);
 }
@@ -272,10 +272,10 @@ setInterval(() => { $('#clock').textContent = new Date().toLocaleTimeString([], 
 async function start() {
   show('main'); $('#phone').textContent = conn.name || conn.host; $('#clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   try { const h = await api('/client/hello', {}, { timeoutMs: 8000 }); setOnline(true); seq = h.seq || 0; $('#phone').textContent = h.name; add('ev', `Connected to ${h.name} · agent ${h.current || '?'}${h.battery ? ` · phone 🔋${h.battery.percent}%` : ''}`); }
-  catch (e) { setOnline(false); add('ev', '⚠ Phone not reachable: ' + e.message + ' — is Nexus open on the phone and on the same Wi-Fi?'); }
+  catch (e) { setOnline(false); add('ev', '⚠ Phone not reachable: ' + e.message + ' — is Halo open on the phone and on the same Wi-Fi?'); }
   poll();
 }
-window.NexusGlassesClient = { ask, pair, start, handleEvent, get conn() { return conn; } };
+window.HaloGlassesClient = { ask, pair, start, handleEvent, get conn() { return conn; } };
 if (conn && conn.token) start(); else { show('connect'); search(); }
 </script>
 </body>

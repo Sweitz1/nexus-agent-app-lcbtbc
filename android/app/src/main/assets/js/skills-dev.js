@@ -1,4 +1,4 @@
-/* Nexus Agent — APK services & app integrations, web scraping, download services, coding &
+/* Halo — APK services & app integrations, web scraping, download services, coding &
  * build services (Python, code runner, web preview, project templates, APK builds) and GitHub.
  * Loaded after skills-google.js. */
 'use strict';
@@ -52,7 +52,7 @@
       for (const line of (r && r.status < 400 ? r.body : '').split(/\r?\n/)) {
         const m = line.replace(/#.*/, '').trim().match(/^([\w-]+)\s*:\s*(.*)$/); if (!m) continue;
         const k = m[1].toLowerCase(), v = m[2].trim();
-        if (k === 'user-agent') applies = v === '*' || /nexus/i.test(v);
+        if (k === 'user-agent') applies = v === '*' || /halo/i.test(v);
         else if (applies && k === 'disallow' && v) rules.push({ allow: false, p: v });
         else if (applies && k === 'allow' && v) rules.push({ allow: true, p: v });
       }
@@ -167,7 +167,7 @@ self.onmessage = async e => {
     let head = null;
     try { head = (await gh('GET', `/repos/${repo}/git/ref/heads/${enc(branch)}`)).object.sha; }
     catch (e) {
-      if (e.status === 409 || /empty/i.test(e.message)) { await gh('PUT', `/repos/${repo}/contents/.nexus`, { message: 'Initialize repository', content: btoa('created by Nexus Agent\n'), branch }); head = (await gh('GET', `/repos/${repo}/git/ref/heads/${enc(branch)}`)).object.sha; }
+      if (e.status === 409 || /empty/i.test(e.message)) { await gh('PUT', `/repos/${repo}/contents/.halo`, { message: 'Initialize repository', content: btoa('created by Halo\n'), branch }); head = (await gh('GET', `/repos/${repo}/git/ref/heads/${enc(branch)}`)).object.sha; }
       else if (e.status === 404) { const base = (await gh('GET', `/repos/${repo}/git/ref/heads/${enc(meta.default_branch)}`)).object.sha; await gh('POST', `/repos/${repo}/git/refs`, { ref: `refs/heads/${branch}`, sha: base }); head = base; }
       else throw e;
     }
@@ -180,7 +180,7 @@ self.onmessage = async e => {
       tree.push({ path: (prefix ? prefix.replace(/\/$/, '') + '/' : '') + rel, mode: /\.(sh|gradlew)$|(^|\/)gradlew$/.test(rel) ? '100755' : '100644', type: 'blob', sha: blob.sha });
     }
     const t = await gh('POST', `/repos/${repo}/git/trees`, { base_tree: baseTree, tree });
-    const c = await gh('POST', `/repos/${repo}/git/commits`, { message: message || `Update from Nexus Agent (${files.length} files)`, tree: t.sha, parents: [head] });
+    const c = await gh('POST', `/repos/${repo}/git/commits`, { message: message || `Update from Halo (${files.length} files)`, tree: t.sha, parents: [head] });
     await gh('PATCH', `/repos/${repo}/git/refs/heads/${enc(branch)}`, { sha: c.sha });
     return { repo, branch, commit: c.sha, files: files.length, url: `https://github.com/${repo}/commit/${c.sha}` };
   }
@@ -201,11 +201,11 @@ self.onmessage = async e => {
       'app/src/main/assets/index.html': html || `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>${app}</title><style>body{font-family:sans-serif;background:#0b0f14;color:#e6f7ff;display:grid;place-items:center;height:100vh;margin:0}</style></head><body><h1>${app}</h1></body></html>\n`,
       '.github/workflows/build-apk.yml': `name: Build APK\non: [push, workflow_dispatch]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-java@v4\n        with: { distribution: temurin, java-version: '17' }\n      - name: Android SDK\n        run: |\n          SDK="\${ANDROID_HOME:-/usr/local/lib/android/sdk}"\n          SM=$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)\n          yes | "$SM" --licenses > /dev/null || true\n          "$SM" "platforms;android-34" "build-tools;34.0.0"\n      - uses: gradle/actions/setup-gradle@v4\n        with: { gradle-version: '8.7' }\n      - run: gradle --no-daemon assembleRelease\n      - uses: actions/upload-artifact@v4\n        with: { name: apk, path: app/build/outputs/apk/release/*.apk }\n`,
       '.gitignore': '.gradle/\nbuild/\nlocal.properties\n*.iml\n',
-      'README.md': `# ${app}\n\nBuilt with Nexus Agent. Every push builds an installable APK (Actions → Build APK → artifact "apk").\n`,
+      'README.md': `# ${app}\n\nBuilt with Halo. Every push builds an installable APK (Actions → Build APK → artifact "apk").\n`,
     };
   }
   const TEMPLATES = {
-    android_webview_app: (n, o) => androidTemplate(n, o.package || `com.nexus.${n.toLowerCase().replace(/[^a-z0-9]/g, '') || 'app'}`, o.html),
+    android_webview_app: (n, o) => androidTemplate(n, o.package || `com.halo.${n.toLowerCase().replace(/[^a-z0-9]/g, '') || 'app'}`, o.html),
     static_site: (n, o) => ({ 'index.html': o.html || `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${n}</title><link rel="stylesheet" href="style.css"></head><body><main><h1>${n}</h1><p>Edit index.html.</p></main><script src="app.js"></script></body></html>\n`, 'style.css': 'body{font-family:system-ui,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem}\n', 'app.js': '// your code\n', 'README.md': `# ${n}\n\nPublish with GitHub Pages (github_write action enable_pages).\n` }),
     python_cli: n => ({ 'main.py': `"""${n}"""\nimport argparse\n\n\ndef main():\n    p = argparse.ArgumentParser(description="${n}")\n    p.add_argument("name", nargs="?", default="world")\n    a = p.parse_args()\n    print(f"Hello, {a.name}!")\n\n\nif __name__ == "__main__":\n    main()\n`, 'requirements.txt': '', 'README.md': `# ${n}\n\n    python main.py\n` }),
     node_cli: n => ({ 'package.json': JSON.stringify({ name: n.toLowerCase().replace(/[^a-z0-9-]/g, '-'), version: '1.0.0', type: 'module', bin: { [n.toLowerCase().replace(/[^a-z0-9-]/g, '-')]: 'index.js' }, scripts: { start: 'node index.js' } }, null, 2) + '\n', 'index.js': '#!/usr/bin/env node\nconsole.log(`Hello, ${process.argv[2] || "world"}!`);\n', 'README.md': `# ${n}\n\n    npm start\n` }),
@@ -308,7 +308,7 @@ self.onmessage = async e => {
         for (const [u, k] of list) { try { const name = decodeURIComponent(new URL(u).pathname.split('/').pop() || k).replace(/[^\w.-]/g, '_').slice(0, 80) || k; const r = await dl(u, `${folder}/${name}`); out.push(`✓ ${k}: ${r.path} (${fmtSize(r.size)})`); } catch (e) { out.push(`✗ ${k}: ${u} — ${e.message}`); } }
         return out.join('\n');
       } },
-    { name: 'download_system', group: 'Downloads', description: 'Large or long downloads through Android\'s download manager (continues in the background, resumes, shows a notification; file lands in Download/Nexus). Check with download_status, copy into the workspace with download_import.', parameters: P({ url: Str(''), name: Str('optional file name') }, ['url']),
+    { name: 'download_system', group: 'Downloads', description: 'Large or long downloads through Android\'s download manager (continues in the background, resumes, shows a notification; file lands in Download/Halo). Check with download_status, copy into the workspace with download_import.', parameters: P({ url: Str(''), name: Str('optional file name') }, ['url']),
       run: async a => { needNative(); if (BLOCKED_HOSTS.test(new URL(a.url).host)) return 'Streaming services are not supported.'; const r = parseJSON(N.systemDownload(a.url, a.name || '', ''), {}); if (r.error) throw new Error(r.error); S.sysDownloads = [...(S.sysDownloads || []).slice(-30), r.id]; save(); return `Started download #${r.id} → ${r.file}`; } },
     { name: 'download_status', group: 'Downloads', description: 'Progress of system downloads (default: recent ones).', parameters: P({ ids: Arr('download ids', { type: 'number' }) }),
       run: async a => { needNative(); const ids = a.ids && a.ids.length ? a.ids : (S.sysDownloads || []); if (!ids.length) return 'No downloads.'; return parseJSON(N.systemDownloadStatus(JSON.stringify(ids)), []).map(d => `#${d.id} ${d.title} · ${d.status} · ${fmtSize(d.bytes)}${d.total > 0 ? ' / ' + fmtSize(d.total) + ` (${Math.round(d.bytes / d.total * 100)}%)` : ''}`).join('\n') || 'Not found.'; } },
@@ -351,8 +351,8 @@ self.onmessage = async e => {
     { name: 'build_android_app', group: 'Coding', risky: true, description: 'Build an installable APK from a workspace Android project in the cloud: pushes it to a GitHub repo (created if needed), waits for the GitHub Actions build, downloads the APK into the workspace. Then install it with apk_install.', parameters: P({ folder: Str('workspace project folder (from code_template)'), repo: Str('repo name or owner/name (default: folder name)'), private: Bool('private repo (default true)'), wait_minutes: Num('max wait, default 15') }, ['folder']),
       run: async a => {
         const folder = cleanPath(a.folder); let repo = await ghRepo(a.repo || folder.split('/').pop());
-        try { await gh('GET', `/repos/${repo}`); } catch (e) { if (e.status !== 404) throw e; await gh('POST', '/user/repos', { name: repo.split('/')[1], private: a.private !== false, description: 'Built with Nexus Agent', auto_init: false }); await sleep(1500); }
-        const push = await ghPushFolder(repo, folder, { message: 'Build from Nexus Agent' });
+        try { await gh('GET', `/repos/${repo}`); } catch (e) { if (e.status !== 404) throw e; await gh('POST', '/user/repos', { name: repo.split('/')[1], private: a.private !== false, description: 'Built with Halo', auto_init: false }); await sleep(1500); }
+        const push = await ghPushFolder(repo, folder, { message: 'Build from Halo' });
         toast('Pushed — waiting for the GitHub build…');
         const until = Date.now() + (a.wait_minutes || 15) * 60000; let run = null;
         while (Date.now() < until) {
@@ -459,5 +459,5 @@ self.onmessage = async e => {
     $$('[data-rmint]', card).forEach(b => b.onclick = () => { S.customSkills = S.customSkills.filter(s => s.id !== b.dataset.rmint); save(); renderSettings(); });
   };
 
-  window.NexusDev = { getDoc, pick, pageInfo, robotsAllowed, ghPushFolder, gh, runPython, TEMPLATES };
+  window.HaloDev = { getDoc, pick, pageInfo, robotsAllowed, ghPushFolder, gh, runPython, TEMPLATES };
 })();

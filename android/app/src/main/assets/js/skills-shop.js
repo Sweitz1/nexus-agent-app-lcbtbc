@@ -1,4 +1,4 @@
-/* Nexus Agent — "Hey Nexus" wake word, Amazon & Walmart shopping, shopping list, Plex,
+/* Halo — "Hey Halo" wake word, Amazon & Walmart shopping, shopping list, Plex,
  * fast food chains and delivery services. Loaded after skills-media.js. */
 'use strict';
 (() => {
@@ -9,7 +9,7 @@
   const Arr = (d, items = { type: 'string' }) => ({ type: 'array', items, description: d });
   const J = o => JSON.stringify(o, null, 1);
   const enc = encodeURIComponent;
-  const M = () => window.NexusMedia;
+  const M = () => window.HaloMedia;
 
   S.settings = {
     wakeEnabled: false, wakeLang: 'en-us', wakeCommandMode: 'vosk', wakeCustom: '', wakeSpeak: true,
@@ -41,7 +41,7 @@
   /* ================================================================== wake word */
   const VOSK = { 'en-us': 'vosk-model-small-en-us-0.15', de: 'vosk-model-small-de-0.15', fr: 'vosk-model-small-fr-0.22', es: 'vosk-model-small-es-0.42', it: 'vosk-model-small-it-0.22', pt: 'vosk-model-small-pt-0.3', nl: 'vosk-model-small-nl-0.22', ru: 'vosk-model-small-ru-0.22', cn: 'vosk-model-small-cn-0.22', ja: 'vosk-model-small-ja-0.22' };
   const modelName = () => VOSK[S.settings.wakeLang] || VOSK['en-us'];
-  const wakePhrases = () => [...new Set([S.settings.wakeCustom, 'hey nexus', 'hey next us', 'hey nexis', 'hi nexus', 'okay nexus'].map(p => String(p || '').toLowerCase().replace(/[^\p{L}\p{N} ]/gu, '').trim()).filter(Boolean))];
+  const wakePhrases = () => [...new Set([S.settings.wakeCustom, 'hey halo', 'hey hallo', 'hi halo', 'okay halo'].map(p => String(p || '').toLowerCase().replace(/[^\p{L}\p{N} ]/gu, '').trim()).filter(Boolean))];
   let wakeBadge = null;
   function badge(text) {
     if (!wakeBadge) { wakeBadge = document.createElement('div'); wakeBadge.style.cssText = 'position:fixed;top:3.2em;left:50%;transform:translateX(-50%);z-index:12;background:#2a0d4a;border:1px solid var(--accent2);color:#fff;padding:.4em 1em;border-radius:99px;max-width:90vw;text-align:center;box-shadow:0 0 18px var(--accent2)'; document.body.appendChild(wakeBadge); }
@@ -150,7 +150,7 @@
   }
 
   /* ================================================================== Plex */
-  const plexHeaders = () => ({ Accept: 'application/json', 'X-Plex-Product': 'Nexus Agent', 'X-Plex-Client-Identifier': S.settings.plexClientId, 'X-Plex-Device-Name': deviceLabel(), 'X-Plex-Platform': 'Android' });
+  const plexHeaders = () => ({ Accept: 'application/json', 'X-Plex-Product': 'Halo', 'X-Plex-Client-Identifier': S.settings.plexClientId, 'X-Plex-Device-Name': deviceLabel(), 'X-Plex-Platform': 'Android' });
   const plexServer = () => { const u = S.settings.plexServerUrl, t = getKey('svc_plex_server') || getKey('svc_plex'); if (!u || !t) throw new Error('Plex is not connected. Settings → Shopping, food & Plex → Sign in with Plex (or enter server URL + token).'); return { u: u.replace(/\/+$/, ''), t }; };
   async function plexGet(path, params = {}) {
     const { u, t } = plexServer();
@@ -164,11 +164,11 @@
     needNative('Plex sign-in');
     const pinR = await http('POST', 'https://plex.tv/api/v2/pins?strong=true', plexHeaders(), '', 20000);
     const pin = parseJSON(pinR.body, {}); if (!pin.id) throw new Error('Plex PIN request failed (HTTP ' + pinR.status + ')');
-    const url = `https://app.plex.tv/auth#?clientID=${enc(S.settings.plexClientId)}&code=${enc(pin.code)}&context%5Bdevice%5D%5Bproduct%5D=${enc('Nexus Agent')}`;
+    const url = `https://app.plex.tv/auth#?clientID=${enc(S.settings.plexClientId)}&code=${enc(pin.code)}&context%5Bdevice%5D%5Bproduct%5D=${enc('Halo')}`;
     let qr = ''; try { qr = await M().qrDataUrl(url); } catch { /* optional */ }
     let cancelled = false;
     const box = $('#modalBox');
-    box.innerHTML = `<h3>Sign in with Plex</h3><p>Scan with your phone, or open the link and approve <b>Nexus Agent</b>:</p>${qr ? `<img src="${esc(wsUrl(qr))}" alt="" style="width:12em;background:#fff;padding:.4em;border-radius:6px">` : ''}<code class="block">${esc(url)}</code><div class="row"><button class="primary" id="pxOpen">Open here</button><button id="pxNo">Cancel</button></div><p class="hint" id="pxSt">waiting for approval…</p>`;
+    box.innerHTML = `<h3>Sign in with Plex</h3><p>Scan with your phone, or open the link and approve <b>Halo</b>:</p>${qr ? `<img src="${esc(wsUrl(qr))}" alt="" style="width:12em;background:#fff;padding:.4em;border-radius:6px">` : ''}<code class="block">${esc(url)}</code><div class="row"><button class="primary" id="pxOpen">Open here</button><button id="pxNo">Cancel</button></div><p class="hint" id="pxSt">waiting for approval…</p>`;
     $('#modal').classList.add('show'); modalClose = () => { cancelled = true; $('#modal').classList.remove('show'); modalClose = null; };
     $('#pxOpen').onclick = () => N.openUrl(url); $('#pxNo').onclick = () => modalClose(); $('#pxOpen').focus();
     for (let i = 0; i < 150 && !cancelled; i++) {
@@ -203,7 +203,7 @@
     const { u, t } = plexServer();
     const part = m.Media && m.Media[0] && m.Media[0].Part && m.Media[0].Part[0];
     if (m.type === 'track' || S.settings.plexVideo === 'direct') return part ? `${u}${part.key}?X-Plex-Token=${enc(t)}` : null;
-    const q = new URLSearchParams({ path: `/library/metadata/${m.ratingKey}`, mediaIndex: 0, partIndex: 0, protocol: 'hls', fastSeek: 1, directPlay: 0, directStream: 1, subtitleSize: 100, audioBoost: 100, location: S.settings.plexServerUrl.includes('plex.direct') && !/^https?:\/\/(192|10|172)\./.test(u) ? 'wan' : 'lan', offset: m.viewOffset ? Math.floor(m.viewOffset / 1000) : 0, session: uid(), 'X-Plex-Client-Identifier': S.settings.plexClientId, 'X-Plex-Product': 'Nexus Agent', 'X-Plex-Platform': 'Chrome', 'X-Plex-Token': t });
+    const q = new URLSearchParams({ path: `/library/metadata/${m.ratingKey}`, mediaIndex: 0, partIndex: 0, protocol: 'hls', fastSeek: 1, directPlay: 0, directStream: 1, subtitleSize: 100, audioBoost: 100, location: S.settings.plexServerUrl.includes('plex.direct') && !/^https?:\/\/(192|10|172)\./.test(u) ? 'wan' : 'lan', offset: m.viewOffset ? Math.floor(m.viewOffset / 1000) : 0, session: uid(), 'X-Plex-Client-Identifier': S.settings.plexClientId, 'X-Plex-Product': 'Halo', 'X-Plex-Platform': 'Chrome', 'X-Plex-Token': t });
     return `${u}/video/:/transcode/universal/start.m3u8?${q}`;
   }
   async function plexPlay(ref, where) {
@@ -286,7 +286,7 @@
   /* ================================================================== skills */
   BUILTIN_SKILLS.push(
     /* ---------------- Wake word */
-    { name: 'wake_word', group: 'Glasses', description: 'Turn the offline "Hey Nexus" wake word on or off, or get its status.', parameters: P({ action: Str('on | off | status') }, ['action']),
+    { name: 'wake_word', group: 'Glasses', description: 'Turn the offline "Hey Halo" wake word on or off, or get its status.', parameters: P({ action: Str('on | off | status') }, ['action']),
       run: async a => a.action === 'on' ? wakeStart() : a.action === 'off' ? wakeStop() : `Wake word ${N && N.wakeRunning() ? 'listening' : 'off'} · phrase "${wakePhrases()[0]}" · model ${modelName()} ${N && N.wakeModelInstalled(modelName()) ? 'installed' : 'not downloaded'} · commands via ${S.settings.wakeCommandMode === 'vosk' ? 'offline recognizer' : 'system recognizer'}` },
 
     /* ---------------- Shopping */
@@ -379,11 +379,11 @@
   bindProSettings = v => { coreBindPro(v); bindShopSettings(v); };
   function renderShopSettings() {
     const st = S.settings; const running = N && N.wakeRunning && N.wakeRunning();
-    return `<div class="card" id="shopCard"><h3>"Hey Nexus" wake word</h3>
+    return `<div class="card" id="shopCard"><h3>"Hey Halo" wake word</h3>
       <p class="hint">Offline and private (Vosk): audio is processed on the device. Downloads a ~40 MB speech model once. Works with the screen off; a small notification shows while listening.</p>
       <div class="row"><button class="${running ? 'danger' : 'primary'} nogrow" id="wkToggle">${running ? 'Turn off' : 'Turn on'}</button><span class="hint">${running ? '● listening for "' + esc(wakePhrases()[0]) + '"' : 'off'}${N && N.wakeModelInstalled && N.wakeModelInstalled(modelName()) ? ' · model ready' : ''}</span></div>
       <div class="row"><div><label>Model language</label><select data-k="wakeLang">${Object.keys(VOSK).map(k => `<option value="${k}">${k}</option>`).join('')}</select></div>
-      <div><label>Custom wake phrase (optional)</label><input data-k="wakeCustom" placeholder="hey nexus"></div>
+      <div><label>Custom wake phrase (optional)</label><input data-k="wakeCustom" placeholder="hey halo"></div>
       <div><label>After the wake word</label><select data-k="wakeCommandMode"><option value="vosk">Transcribe offline (private)</option><option value="system">System speech recognizer (more accurate)</option></select></div></div>
       <label class="inline"><input type="checkbox" data-k="wakeSpeak" data-t="bool">Speak the answer to wake-word requests</label>
       <div class="row"><button class="nogrow" id="wkOverlay">${N && N.canDrawOverlays && N.canDrawOverlays() ? 'Can open from background ✓' : 'Allow opening from background'}</button></div>
@@ -405,5 +405,5 @@
   }
   { const coreSecrets = secretIds; secretIds = () => [...coreSecrets(), { id: 'svc_plex_server', name: 'Plex token' }]; }
 
-  window.NexusShop = { amazonSearch, walmartSearch, amazonProduct, walmartProduct, plexDiscover, plexPlay, plexGet, wakeStart, wakeStop, wakePhrases, handleWakeCommand, keyOf, FASTFOOD, DELIVERY };
+  window.HaloShop = { amazonSearch, walmartSearch, amazonProduct, walmartProduct, plexDiscover, plexPlay, plexGet, wakeStart, wakeStop, wakePhrases, handleWakeCommand, keyOf, FASTFOOD, DELIVERY };
 })();

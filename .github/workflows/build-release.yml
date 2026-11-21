@@ -7,7 +7,7 @@ on:
 
 jobs:
   android:
-    name: Android APKs (Nexus Agent + Nexus Glasses)
+    name: Android APKs (Halo + Halo Glasses)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,33 +23,33 @@ jobs:
 
       - name: Prepare signing key
         env:
-          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 || secrets.NEXUS_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || secrets.NEXUS_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || secrets.NEXUS_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || secrets.NEXUS_KEY_PASSWORD }}
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 || secrets.HALO_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || secrets.HALO_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || secrets.HALO_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || secrets.HALO_KEY_PASSWORD }}
         run: |
           KS="$RUNNER_TEMP/release.jks"
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > "$KS"
             echo "Signing with the keystore from repository secrets."
             {
-              echo "NEXUS_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
-              echo "NEXUS_KEY_ALIAS=$KEY_ALIAS"
-              echo "NEXUS_KEY_PASSWORD=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+              echo "HALO_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "HALO_KEY_ALIAS=$KEY_ALIAS"
+              echo "HALO_KEY_PASSWORD=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
             } >> "$GITHUB_ENV"
           else
             PW="$(openssl rand -hex 16)"
             echo "::add-mask::$PW"
-            keytool -genkeypair -v -keystore "$KS" -alias nexus -keyalg RSA -keysize 2048 \
-              -validity 10000 -storepass "$PW" -keypass "$PW" -dname "CN=Nexus Agent"
+            keytool -genkeypair -v -keystore "$KS" -alias halo -keyalg RSA -keysize 2048 \
+              -validity 10000 -storepass "$PW" -keypass "$PW" -dname "CN=Halo"
             echo "::warning::No ANDROID_KEYSTORE_BASE64 secret set. Signed with a one-off key: future builds will not install as updates over this one."
             {
-              echo "NEXUS_KEYSTORE_PASSWORD=$PW"
-              echo "NEXUS_KEY_ALIAS=nexus"
-              echo "NEXUS_KEY_PASSWORD=$PW"
+              echo "HALO_KEYSTORE_PASSWORD=$PW"
+              echo "HALO_KEY_ALIAS=halo"
+              echo "HALO_KEY_PASSWORD=$PW"
             } >> "$GITHUB_ENV"
           fi
-          echo "NEXUS_KEYSTORE_PATH=$KS" >> "$GITHUB_ENV"
+          echo "HALO_KEYSTORE_PATH=$KS" >> "$GITHUB_ENV"
 
       - uses: gradle/actions/setup-gradle@v3
         with:
@@ -61,14 +61,14 @@ jobs:
           gradle --no-daemon assembleRelease
           AS="$ANDROID_HOME/build-tools/34.0.0/apksigner"
           mkdir -p ../out
-          cp app/build/outputs/apk/release/app-release.apk ../out/nexus-agent-2.2.0.apk
-          cp glasses/build/outputs/apk/release/glasses-release.apk ../out/nexus-glasses-1.0.0.apk
+          cp app/build/outputs/apk/release/app-release.apk ../out/halo-2.2.0.apk
+          cp glasses/build/outputs/apk/release/glasses-release.apk ../out/halo-glasses-1.0.0.apk
           for f in ../out/*.apk; do "$AS" verify --print-certs "$f" | head -3; done
-          rm -f "$NEXUS_KEYSTORE_PATH"
+          rm -f "$HALO_KEYSTORE_PATH"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: nexus-agent-android-release
+          name: halo-android-release
           path: out/*.apk
           retention-days: 90
 
@@ -95,7 +95,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: nexus-agent-windows
+          name: halo-windows
           path: |
             dist-electron/*.exe
             dist-electron/*.msi
@@ -125,7 +125,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: nexus-agent-linux
+          name: halo-linux
           path: |
             dist-electron/*.AppImage
             dist-electron/*.deb

@@ -28,4 +28,4 @@ registerGithub(app, app.fastify);
 registerRuntime(app, app.fastify);
 
 await app.run();
-app.logger.info('Nexus Agent backend running');
+app.logger.info('Halo backend running');

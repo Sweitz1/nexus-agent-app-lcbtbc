@@ -1,13 +1,13 @@
 # Privacy Policy
 
-**Nexus Agent**
+**Halo**
 Last updated: 2025-07-14
 
 ---
 
 ## 1. Introduction
 
-This Privacy Policy describes how Nexus Agent ("we", "us", or "our") collects, uses, stores, and shares information when you use the Nexus Agent mobile application (the "App"). By using the App you agree to the practices described in this policy. If you do not agree, do not use the App.
+This Privacy Policy describes how Halo ("we", "us", or "our") collects, uses, stores, and shares information when you use the Halo mobile application (the "App"). By using the App you agree to the practices described in this policy. If you do not agree, do not use the App.
 
 ---
 
@@ -67,7 +67,7 @@ We do **not** sell your personal data. We do not use your data to train AI model
 
 ## 4. Third-Party Services Your Data May Flow To
 
-Nexus Agent is a tool that connects to services **you choose and configure**. When the agent executes a task it may send data to:
+Halo is a tool that connects to services **you choose and configure**. When the agent executes a task it may send data to:
 
 - **OpenAI** (if you add an OpenAI API key) — task content and tool inputs are sent to OpenAI's API. OpenAI's privacy policy applies: https://openai.com/policies/privacy-policy
 - **Anthropic** (if you add an Anthropic API key) — same as above. Anthropic's privacy policy: https://www.anthropic.com/legal/privacy
@@ -118,13 +118,13 @@ Depending on your jurisdiction you may have the right to:
 - **Object** to or restrict certain processing.
 - **Withdraw consent** at any time where processing is based on consent.
 
-To exercise any of these rights, contact us at privacy@nexusagent.app.
+To exercise any of these rights, contact us at privacy@haloagent.app.
 
 ---
 
 ## 8. Children's Privacy
 
-Nexus Agent is not directed at children under the age of 13. We do not knowingly collect personal information from children under 13. If you believe a child under 13 has provided us with personal information, please contact us at privacy@nexusagent.app and we will delete it promptly.
+Halo is not directed at children under the age of 13. We do not knowingly collect personal information from children under 13. If you believe a child under 13 has provided us with personal information, please contact us at privacy@haloagent.app and we will delete it promptly.
 
 ---
 
@@ -144,6 +144,6 @@ We may update this Privacy Policy from time to time. We will notify you of mater
 
 If you have questions or concerns about this Privacy Policy or our data practices, please contact us:
 
-**Email:** privacy@nexusagent.app
+**Email:** privacy@haloagent.app
 
 We aim to respond to all privacy inquiries within 30 days.

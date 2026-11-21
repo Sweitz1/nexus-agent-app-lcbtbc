@@ -1,4 +1,4 @@
-/* Nexus Agent — Verizon Cloud integration, deepfake / AI-media detection and provenance,
+/* Halo — Verizon Cloud integration, deepfake / AI-media detection and provenance,
  * (offline provenance + vision-model review), and consent-gated synthetic media of the user's OWN voice and face. Loaded after skills-dev.js.
  *
  * Policy: no face-swapping or voice cloning of other people. Generation is limited to the
@@ -27,7 +27,7 @@
   async function toGallery(paths, folder) {
     needNative('Saving to the device');
     const out = [];
-    for (const p of paths.slice(0, 100)) { const r = await nativeAsync('saveToMediaStore', JSON.stringify({ path: cleanPath(p), folder: folder || 'Nexus' })); out.push(r.location); }
+    for (const p of paths.slice(0, 100)) { const r = await nativeAsync('saveToMediaStore', JSON.stringify({ path: cleanPath(p), folder: folder || 'Halo' })); out.push(r.location); }
     return out;
   }
 
@@ -77,18 +77,18 @@
   /* ================================================================== skills */
   BUILTIN_SKILLS.push(
     /* ---------------- Device storage (used by cloud backup apps) */
-    { name: 'file_save_to_device', group: 'Files', description: 'Save workspace files into the phone\'s shared storage (photos → Pictures/Nexus, videos → Movies/Nexus, audio → Music/Nexus, other → Download/Nexus) so the gallery and cloud backup apps (Verizon Cloud, Google Photos, Samsung Cloud) include them.', parameters: P({ paths: Arr('workspace files'), folder: Str('subfolder name, default Nexus') }, ['paths']),
+    { name: 'file_save_to_device', group: 'Files', description: 'Save workspace files into the phone\'s shared storage (photos → Pictures/Halo, videos → Movies/Halo, audio → Music/Halo, other → Download/Halo) so the gallery and cloud backup apps (Verizon Cloud, Google Photos, Samsung Cloud) include them.', parameters: P({ paths: Arr('workspace files'), folder: Str('subfolder name, default Halo') }, ['paths']),
       run: async a => 'Saved:\n' + (await toGallery(a.paths, a.folder)).map(x => '  ' + x).join('\n') },
 
     /* ---------------- Verizon Cloud */
-    { name: 'verizon_cloud', group: 'Verizon Cloud', description: 'Verizon Cloud: status (installed, how uploads/downloads work), upload (send workspace files to the Verizon Cloud app), backup (save files to the device gallery/Downloads so Verizon Cloud auto-backup includes them), open (the app). To bring files FROM Verizon Cloud: in the app select them → Share → Nexus Agent (they land in Files/imports), or use screen control to operate the app.', parameters: P({ action: Str('status | upload | backup | open'), paths: Arr('workspace files for upload/backup'), folder: Str('backup subfolder') }, ['action']),
+    { name: 'verizon_cloud', group: 'Verizon Cloud', description: 'Verizon Cloud: status (installed, how uploads/downloads work), upload (send workspace files to the Verizon Cloud app), backup (save files to the device gallery/Downloads so Verizon Cloud auto-backup includes them), open (the app). To bring files FROM Verizon Cloud: in the app select them → Share → Halo (they land in Files/imports), or use screen control to operate the app.', parameters: P({ action: Str('status | upload | backup | open'), paths: Arr('workspace files for upload/backup'), folder: Str('backup subfolder') }, ['action']),
       run: async a => {
         needNative('Verizon Cloud');
         const app = verizonApp();
         if (a.action === 'status') {
           let shares = '';
           if (app) { try { const r = await nativeAsync('apk', JSON.stringify({ op: 'integrations', ref: app.package })); shares = [...new Set(r.shareTargets.map(s => s.mimeType))].join(', '); } catch { /* optional */ } }
-          return app ? `Verizon Cloud app installed (${app.label}, ${app.package}).\n• Upload: send files to it${shares ? ` (accepts: ${shares})` : ''}.\n• Automatic backup: files saved with action "backup" go to the gallery/Downloads, which Verizon Cloud backs up when backup is on in its settings.\n• Download: in Verizon Cloud select items → Share → Nexus Agent, or let an agent do it with screen control (screen_open_app "Verizon Cloud").\nVerizon offers no public API, so Nexus works through the app.` : 'Verizon Cloud app is not installed. Install it from the Play Store (or use the web version at verizon.com). Files saved with action "backup" will still be backed up once it is set up.';
+          return app ? `Verizon Cloud app installed (${app.label}, ${app.package}).\n• Upload: send files to it${shares ? ` (accepts: ${shares})` : ''}.\n• Automatic backup: files saved with action "backup" go to the gallery/Downloads, which Verizon Cloud backs up when backup is on in its settings.\n• Download: in Verizon Cloud select items → Share → Halo, or let an agent do it with screen control (screen_open_app "Verizon Cloud").\nVerizon offers no public API, so Halo works through the app.` : 'Verizon Cloud app is not installed. Install it from the Play Store (or use the web version at verizon.com). Files saved with action "backup" will still be backed up once it is set up.';
         }
         if (a.action === 'open') { if (app && N.launchApp(app.package)) return 'Opened Verizon Cloud.'; N.openUrl('https://play.google.com/store/apps/details?id=com.vcast.mediamanager'); return 'Verizon Cloud is not installed — opened its Play Store page.'; }
         if (!a.paths || !a.paths.length) throw new Error('paths required');
@@ -130,7 +130,7 @@
       run: async a => {
         needNative('Voice cloning'); const key = getKey('svc_elevenlabs'); if (!key) throw new Error('Add an ElevenLabs API key in Settings → Media & audio');
         await requireConsent('voice clone', a.samples);
-        const r = await nativeAsync('upload', JSON.stringify({ url: 'https://api.elevenlabs.io/v1/voices/add', headers: { 'xi-api-key': key }, fields: { name: `${a.name} (self, AI)`, description: 'Owner\'s own voice, created with consent via Nexus Agent' }, files: a.samples.slice(0, 25).map(p => ({ field: 'files', path: cleanPath(p) })) }));
+        const r = await nativeAsync('upload', JSON.stringify({ url: 'https://api.elevenlabs.io/v1/voices/add', headers: { 'xi-api-key': key }, fields: { name: `${a.name} (self, AI)`, description: 'Owner\'s own voice, created with consent via Halo' }, files: a.samples.slice(0, 25).map(p => ({ field: 'files', path: cleanPath(p) })) }));
         const d = parseJSON(r.body, {}); if (!d.voice_id) throw new Error('ElevenLabs: ' + clip(r.body, 200));
         S.myVoices.push({ id: d.voice_id, name: a.name, provider: 'elevenlabs', created: Date.now() });
         if (a.use_as_default) { S.settings.elevenVoice = d.voice_id; S.settings.ttsEngine = 'elevenlabs'; }
@@ -171,5 +171,5 @@
   };
   { const coreSecrets = secretIds; secretIds = () => [...coreSecrets(), { id: 'svc_did', name: 'D-ID API key' }]; }
 
-  window.NexusTrust = { provenance, verdict };
+  window.HaloTrust = { provenance, verdict };
 })();

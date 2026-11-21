@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
@@ -34,14 +34,14 @@ import java.util.regex.Pattern;
 /**
  * Screen control for agents: reads the UI tree of the foreground app and performs taps,
  * typing, scrolling, swipes and global navigation. Only acts on explicit calls from the
- * Nexus agent runtime (NativeBridge.screen). Never reads or fills password fields, and
+ * Halo agent runtime (NativeBridge.screen). Never reads or fills password fields, and
  * refuses to work inside blocked apps (banking, wallets, password managers...).
  */
-public class NexusAccessibilityService extends AccessibilityService {
+public class HaloAccessibilityService extends AccessibilityService {
 
     interface Sink { void event(String type, JSONObject data); }
 
-    static volatile NexusAccessibilityService instance;
+    static volatile HaloAccessibilityService instance;
     static volatile Sink sink;
     static volatile Pattern blocked = Pattern.compile("bank|wallet|paypal|venmo|squareup\\.cash|coinbase|binance|kraken|robinhood|chase|wellsfargo|bankofamerica|citi|capitalone|amex|bitwarden|lastpass|onepassword|1password|dashlane|keepass|authenticator|authy|\\.otp", Pattern.CASE_INSENSITIVE);
 
@@ -71,7 +71,7 @@ public class NexusAccessibilityService extends AccessibilityService {
 
     // ------------------------------------------------------------------ indicator
 
-    /** Floating "Nexus is controlling" pill (accessibility overlay: no extra permission). Tap = stop. */
+    /** Floating "Halo is controlling" pill (accessibility overlay: no extra permission). Tap = stop. */
     void showPill(String text) {
         main.post(() -> {
             try {
@@ -122,7 +122,7 @@ public class NexusAccessibilityService extends AccessibilityService {
 
     private void checkAllowed(AccessibilityNodeInfo r) {
         String pkg = r == null || r.getPackageName() == null ? "" : r.getPackageName().toString();
-        if (pkg.equals(getPackageName())) throw new SecurityException("Nexus itself is in front — open the target app first (screen_open_app)");
+        if (pkg.equals(getPackageName())) throw new SecurityException("Halo itself is in front — open the target app first (screen_open_app)");
         if (blocked.matcher(pkg).find()) throw new SecurityException("Screen control is blocked in " + pkg + " (protected app: banking, wallet or password manager)");
     }
 

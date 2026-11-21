@@ -1,4 +1,4 @@
-/* Nexus Agent — barcode/QR scanner, Telegram, Kino (movies & TV), audiobooks, text-to-audio
+/* Halo — barcode/QR scanner, Telegram, Kino (movies & TV), audiobooks, text-to-audio
  * and native RayNeo X3 Pro glasses skills, plus the Media tab and player.
  * Loaded after skills-comms.js; shares the app globals. */
 'use strict';
@@ -437,8 +437,8 @@
   async function tgHandle(m) {
     const chat = m.chat.id; const text = (m.text || m.caption || '').trim();
     const pair = text.match(/^\/(?:start|pair)\s+([A-Z0-9]{4,12})$/i);
-    if (pair) { if (pair[1].toUpperCase() === S.settings.telegramPair) { if (!S.telegram.allowed.includes(String(chat))) S.telegram.allowed.push(String(chat)); save(); await tg('sendMessage', { chat_id: chat, text: '✅ Paired with Nexus Agent. Send me anything.' }); toast('Telegram chat paired'); } else await tg('sendMessage', { chat_id: chat, text: 'Wrong pairing code.' }); return; }
-    if (!S.telegram.allowed.includes(String(chat))) { if (/^\/start/.test(text)) await tg('sendMessage', { chat_id: chat, text: 'Send /pair <code> — the code is shown in Nexus Agent → Settings → Telegram.' }); return; }
+    if (pair) { if (pair[1].toUpperCase() === S.settings.telegramPair) { if (!S.telegram.allowed.includes(String(chat))) S.telegram.allowed.push(String(chat)); save(); await tg('sendMessage', { chat_id: chat, text: '✅ Paired with Halo. Send me anything.' }); toast('Telegram chat paired'); } else await tg('sendMessage', { chat_id: chat, text: 'Wrong pairing code.' }); return; }
+    if (!S.telegram.allowed.includes(String(chat))) { if (/^\/start/.test(text)) await tg('sendMessage', { chat_id: chat, text: 'Send /pair <code> — the code is shown in Halo → Settings → Telegram.' }); return; }
     const attachments = []; let prompt = text;
     try {
       if (m.photo) attachments.push(await tgDownloadFile(m.photo[m.photo.length - 1].file_id, `telegram/photo_${m.message_id}.jpg`));
@@ -618,7 +618,7 @@
     { name: 'glasses_status', group: 'Glasses', description: 'Battery, charging, temperature, volume, network, Bluetooth, storage, memory, brightness and sensors of the glasses/device.', parameters: P({}),
       run: async () => { needNative('Device status'); return J(chk(N.deviceStatus())); } },
     { name: 'glasses_volume', group: 'Glasses', description: 'Set media volume (0-100).', parameters: P({ percent: Num('0-100') }, ['percent']), run: async a => { needNative(); return N.setVolume(Math.round(a.percent)); } },
-    { name: 'glasses_brightness', group: 'Glasses', description: 'Set display brightness for Nexus (0-100), or "auto" to follow the system.', parameters: P({ percent: Num('0-100'), auto: Bool('use system brightness') }),
+    { name: 'glasses_brightness', group: 'Glasses', description: 'Set display brightness for Halo (0-100), or "auto" to follow the system.', parameters: P({ percent: Num('0-100'), auto: Bool('use system brightness') }),
       run: async a => { needNative(); return N.setBrightness(a.auto ? -1 : Math.max(1, Math.min(100, Number(a.percent) || 50)) / 100); } },
     { name: 'media_control', group: 'Glasses', description: 'Control music/podcast apps playing on the device (Spotify, YouTube Music…): play, pause, play_pause, next, previous, stop.', parameters: P({ action: Str('play | pause | play_pause | next | previous | stop') }, ['action']),
       run: async a => { needNative(); return N.mediaKey(a.action); } },
@@ -630,7 +630,7 @@
       run: async a => 'answer: ' + await askYesNo(a.question, a.timeout_s || 15) },
     { name: 'notifications_read', group: 'Glasses', description: 'Read recent notifications (messages, calls, apps) from this device. Requires notification access (Settings → Media & audio).', parameters: P({ app: Str('optional app filter, e.g. WhatsApp'), limit: Num('default 15'), since_minutes: Num('optional') }),
       run: async a => {
-        needNative('Notifications'); if (!N.notificationAccess()) return 'Notification access is off. Ask the user to enable it (glasses_settings panel "notifications" → Nexus Agent).';
+        needNative('Notifications'); if (!N.notificationAccess()) return 'Notification access is off. Ask the user to enable it (glasses_settings panel "notifications" → Halo).';
         const since = a.since_minutes ? Date.now() - a.since_minutes * 60000 : 0; const f = String(a.app || '').toLowerCase();
         const list = parseJSON(N.notificationsList(150), []).filter(n => n.time >= since && (!f || n.app.toLowerCase().includes(f) || n.package.includes(f))).slice(0, a.limit || 15);
         return list.map(n => `${new Date(n.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${n.app} · ${n.title}${n.text ? ': ' + clip(n.text, 220) : ''}\n  key: ${n.key}`).join('\n') || 'No notifications.';
@@ -730,5 +730,5 @@
   // Secrets for export / phone remote console.
   { const coreSecrets = secretIds; secretIds = () => [...coreSecrets(), { id: 'svc_telegram', name: 'Telegram bot token' }, { id: 'svc_tmdb', name: 'TMDB key' }, { id: 'svc_elevenlabs', name: 'ElevenLabs key' }]; }
 
-  window.NexusMedia = { playQueue, playVideo, qrDataUrl: async t => { const p = await qrToFile(t, 360, `tmp/qr_${uid()}.png`); return p; }, scanLive, decodeImagePath, qrToFile, describeCode, textToAudioFile, playBook, playFile, AP, epubChapters, textChapters, kinoSearch, kinoTrending, kinoDetails, archiveSearch, archiveBook, tgHandle, tgFetchUpdates, mediaState, askYesNo };
+  window.HaloMedia = { playQueue, playVideo, qrDataUrl: async t => { const p = await qrToFile(t, 360, `tmp/qr_${uid()}.png`); return p; }, scanLive, decodeImagePath, qrToFile, describeCode, textToAudioFile, playBook, playFile, AP, epubChapters, textChapters, kinoSearch, kinoTrending, kinoDetails, archiveSearch, archiveBook, tgHandle, tgFetchUpdates, mediaState, askYesNo };
 })();

@@ -1,4 +1,4 @@
-Third-party libraries bundled with Nexus Agent
+Third-party libraries bundled with Halo
 
 pdf.js 3.11.174 (Mozilla) - Apache License 2.0
 pdf-lib 1.17.1 (Andrew Dillon) - MIT License

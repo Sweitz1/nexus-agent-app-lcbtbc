@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import android.app.Presentation;
 import android.os.Bundle;

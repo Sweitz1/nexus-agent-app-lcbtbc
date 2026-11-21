@@ -1,4 +1,4 @@
-package com.nexus.glasses;
+package com.halo.glasses;
 
 import android.Manifest;
 import android.app.Activity;
@@ -26,8 +26,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Nexus Glasses: thin client UI (assets/client.html) for AR glasses. Voice, display, camera and
- * gestures live here; the Nexus phone app does the thinking. Served from a secure local origin so
+ * Halo Glasses: thin client UI (assets/client.html) for AR glasses. Voice, display, camera and
+ * gestures live here; the Halo phone app does the thinking. Served from a secure local origin so
  * the camera and workers are available.
  */
 public class ClientActivity extends Activity {
@@ -56,7 +56,7 @@ public class ClientActivity extends Activity {
         ws.setAllowFileAccess(false);
         ws.setAllowContentAccess(false);
         bridge = new ClientBridge(this);
-        web.addJavascriptInterface(bridge, "NexusClient");
+        web.addJavascriptInterface(bridge, "HaloClient");
         web.setWebViewClient(new WebViewClient() {
             @Override public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
                 Uri u = r.getUrl();

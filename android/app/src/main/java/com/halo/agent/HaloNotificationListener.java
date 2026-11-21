@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import android.app.Notification;
 import android.content.pm.PackageManager;
@@ -14,13 +14,13 @@ import java.util.Iterator;
 
 /**
  * Reads phone/glasses notifications (messages, calls, apps) so agents can summarize or
- * announce them. Only active after the user enables "Notification access" for Nexus Agent.
+ * announce them. Only active after the user enables "Notification access" for Halo.
  */
-public class NexusNotificationListener extends NotificationListenerService {
+public class HaloNotificationListener extends NotificationListenerService {
 
     interface Sink { void posted(JSONObject n); }
 
-    static volatile NexusNotificationListener instance;
+    static volatile HaloNotificationListener instance;
     static volatile Sink sink;
     private static final ArrayDeque<JSONObject> recent = new ArrayDeque<>();
 
@@ -81,7 +81,7 @@ public class NexusNotificationListener extends NotificationListenerService {
     }
 
     static boolean dismiss(String key) {
-        NexusNotificationListener i = instance;
+        HaloNotificationListener i = instance;
         if (i == null) return false;
         i.cancelNotification(key);
         synchronized (recent) { recent.removeIf(o -> o.optString("key").equals(key)); }

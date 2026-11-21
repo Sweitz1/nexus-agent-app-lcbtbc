@@ -1,6 +1,6 @@
 # Apple App Privacy — Nutrition Label
 
-This document provides the answers to fill in the **App Privacy** section of App Store Connect for Nexus Agent. Use the tables below to complete each privacy question in the form.
+This document provides the answers to fill in the **App Privacy** section of App Store Connect for Halo. Use the tables below to complete each privacy question in the form.
 
 ---
 
@@ -125,7 +125,7 @@ This document provides the answers to fill in the **App Privacy** section of App
 ## Notes for App Store Connect
 
 - **"Linked to user identity"** means the data is associated with your account (email, user ID, task content). Crash data is anonymized and therefore not linked.
-- **"Used for tracking"** means combining data with data from other companies' apps or websites for advertising. Nexus Agent does **not** do this.
+- **"Used for tracking"** means combining data with data from other companies' apps or websites for advertising. Halo does **not** do this.
 - The app uses **Sign in with Apple** — Apple's guidelines require that you do not collect additional data beyond what Sign in with Apple provides without user consent.
 - There are **no advertising SDKs**, **no analytics SDKs that share data with ad networks**, and **no third-party tracking frameworks** in this app.
 - Task content sent to AI provider APIs (OpenAI, Anthropic, Google) is **user-directed** — the user explicitly connects these services. This is not "sharing with third parties" in Apple's tracking sense; it is the core function of the app.

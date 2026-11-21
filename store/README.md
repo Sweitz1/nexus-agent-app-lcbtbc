@@ -1,6 +1,6 @@
-# Nexus Agent — App Store Submission Package
+# Halo — App Store Submission Package
 
-This directory contains every human-readable and store-listing asset needed to submit Nexus Agent to the Apple App Store and Google Play Store.
+This directory contains every human-readable and store-listing asset needed to submit Halo to the Apple App Store and Google Play Store.
 
 ## File Index
 
@@ -55,7 +55,7 @@ The following items are **not** included in this package and must be provided ma
 - [ ] **Privacy Policy URL** — host `privacy-policy.md` (or a rendered version) at a public URL and enter it in both store consoles
 - [ ] **Terms of Service URL** — same for `terms-of-service.md`
 - [ ] **Support URL** — host `support.md` or point to a support page; required by both stores
-- [ ] **Replace placeholder emails** — `privacy@nexusagent.app`, `legal@nexusagent.app`, `support@nexusagent.app` must route to real inboxes before going live
+- [ ] **Replace placeholder emails** — `privacy@haloagent.app`, `legal@haloagent.app`, `support@haloagent.app` must route to real inboxes before going live
 - [ ] **GDPR / CCPA compliance review** — if you expect EU or California users, confirm data processing agreements with any sub-processors (OpenAI, Anthropic, Google, GitHub)
 
 ### App Store Connect (iOS-specific)

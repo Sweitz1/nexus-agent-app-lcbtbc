@@ -1,4 +1,4 @@
-package com.nexus.glasses;
+package com.halo.glasses;
 
 import android.Manifest;
 import android.content.ActivityNotFoundException;
@@ -42,7 +42,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** window.NexusClient — the small native surface the glasses client needs. */
+/** window.HaloClient — the small native surface the glasses client needs. */
 public class ClientBridge {
 
     private final ClientActivity act;
@@ -55,7 +55,7 @@ public class ClientBridge {
 
     ClientBridge(ClientActivity act) {
         this.act = act;
-        prefs = act.getSharedPreferences("nexus_glasses", Context.MODE_PRIVATE);
+        prefs = act.getSharedPreferences("halo_glasses", Context.MODE_PRIVATE);
         tts = new TextToSpeech(act, st -> {
             ttsReady = st == TextToSpeech.SUCCESS;
             if (ttsReady) tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
@@ -127,7 +127,7 @@ public class ClientBridge {
         });
     }
 
-    /** Finds Nexus phone apps advertising _nexus._tcp on the Wi-Fi. Resolves [{name, host, port}]. */
+    /** Finds Halo phone apps advertising _halo._tcp on the Wi-Fi. Resolves [{name, host, port}]. */
     @JavascriptInterface
     public void discover(String id, int timeoutMs) {
         act.runOnUiThread(() -> {
@@ -163,7 +163,7 @@ public class ClientBridge {
                     act.callback(id, true, found.toString());
                 }
             };
-            try { nsd.discoverServices("_nexus._tcp", NsdManager.PROTOCOL_DNS_SD, dl); } catch (Exception e) { act.callback(id, false, err(e)); return; }
+            try { nsd.discoverServices("_halo._tcp", NsdManager.PROTOCOL_DNS_SD, dl); } catch (Exception e) { act.callback(id, false, err(e)); return; }
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 try { nsd.stopServiceDiscovery(dl); } catch (Exception ignored) { }
                 if (!done[0]) { done[0] = true; act.callback(id, true, found.toString()); }

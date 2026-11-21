@@ -110,7 +110,7 @@ export default function NotificationPreferencesScreen() {
   const permissionIconColor = hasPermission ? COLORS.primary : COLORS.textSecondary;
   const permissionTitle = hasPermission ? 'Notifications Enabled' : 'Notifications Disabled';
   const permissionDesc = hasPermission
-    ? "You'll receive push notifications from Nexus Agent"
+    ? "You'll receive push notifications from Halo"
     : 'Enable notifications to stay updated on agent activity';
 
   return (

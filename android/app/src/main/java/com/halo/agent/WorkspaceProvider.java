@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
@@ -14,12 +14,12 @@ import java.io.FileNotFoundException;
 
 /**
  * Exposes individual workspace files to other apps (open, share, camera output) through
- * content://com.nexus.agent.files/<path>, only for intents we start with a URI grant.
+ * content://com.halo.agent.files/<path>, only for intents we start with a URI grant.
  * Not exported: other apps cannot browse the workspace.
  */
 public class WorkspaceProvider extends ContentProvider {
 
-    static final String AUTHORITY = "com.nexus.agent.files";
+    static final String AUTHORITY = "com.halo.agent.files";
 
     static Uri uriFor(Context c, File f) throws java.io.IOException {
         String rel = new Workspace(c).rel(f);

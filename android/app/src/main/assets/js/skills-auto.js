@@ -1,4 +1,4 @@
-/* Nexus Agent — AutoGPT: autonomous goal-driven agent runs (plan → act → review → adapt) with
+/* Halo — AutoGPT: autonomous goal-driven agent runs (plan → act → review → adapt) with
  * budgets, approvals, scheduling and an "Auto" tab, plus a client for real AutoGPT servers via the
  * open Agent Protocol. Loaded after skills-trust.js. */
 'use strict';
@@ -17,7 +17,7 @@
   const live = {};              // runId → {stop: bool}
   const ACTIVE_MAX = 2;
   const runById = id => S.autoRuns.find(r => r.id === id || r.id.startsWith(String(id)));
-  const pickAgent = id => agentById(id) || S.agents.find(a => a.name === 'Nexus') || agentById(S.current) || S.agents[0];
+  const pickAgent = id => agentById(id) || S.agents.find(a => a.name === 'Halo') || agentById(S.current) || S.agents[0];
   function addLog(run, kind, text) { run.log = (run.log || []).concat([{ t: Date.now(), kind, text: clip(String(text), 1500) }]).slice(-300); }
   const jsonFrom = t => { const s = stripThink(String(t || '')); const m = s.match(/```(?:json)?\s*([\s\S]*?)```/) || s.match(/(\{[\s\S]*\})/); return m ? parseJSON(m[1], null) : null; };
   const progress = r => { const n = (r.plan || []).length, d = (r.plan || []).filter(t => t.status === 'done').length; return { n, d, pct: n ? Math.round(d / n * 100) : 0 }; };
@@ -85,7 +85,7 @@ ${doneSummary(run)}`, run);
     addMsg({ role: 'assistant', agent: 'AutoGPT', content: `**${head}**\n\n${report}`, ts: Date.now() });
     if (run.notify !== false) {
       speak(`${head}. ${plain(report).slice(0, 220)}`);
-      try { if (window.NexusMusic && NexusMusic.hudOn()) N.hudPost(JSON.stringify({ mode: 'reply', title: 'AutoGPT', text: clip(plain(report), 600) })); } catch { /* optional */ }
+      try { if (window.HaloMusic && HaloMusic.hudOn()) N.hudPost(JSON.stringify({ mode: 'reply', title: 'AutoGPT', text: clip(plain(report), 600) })); } catch { /* optional */ }
       try { if (S.settings.telegramBridge && S.telegram.allowed.length) for (const c of S.telegram.allowed) await http('POST', `https://api.telegram.org/bot${getKey('svc_telegram')}/sendMessage`, { 'Content-Type': 'application/json' }, JSON.stringify({ chat_id: c, text: `${head}\n\n${clip(report, 3500)}` }), 20000); } catch { /* optional */ }
       notifyReplyHooks('AutoGPT', run.goal, report, 'auto');
     }
@@ -270,13 +270,13 @@ Do the task now (use skills; save useful outputs to workspace files and mention 
   /* ================================================================== settings */
   const coreRenderPro = renderProSettings, coreBindPro = bindProSettings;
   renderProSettings = () => coreRenderPro() + `<div class="card" id="autoCard"><h3>AutoGPT</h3>
-    <div class="row"><div><label>Planner/reviewer agent</label><select data-k="autoPlanner"><option value="">(Nexus)</option>${S.agents.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></div>
-    <div><label>Worker agent</label><select data-k="autoWorker"><option value="">(Nexus)</option>${S.agents.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></div></div>
+    <div class="row"><div><label>Planner/reviewer agent</label><select data-k="autoPlanner"><option value="">(Halo)</option>${S.agents.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></div>
+    <div><label>Worker agent</label><select data-k="autoWorker"><option value="">(Halo)</option>${S.agents.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></div></div>
     <div class="row"><div><label>Default task budget</label><input data-k="autoMaxCycles" data-t="num" type="number" min="1" max="60"></div><div><label>Default minutes budget</label><input data-k="autoMaxMinutes" data-t="num" type="number" min="1" max="240"></div></div>
     <div class="row"><div><label>AutoGPT server (Agent Protocol) URL — optional</label><input data-k="autogptUrl" placeholder="http://192.168.1.20:8000"></div><div><label>Server API key (optional)</label><input type="password" data-secret="svc_autogpt" placeholder="${getKey('svc_autogpt') ? 'saved ✓' : ''}"></div></div>
     <p class="hint">Autonomous runs use many model calls — budgets keep cost in check. Each task also respects the normal confirmations for risky actions.</p></div>`;
   bindProSettings = v => { coreBindPro(v); const c = $('#autoCard', v); if (!c) return; bind(c, S.settings); $$('[data-secret]', c).forEach(el => el.addEventListener('change', () => { setKey(el.dataset.secret, el.value); el.value = ''; el.placeholder = 'saved ✓'; toast('Saved on device'); })); };
   { const coreSecrets = secretIds; secretIds = () => [...coreSecrets(), { id: 'svc_autogpt', name: 'AutoGPT server key' }]; }
 
-  window.NexusAuto = { startRun, control, loop, apRun, progress };
+  window.HaloAuto = { startRun, control, loop, apRun, progress };
 })();

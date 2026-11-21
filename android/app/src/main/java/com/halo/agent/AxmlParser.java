@@ -1,4 +1,4 @@
-package com.nexus.agent;
+package com.halo.agent;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
