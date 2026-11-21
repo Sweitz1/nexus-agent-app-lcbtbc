@@ -1,4 +1,4 @@
-// Nexus Glasses — 6DoF head pose from the glasses' OpenXR runtime (RayNeo X3 Pro), no Unity.
+// Vela Glasses — 6DoF head pose from the glasses' OpenXR runtime (RayNeo X3 Pro), no Unity.
 //
 // Starts an OpenXR session only to read the head pose (VIEW space located in LOCAL space) and keeps
 // the app's normal Android UI. Two ways, tried in order:
@@ -97,9 +97,9 @@ void run() {
     ai.applicationVM = g_vm; ai.applicationActivity = g_ctx;
     XrInstanceCreateInfo ci{XR_TYPE_INSTANCE_CREATE_INFO};
     ci.next = &ai;
-    std::strncpy(ci.applicationInfo.applicationName, "Nexus Glasses", XR_MAX_APPLICATION_NAME_SIZE - 1);
+    std::strncpy(ci.applicationInfo.applicationName, "Vela Glasses", XR_MAX_APPLICATION_NAME_SIZE - 1);
     ci.applicationInfo.applicationVersion = 1;
-    std::strncpy(ci.applicationInfo.engineName, "Nexus", XR_MAX_ENGINE_NAME_SIZE - 1);
+    std::strncpy(ci.applicationInfo.engineName, "Vela", XR_MAX_ENGINE_NAME_SIZE - 1);
     ci.applicationInfo.apiVersion = XR_API_VERSION_1_0;
     ci.enabledExtensionCount = (uint32_t)enable.size(); ci.enabledExtensionNames = enable.data();
     XR_OK(xrCreateInstance(&ci, &instance), "create instance");

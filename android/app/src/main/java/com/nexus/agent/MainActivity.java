@@ -32,7 +32,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Hosts the Nexus Agent web UI (assets/index.html) in a WebView and exposes the
+ * Hosts the Vela web UI (assets/index.html) in a WebView and exposes the
  * native bridge ({@link NativeBridge}) as window.NexusNative.
  *
  * Tuned for the RayNeo X3 Pro AR glasses: black (transparent) background, immersive

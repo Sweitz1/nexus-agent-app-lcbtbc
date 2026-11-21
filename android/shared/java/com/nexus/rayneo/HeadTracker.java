@@ -56,7 +56,7 @@ public final class HeadTracker implements SensorEventListener {
         if ("6dof".equals(want) && nativeLoaded) {
             try { nativeStart(act, allowGlSession); mode = "6dof"; sixStart = System.currentTimeMillis(); note = ""; return status(); }
             catch (Throwable t) { note = "6DoF unavailable: " + t.getMessage(); }
-        } else if ("6dof".equals(want)) note = "6DoF needs the Nexus Glasses app (OpenXR); using 3DoF";
+        } else if ("6dof".equals(want)) note = "6DoF needs the Vela Glasses app (OpenXR); using 3DoF";
         startRotation();
         return status();
     }

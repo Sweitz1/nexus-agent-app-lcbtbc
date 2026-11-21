@@ -4,7 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.view.View;
 
-/** Built when the RayNeo Mercury SDK AAR is absent: Nexus' own mirror and gesture code is used. */
+/** Built when the RayNeo Mercury SDK AAR is absent: Vela' own mirror and gesture code is used. */
 public final class RayNeoSdk {
     private RayNeoSdk() { }
     public static boolean available() { return false; }

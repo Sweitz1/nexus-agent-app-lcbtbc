@@ -1,10 +1,12 @@
-# Nexus Agent: multi-agent AI for RayNeo X3 Pro (Android APK)
+# Vela: multi-agent AI for RayNeo X3 Pro (Android APK)
 
-Nexus Agent is a private, multi-model agent app for Android. It is built for the **RayNeo X3 Pro** AR glasses and also runs on any Android 8+ phone or tablet.
+Vela is a private, multi-model agent app for Android. It is built for the **RayNeo X3 Pro** AR glasses and also runs on any Android 8+ phone or tablet.
 
 💬 **Community Discord:** [discord.gg/vzeSZMYCM](https://discord.gg/vzeSZMYCM). Questions, X3 Pro test results and ideas are welcome.
 🐙 **GitHub:** [github.com/Sweitz1/nexus-agent-app-lcbtbc](https://github.com/Sweitz1/nexus-agent-app-lcbtbc). Downloads, source code and [bug reports](https://github.com/Sweitz1/nexus-agent-app-lcbtbc/issues).
 Both apps link to these from their settings.
+
+> **Renamed from Nexus Agent.** Vela was called *Nexus Agent* up to version 2.10; the glasses app was *Nexus Glasses*. The Android package IDs did not change (`com.nexus.agent`, `com.nexus.agent.glasses`), so the new version installs as an update and keeps all your settings, keys, characters and pairing. The wake word is now **"Hey Vela"**.
 
 - **Multiple agents, multiple models.** Venice AI (including the `venice-uncensored` model), Anthropic Claude, xAI Grok, OpenAI, Google Gemini, OpenRouter and Groq, plus any OpenAI-compatible endpoint.
 - **Local and private.** You can point an agent at Ollama, LM Studio, llama.cpp or vLLM running on your own phone, PC or home server over Wi-Fi. No cloud is involved, and the agent needs no API key.
@@ -13,7 +15,7 @@ Both apps link to these from their settings.
   - **Council:** every council agent answers at once, then a synthesizer agent merges the answers.
   - **Chain:** each agent improves the previous agent's answer.
   - **Translate:** live two-way interpreting (for example English ⇄ Spanish), read aloud. Useful for conversations while wearing the glasses.
-- **Agents can delegate.** The `ask_agent` skill lets one agent hand a task to another. For example, the default *Nexus* orchestrator can ask Venice, Grok or Local for help.
+- **Agents can delegate.** The `ask_agent` skill lets one agent hand a task to another. For example, the default *Vela* orchestrator can ask Venice, Grok or Local for help.
 - **Skills (tools).** Built-in skills:
   - web search and web page fetch
   - generic HTTP requests
@@ -63,7 +65,7 @@ Both apps link to these from their settings.
   | Spotify | `spotify_search`, `spotify_play` (tracks, albums, playlists, artists; shuffle; device), `spotify_control`, `spotify_now_playing`, `spotify_queue`, `spotify_devices` (Spotify Connect transfer), `spotify_playlists` (list, show, **create from song names**, add), `spotify_library` (like, recent, top tracks and artists) |
   | YouTube Music | `ytmusic_search`, `ytmusic_play` (opens in the YouTube Music app with an automatic radio mix), `ytmusic_open` (home, explore, library, liked) |
   | Display glasses (Lenovo & others) | `hud_control`: a heads-up display on USB-C display glasses (**Lenovo Legion Glasses, Lenovo Glasses T1**, XREAL, Viture, Rokid, RayNeo Air…). Shows a clock, agent replies, teleprompter, now playing, synced lyrics and notification toasts |
-  | Meta glasses | `meta_glasses_status`, `meta_glasses_voice` (glasses microphones for voice and "Hey Nexus"), `glasses_tap_to_talk`, `meta_glasses_media` (photos and videos you took with the glasses), `meta_glasses_look` (**"what am I looking at?"** using your latest capture), `meta_ai_app` |
+  | Meta glasses | `meta_glasses_status`, `meta_glasses_voice` (glasses microphones for voice and "Hey Vela"), `glasses_tap_to_talk`, `meta_glasses_media` (photos and videos you took with the glasses), `meta_glasses_look` (**"what am I looking at?"** using your latest capture), `meta_ai_app` |
   | Screen control | `screen_open_app`, `screen_read` (UI elements of the app in front), `screen_tap`, `screen_type`, `screen_scroll`, `screen_swipe`, `screen_nav` (back, home, recents, notifications), `screen_wait`, `screen_screenshot` (screenshot passed to the vision model), `screen_return`. Agents operate other apps for you, for example *"reorder my usual from DoorDash"* |
   | Shopping | `shop_search` (compares Amazon and Walmart: prices, ratings, Prime, pickup), `shop_product`, `shop_add_to_cart` (opens the store's add-to-cart page; **you check out yourself**), `shop_open` (search, cart, orders and tracking, deals, buy again), `shopping_list`, `shopping_list_to_cart` (whole list into the cart in one step) |
   | Plex | `plex_search`, `plex_browse` (libraries, on deck, recently added), `plex_details`, `plex_play` (plays on the glasses, resumes from your progress, picks up a show at the next unwatched episode, plays albums and playlists as a queue, or opens the item in the Plex app), `plex_mark` |
@@ -89,11 +91,11 @@ Both apps link to these from their settings.
 
 GitHub Actions builds the APK on every push that touches `android/`:
 
-1. Open **Actions → Build Nexus Agent APK** and select the latest run. You can also start a run by hand with **Run workflow**.
-2. Download the **nexus-agent-apk** artifact and unzip it. It holds three files:
-   - `nexus-agent.apk` is the full app (release build). Install it on the glasses for standalone use, or on your phone as the **phone server**.
-   - `nexus-glasses.apk` is the lightweight **glasses client**. Install it on the glasses when the phone runs Nexus (see [Phone server + glasses client](#phone-server--glasses-client)).
-   - `nexus-agent-debug.apk` is the debuggable build of the full app.
+1. Open **Actions → Build Vela APK** and select the latest run. You can also start a run by hand with **Run workflow**.
+2. Download the **vela-apk** artifact and unzip it. It holds three files:
+   - `vela.apk` is the full app (release build). Install it on the glasses for standalone use, or on your phone as the **phone server**.
+   - `vela-glasses.apk` is the lightweight **glasses client**. Install it on the glasses when the phone runs Vela (see [Phone server + glasses client](#phone-server--glasses-client)).
+   - `vela-debug.apk` is the debuggable build of the full app.
 
 If you publish a GitHub Release, the workflow also attaches the APKs to it.
 
@@ -118,7 +120,7 @@ Both APKs are signed with APK Signature Scheme v1, v2 and v3. With your release 
 
 Without the secrets, everyday builds use the debug key so they still install with `adb`.
 
-**Publishing a release:** push a version tag (`git tag v2.6.0 && git push origin v2.6.0`), or open *Actions → Build Nexus Agent APK → Run workflow* and enter a **release_tag** such as `v2.6.0`. The workflow then:
+**Publishing a release:** push a version tag (`git tag v2.6.0 && git push origin v2.6.0`), or open *Actions → Build Vela APK → Run workflow* and enter a **release_tag** such as `v2.6.0`. The workflow then:
 
 1. refuses to build unless your release key is configured;
 2. builds both APKs and the Google Play bundles (`.aab`);
@@ -138,14 +140,14 @@ The X3 Pro runs an Android-based OS, so the APK installs over ADB like on any ot
 3. **Install the APK:**
    ```bash
    adb devices                      # the glasses should be listed
-   adb install -r nexus-agent.apk
+   adb install -r vela.apk
    adb shell monkey -p com.nexus.agent 1   # launches the app
    ```
 4. **Optional: install wirelessly** after the first USB connection:
    ```bash
    adb tcpip 5555
    adb connect <glasses-ip>:5555
-   adb install -r nexus-agent.apk
+   adb install -r vela.apk
    ```
 
 If the app doesn't appear in the RayNeo launcher, open it with the `monkey` command above or with an app-list or launcher app.
@@ -154,16 +156,16 @@ On a phone, copy the APK to the phone, open it, and allow "install unknown apps"
 
 ## Phone server + glasses client
 
-You can run Nexus two ways:
+You can run Vela two ways:
 
-- **Standalone:** install `nexus-agent.apk` on the glasses. Everything runs on the glasses.
-- **Phone server + glasses client:** install `nexus-agent.apk` on your phone and `nexus-glasses.apk` (package `com.nexus.agent.glasses`, "Nexus Glasses") on the glasses. Models, API keys, skills, accounts, files and AutoGPT stay on the phone. The glasses only handle voice, the display, the camera, the touchpad and head gestures, so they use less battery and keep no secrets.
+- **Standalone:** install `vela.apk` on the glasses. Everything runs on the glasses.
+- **Phone server + glasses client:** install `vela.apk` on your phone and `vela-glasses.apk` (package `com.nexus.agent.glasses`, "Vela Glasses") on the glasses. Models, API keys, skills, accounts, files and AutoGPT stay on the phone. The glasses only handle voice, the display, the camera, the touchpad and head gestures, so they use less battery and keep no secrets.
 
 **Pairing (once):**
 
 1. Put both devices on the same Wi-Fi, or connect the glasses to the phone's hotspot.
-2. On the phone, open *Settings → Nexus Glasses* and press **Pair glasses**. This turns on the local server, advertises it on the network (`_nexus._tcp`), and shows a 6-digit code and a QR code. The code is valid for 5 minutes, and 5 wrong tries cancel it.
-3. Open **Nexus Glasses** on the glasses. It finds the phone automatically. Then scan the QR code with the glasses camera, type the code, or say it. The phone's address can also be entered by hand (`192.168.x.x:8787`).
+2. On the phone, open *Settings → Vela Glasses* and press **Pair glasses**. This turns on the local server, advertises it on the network (`_nexus._tcp`), and shows a 6-digit code and a QR code. The code is valid for 5 minutes, and 5 wrong tries cancel it.
+3. Open **Vela Glasses** on the glasses. It finds the phone automatically. Then scan the QR code with the glasses camera, type the code, or say it. The phone's address can also be entered by hand (`192.168.x.x:8787`).
 
 The glasses then store the phone's access token, so later launches connect directly. Use *☰ → Settings → Forget phone* to unpair, and change the token on the phone to revoke access.
 
@@ -178,13 +180,13 @@ The glasses then store the phone's access token, so later launches connect direc
 
 The phone also pushes live updates to the glasses: replies from other places (phone chat, AutoGPT reports, Telegram, webhooks, scheduled runs) and, if you allow it, phone notifications. When an agent needs your confirmation for a risky action, the question appears on the glasses: **nod** to allow, **shake** to deny, or tap a button. The phone dialog stays open too, and the first answer wins. The quick menu can only run a short list of read-only and music skills directly. For everything else you ask the agent, so the usual confirmations still apply.
 
-**Glasses on their own eSIM (mobile data):** the glasses are then not on your Wi-Fi. Install [Tailscale](https://tailscale.com) (or another private VPN) on the phone and on the glasses, sign in to the same account, then pair once. The phone sends all of its addresses during pairing: Wi-Fi, hotspot, VPN, and an optional *Remote address* you can set under *Settings → Nexus Glasses*. When one address stops answering, the glasses switch to another one that works. Don't open the server port to the public internet: the connection is plain HTTP and is protected only by the token, while a VPN encrypts the link.
+**Glasses on their own eSIM (mobile data):** the glasses are then not on your Wi-Fi. Install [Tailscale](https://tailscale.com) (or another private VPN) on the phone and on the glasses, sign in to the same account, then pair once. The phone sends all of its addresses during pairing: Wi-Fi, hotspot, VPN, and an optional *Remote address* you can set under *Settings → Vela Glasses*. When one address stops answering, the glasses switch to another one that works. Don't open the server port to the public internet: the connection is plain HTTP and is protected only by the token, while a VPN encrypts the link.
 
-Keep Nexus running on the phone. While glasses are being served, a "Nexus is serving your glasses" notification keeps it alive in the background.
+Keep Vela running on the phone. While glasses are being served, a "Vela is serving your glasses" notification keeps it alive in the background.
 
 ## Glasses app: Bluetooth and head tracking
 
-**Bluetooth** (*☰ → 🔵 Bluetooth* in Nexus Glasses)
+**Bluetooth** (*☰ → 🔵 Bluetooth* in Vela Glasses)
 - See what's paired and where audio is playing.
 - **Scan** for nearby devices in pairing mode (earbuds, speakers, game controllers, keyboards) and tap one to pair.
 - **⚙ Settings** opens Android's Bluetooth screen to connect, disconnect or forget devices, which apps can't do themselves.
@@ -203,7 +205,7 @@ Keep Nexus running on the phone. While glasses are being served, a "Nexus is ser
 
 ## Binocular display and temple touchpad (RayNeo X3 / X3 Pro)
 
-The X3 and X3 Pro show both eye panels as one wide logical screen. A normal Android app would be split across the two eyes. Both Nexus apps handle this themselves, without the RayNeo SDK:
+The X3 and X3 Pro show both eye panels as one wide logical screen. A normal Android app would be split across the two eyes. Both Vela apps handle this themselves, without the RayNeo SDK:
 
 - **Mirror per eye:** the UI is laid out at half width and drawn once per eye, the same idea as RayNeo's `MirrorContainerView`.
 - **Temple gestures:** the temple touchpad is turned into navigation. Swipe forward or back moves to the next or previous item, swipe up or down scrolls, a tap selects, a double tap goes back, and a long press starts voice input.
@@ -217,7 +219,7 @@ Both are set to **Auto**. They turn on when the device looks like RayNeo glasses
 
 The SDK is RayNeo's proprietary software and this repository is public, so the AAR is not committed. See [`android/libs/rayneo/README.md`](android/libs/rayneo/README.md) for how to add it locally or in CI. Without it, the built-in mirror and gesture code is used.
 
-Nexus does not use Brilliant Labs' Halo/Frame SDK. That SDK is for a different, Bluetooth-based device and doesn't work with RayNeo glasses.
+Vela does not use Brilliant Labs' Halo/Frame SDK. That SDK is for a different, Bluetooth-based device and doesn't work with RayNeo glasses.
 
 ## First-time setup (about 2 minutes)
 
@@ -250,7 +252,7 @@ Small local models often don't support tool calling. The app detects this and co
 
 - **Files** tab: this is the agent's private workspace. It shows photos, imports, downloads and every file a skill creates. For each file you can attach it to a chat, view it, share it, save it to device storage or delete it.
 - 📷 takes a photo and 📎 attaches files to your next message. Images go directly to vision-capable models (Claude, GPT, Grok and Gemini vision models). Other files are passed by path so the agent can use its PDF, zip, video and OCR skills on them.
-- Sharing images, PDFs, zips or videos from any app to *Nexus Agent* attaches them automatically.
+- Sharing images, PDFs, zips or videos from any app to *Vela* attaches them automatically.
 
 ### Notes on specific skills
 
@@ -268,17 +270,17 @@ Small local models often don't support tool calling. The app detects this and co
 - **Confirmation.** Risky skills ask before running. These are deleting files, calls, SMS, contacts, location, app launching, intents, raw HTTP and webhooks. In the **Skills** tab you can tick *always allow* on any of them.
 - **Upgrading from 1.0.0.** The app now runs from a secure local origin, which the camera, workers and WebAssembly need. Agents and settings saved in 1.0.0 don't carry over, but API keys do. To keep your configuration, use *Settings → Export config* on 1.0.0 before upgrading, then import it on 1.1.0.
 
-## "Hey Nexus" wake word
+## "Hey Vela" wake word
 
-Turn it on in *Settings → "Hey Nexus" wake word*, or ask an agent to call `wake_word` with `on`.
+Turn it on in *Settings → "Hey Vela" wake word*, or ask an agent to call `wake_word` with `on`.
 
 - **Offline and private.** The wake word uses [Vosk](https://alphacephei.com/vosk/), an open-source recogniser that runs on the device. The small speech model (about 40 MB) downloads once. Audio is never uploaded while the app waits for the wake phrase.
 - **Background listening.** A microphone foreground service keeps listening with the screen off or while you use other apps. A small notification shows while it is listening.
 - **After the wake word** a tone plays. Your request is transcribed and sent to the current agent (or the current mode), and the answer is read aloud. You can choose how the request is transcribed:
   - *Offline* (default): fully private.
   - *System speech recognizer*: more accurate, but uses Google's service where available.
-- **Waking the app from the background.** Grant *Allow opening from background* (Android's "display over other apps") so the wake word can bring Nexus to the front. Without it, a "tap to open" alert appears instead.
-- **Other phrases.** "Hey Nexus", "Hi Nexus" and "OK Nexus" all work, and so do common mishearings such as "hey next us". You can add your own phrase. Words must exist in the model's vocabulary.
+- **Waking the app from the background.** Grant *Allow opening from background* (Android's "display over other apps") so the wake word can bring Vela to the front. Without it, a "tap to open" alert appears instead.
+- **Other phrases.** "Hey Vela", "Hi Vela" and "OK Vela" all work, and so do common mishearings such as "hey next us". You can add your own phrase. Words must exist in the model's vocabulary.
 - Say **"stop"** or **"cancel"** to interrupt a reply.
 - The app pauses the wake word while it is speaking, so it doesn't hear itself.
 - Models for German, French, Spanish, Italian, Portuguese, Dutch, Russian, Chinese and Japanese are available. With these, set a custom phrase in that language.
@@ -296,7 +298,7 @@ One Google sign-in gives agents **Gmail, Google Calendar, Drive, Docs, Sheets, T
 4. Under *Credentials*, create an **OAuth client ID** of type **Desktop app**, then paste the client ID and secret into Settings and press **Connect Google**.
 5. Optional: create an **API key** with Places API (New), Routes API and Cloud Translation API enabled. This adds Google Maps search, live-traffic routes and Google Translate.
 
-**How sign-in works:** it uses Google's standard installed-app flow (PKCE) in your normal browser. Google then returns to Nexus through a temporary local address on the device (`http://127.0.0.1:<port>`).
+**How sign-in works:** it uses Google's standard installed-app flow (PKCE) in your normal browser. Google then returns to Vela through a temporary local address on the device (`http://127.0.0.1:<port>`).
 
 - Typing on glasses is hard, so you can sign in on your phone instead. The phone's browser will end on a page that fails to load, at an address starting with `http://127.0.0.1`. Copy that address and paste it into *Settings → Google → "Signed in on another device?"*. The phone remote console works for this too.
 - Tokens are stored only in the app's private storage. *Disconnect* revokes them with Google.
@@ -320,14 +322,14 @@ Details:
 
 - **Python** runs fully on the device. The first run downloads the Pyodide runtime (about 10 MB) from jsDelivr; packages load on demand.
 - **Other languages:** `run_code` sends code to a [Piston](https://github.com/engineer-man/piston) server you host.
-- **APK services** need Android's "Install unknown apps" permission for Nexus. Nexus opens that setting the first time. Nexus can see all installed apps (the `QUERY_ALL_PACKAGES` permission), which is fine for a sideloaded app but would not be allowed on Google Play.
+- **APK services** need Android's "Install unknown apps" permission for Vela. Vela opens that setting the first time. Vela can see all installed apps (the `QUERY_ALL_PACKAGES` permission), which is fine for a sideloaded app but would not be allowed on Google Play.
 - **App integrations** are stored as custom skills. Manage or remove them in *Settings → Developer*.
 - **Google Photos:** since Google's 2025 API change, apps can upload, manage the albums they create, and download items you choose in the Google Photos picker. They can't browse your whole library. Tick *photos* in *Settings → Google* and reconnect.
 - **Scraping and downloads:** robots.txt is respected by default and crawling is rate-limited. Downloading from streaming services (YouTube, Netflix and others) is intentionally not supported, because their terms and copy protection forbid it.
 
 ## AutoGPT: autonomous goals
 
-Give Nexus a bigger goal in the **Auto** tab, in the **AutoGPT** chat mode, or by voice ("Hey Nexus, in the background, research … and email me a PDF"). It then works AutoGPT-style:
+Give Vela a bigger goal in the **Auto** tab, in the **AutoGPT** chat mode, or by voice ("Hey Vela, in the background, research … and email me a PDF"). It then works AutoGPT-style:
 
 1. **Plan.** A planner agent breaks the goal into 3–10 tasks and sets success criteria.
 2. **Act.** A worker agent does one task at a time with all its skills: web, files, PDF, email, calendar, code, shopping and so on. Useful results are saved as workspace files.
@@ -347,11 +349,11 @@ Runs interrupted by an app restart wait for you to resume them. Risky actions in
 
 ## Verizon Cloud, deepfake detection and synthetic media
 
-**Verizon Cloud** offers no public API, so Nexus works through the app and through Android storage:
+**Verizon Cloud** offers no public API, so Vela works through the app and through Android storage:
 
 - **Upload:** files are sent straight to the Verizon Cloud app, where you confirm.
-- **Automatic backup:** files are saved to *Pictures/Movies/Music/Download → Nexus*, which Verizon Cloud backs up when backup is on in its settings.
-- **Getting files out:** in Verizon Cloud, select items, then *Share → Nexus Agent* (they appear in *Files → imports*). With screen control enabled, an agent can also operate the Verizon Cloud app for you.
+- **Automatic backup:** files are saved to *Pictures/Movies/Music/Download → Vela*, which Verizon Cloud backs up when backup is on in its settings.
+- **Getting files out:** in Verizon Cloud, select items, then *Share → Vela* (they appear in *Files → imports*). With screen control enabled, an agent can also operate the Verizon Cloud app for you.
 
 **Deepfake detection** (`deepfake_check`) combines two things, and needs no extra accounts:
 
@@ -360,7 +362,7 @@ Runs interrupted by an app restart wait for you to resume them. Risky actions in
 
 The result is a verdict with the evidence and honest caveats. Audio gets the provenance check only. No check is perfect, so `reverse_image_search` helps you find the original source.
 
-**Synthetic media is limited to yourself.** Nexus can clone **your own voice** (ElevenLabs; usable for every text-to-audio skill) and make a **talking-avatar video from your own photo** (D-ID; add the key in *Settings → Synthetic media of yourself*). Every run shows a consent confirmation that cannot be auto-approved or bypassed by settings, and the decision is logged. Outputs are labelled *AI-generated*. **Face swaps and cloning other people's faces or voices are intentionally not supported**: they mainly enable impersonation, fraud and non-consensual imagery.
+**Synthetic media is limited to yourself.** Vela can clone **your own voice** (ElevenLabs; usable for every text-to-audio skill) and make a **talking-avatar video from your own photo** (D-ID; add the key in *Settings → Synthetic media of yourself*). Every run shows a consent confirmation that cannot be auto-approved or bypassed by settings, and the decision is logged. Outputs are labelled *AI-generated*. **Face swaps and cloning other people's faces or voices are intentionally not supported**: they mainly enable impersonation, fraud and non-consensual imagery.
 
 ## Narrator: natural audiobook voices
 
@@ -368,16 +370,16 @@ The result is a verdict with the evidence and honest caveats. Audio gets the pro
 
 - **Narration styles:** audiobook (warm and natural), romance/romantasy (intimate, with distinct voices for each character), epic fantasy/LitRPG, thriller, documentary, bedtime and conversational. You can add your own direction, for example "a touch slower; light Scottish accent for Callum". OpenAI `gpt-4o-mini-tts` voices receive the style as voice instructions. ElevenLabs voices get matching voice settings, plus context from the neighbouring chunk so long passages flow naturally.
 - **Find a narrator voice:** search ElevenLabs' Voice Library, the voices their owners chose to share, filtered for audiobook narration. Preview a voice and press **Use**, which adds it to your ElevenLabs account and makes it the narrator.
-- **Speak replies in the narrator voice:** chat replies are synthesized with your narrator voice. If the network fails, Nexus falls back to the device voice.
+- **Speak replies in the narrator voice:** chat replies are synthesized with your narrator voice. If the network fails, Vela falls back to the device voice.
 - **Skills:** `narrate`, `narrator_voices`, `narrator_set_voice`, `narrator_style`.
 
-**On the glasses:** the Nexus Glasses app speaks in the same narrator voice. The phone renders each reply as audio while the text is already showing, and the glasses stream it from the phone and play it. Turn it on or off in *☰ → Settings → Narrator voice* on the glasses, or with "Speak on the glasses in the narrator voice" under *Settings → Nexus Glasses* on the phone. If the narrator isn't set up, the network drops, or the phone uses the offline device voice, the glasses use their own voice. Confirmation questions always use the glasses' own voice, so they are instant.
+**On the glasses:** the Vela Glasses app speaks in the same narrator voice. The phone renders each reply as audio while the text is already showing, and the glasses stream it from the phone and play it. Turn it on or off in *☰ → Settings → Narrator voice* on the glasses, or with "Speak on the glasses in the narrator voice" under *Settings → Vela Glasses* on the phone. If the narrator isn't set up, the network drops, or the phone uses the offline device voice, the glasses use their own voice. Confirmation questions always use the glasses' own voice, so they are instant.
 
-Nexus doesn't imitate or clone specific real people, celebrities and professional narrators included. Use a voice that its owner has published or licensed, a stock AI voice, or your own voice (`voice_clone_self`).
+Vela doesn't imitate or clone specific real people, celebrities and professional narrators included. Use a voice that its owner has published or licensed, a stock AI voice, or your own voice (`voice_clone_self`).
 
 ## Roleplay (character chat) and SillyTavern
 
-The **Roleplay** tab is a character-chat mode in the style of TavernAI / SillyTavern, built into Nexus with its own interface:
+The **Roleplay** tab is a character-chat mode in the style of TavernAI / SillyTavern, built into Vela with its own interface:
 
 - **Character cards:** import and export SillyTavern / TavernAI cards. That covers PNG files with the card embedded and JSON files, in V1, V2 and V3 formats. You can create and edit cards with a description, personality, scenario, first message, alternate greetings, example dialogue, system prompt and post-history overrides, and tags.
 - **Lorebooks / World Info:** the lorebook inside each card, plus global or per-chat books. An entry is added to the prompt when one of its keywords appears in recent messages. Entries can be "always on", and keywords can be regular expressions. World Info JSON can be imported.
@@ -411,16 +413,16 @@ The list has an **SFW / 18+** filter.
   - cards that describe a minor are SFW-only, and messages describing a minor are refused in mature chats;
   - no sexual content about real people.
 - **Private.** Roleplay chats stay in that tab. Nothing from them is pushed automatically to the glasses, car, Telegram, webhooks, AutoGPT or agents; the glasses show roleplay only when you open it there (see below). Spoken replies in mature chats use the on-device voice.
-- **Provider policies still apply.** Nexus doesn't try to get around them. For adult fiction, choose a provider that allows it, such as Venice or a local model.
+- **Provider policies still apply.** Vela doesn't try to get around them. For adult fiction, choose a provider that allows it, such as Venice or a local model.
 
 ### Roleplay on the glasses
 
-The Nexus Glasses app has a **Roleplay** screen under *☰ → Roleplay*. The chats run on the phone's Roleplay tab, and the glasses act as a voice remote:
+The Vela Glasses app has a **Roleplay** screen under *☰ → Roleplay*. The chats run on the phone's Roleplay tab, and the glasses act as a voice remote:
 
 - **Choose:** pick a recent chat or a character (avatars come from the phone). Picking a character continues your last chat with them.
 - **Talk:** say your line with 🎙 or the assistant key. The reply appears on the glasses and is read aloud.
 - **Controls:** **‹ ›** step through swipes (**›** on the newest one writes a new reply) and **⤳** continues the reply. **←**, back or the menu key leaves.
-- **18+ on the glasses:** 18+ characters and chats appear on the glasses only after you allow it on the phone (*Roleplay → Settings → Nexus Glasses*). With a PIN lock, you also enter the PIN on the glasses, by typing or saying it. The unlock lasts 30 minutes of use and ends when you leave Roleplay. Five wrong PINs pause unlocking for 5 minutes.
+- **18+ on the glasses:** 18+ characters and chats appear on the glasses only after you allow it on the phone (*Roleplay → Settings → Vela Glasses*). With a PIN lock, you also enter the PIN on the glasses, by typing or saying it. The unlock lasts 30 minutes of use and ends when you leave Roleplay. Five wrong PINs pause unlocking for 5 minutes.
 - **Voice:** 18+ replies use the glasses' own on-device voice, never a cloud voice. Other chats use your narrator voice if one is set.
 - **Same rules everywhere:** the rules about minors and real people apply on the glasses exactly as on the phone.
 - **New characters on the glasses:** tap **＋ New character** in the glasses Roleplay list. You can:
@@ -432,7 +434,7 @@ The Nexus Glasses app has a **Roleplay** screen under *☰ → Roleplay*. The ch
 
 ### Using the real SillyTavern
 
-Nexus' local server also offers an OpenAI-compatible API, so SillyTavern running on a PC (or in Termux on Android) can use the models and keys on your phone:
+Vela' local server also offers an OpenAI-compatible API, so SillyTavern running on a PC (or in Termux on Android) can use the models and keys on your phone:
 
 1. Turn on the local server: *Settings → Webhooks & server*.
 2. In SillyTavern, choose *API → Chat Completion → Custom (OpenAI-compatible)*.
@@ -449,17 +451,17 @@ The card is under *Settings → Bluetooth, car & casting*. Each feature also wor
   - Shows your paired devices: speakers, headphones, cars and keyboards, and which are connected.
   - Scans for devices in pairing mode and pairs with them. Android shows its own PIN confirmation.
   - Shows where audio is playing and opens the media output switcher.
-  - Android doesn't let apps connect, disconnect or forget audio devices. For those, Nexus opens Bluetooth settings.
+  - Android doesn't let apps connect, disconnect or forget audio devices. For those, Vela opens Bluetooth settings.
 - **Media over Bluetooth and in the car**
-  - Nexus' player (audiobooks, narration, podcasts, spoken answers) is mirrored into Android's media session.
-  - Over Bluetooth, the car or headphones show the title, and the steering-wheel or headset buttons (play/pause, next, previous) control Nexus.
+  - Vela' player (audiobooks, narration, podcasts, spoken answers) is mirrored into Android's media session.
+  - Over Bluetooth, the car or headphones show the title, and the steering-wheel or headset buttons (play/pause, next, previous) control Vela.
   - Lock-screen controls work too.
-- **2015 VW Passat:** most 2015 Passats, including US models, have no Android Auto. VW added App-Connect in the 2016 model year. Use Bluetooth: pair the phone with the car once, and Nexus audio plays through the car with track info on the display (if your radio shows it) and steering-wheel controls. Mirroring the phone screen onto the car display isn't possible without Android Auto.
+- **2015 VW Passat:** most 2015 Passats, including US models, have no Android Auto. VW added App-Connect in the 2016 model year. Use Bluetooth: pair the phone with the car once, and Vela audio plays through the car with track info on the display (if your radio shows it) and steering-wheel controls. Mirroring the phone screen onto the car display isn't possible without Android Auto.
 - **Android Auto**
-  - **Media app:** browse Audiobooks (continue listening or pick a chapter), Narrations, and **Ask Nexus**. Saying "play \<question\> on Nexus" asks the agent and reads the answer aloud.
-  - **Messaging app:** Nexus messages are read aloud, and you can reply by voice. The agent answers in the same conversation. Press *Start car conversation*, or use `car_message`.
+  - **Media app:** browse Audiobooks (continue listening or pick a chapter), Narrations, and **Ask Vela**. Saying "play \<question\> on Vela" asks the agent and reads the answer aloud.
+  - **Messaging app:** Vela messages are read aloud, and you can reply by voice. The agent answers in the same conversation. Press *Start car conversation*, or use `car_message`.
   - Apps that weren't installed from Google Play only appear after you enable **Unknown sources** in Android Auto's developer settings. Open Android Auto's settings and tap *Version* 10 times to unlock them.
-  - Nexus must be running on the phone; it can stay in the background.
+  - Vela must be running on the phone; it can stay in the background.
 - **Casting to TVs and speakers** (`cast_devices`, `cast_media`, `cast_control`)
   - DLNA/UPnP smart TVs, speakers and receivers on your Wi-Fi play workspace videos, music, audiobooks and photos, or a media URL. That covers Samsung, LG, Sony, Panasonic, Philips and Roku TVs, Kodi, VLC and AV receivers.
   - Files are streamed from the phone through the local server, with seeking support.
@@ -475,7 +477,7 @@ The card is under *Settings → Bluetooth, car & casting*. Each feature also wor
 2. Add the redirect URI `nexusagent://spotify-callback`.
 3. Paste the **Client ID** in *Settings → Music → Connect Spotify*, then approve the sign-in.
 
-Sign-in uses PKCE, so no client secret is stored. Search, playlists and your library work on any account. **Spotify only allows remote playback control with Premium**; on free accounts, songs open in the Spotify app instead. If no Spotify device is active, Nexus starts the Spotify app and plays there.
+Sign-in uses PKCE, so no client secret is stored. Search, playlists and your library work on any account. **Spotify only allows remote playback control with Premium**; on free accounts, songs open in the Spotify app instead. If no Spotify device is active, Vela starts the Spotify app and plays there.
 
 **YouTube Music:** Google offers no public playback API, so:
 
@@ -487,31 +489,31 @@ Sign-in uses PKCE, so no client secret is stored. Search, playlists and your lib
 
 **Lenovo Legion Glasses / Lenovo Glasses T1** (and XREAL, Viture, Rokid, RayNeo Air and other USB-C display glasses):
 
-- These glasses are external monitors without their own apps. Plug them into a phone with USB-C video output and Nexus puts **its own HUD** on them while your phone screen stays free.
+- These glasses are external monitors without their own apps. Plug them into a phone with USB-C video output and Vela puts **its own HUD** on them while your phone screen stays free.
 - The HUD shows a clock, live agent replies ("🎙 your question" followed by the answer), teleprompter, now playing, synced lyrics and notification toasts. The background is black, which looks see-through in the glasses.
 - In Settings you can make it start automatically when the glasses connect, and adjust the font size and edge margin.
 - Lenovo ThinkReality A3 needs Lenovo's own enterprise software and is not supported.
 
-**Meta Ray-Ban / Oakley Meta:** Meta's glasses platform is closed to third-party apps; Meta's developer toolkit is only in limited preview. Nexus uses what works today:
+**Meta Ray-Ban / Oakley Meta:** Meta's glasses platform is closed to third-party apps; Meta's developer toolkit is only in limited preview. Vela uses what works today:
 
-- **Voice through the glasses.** Answers play on the glasses speakers. *Use the glasses microphones* routes Nexus voice input, and the "Hey Nexus" wake word, through the glasses' mics.
-- **Tap to talk.** Tapping the glasses' touchpad (play/pause) starts Nexus listening instead of pausing music. Swipe forward and back still skip tracks.
+- **Voice through the glasses.** Answers play on the glasses speakers. *Use the glasses microphones* routes Vela voice input, and the "Hey Vela" wake word, through the glasses' mics.
+- **Tap to talk.** Tapping the glasses' touchpad (play/pause) starts Vela listening instead of pausing music. Swipe forward and back still skip tracks.
 - **Your captures.** Photos and videos you take with "Hey Meta, take a photo" sync to the phone gallery once importing is turned on in the Meta AI app. `meta_glasses_look` then answers questions about the latest one: read a sign, translate a menu, identify a product, summarise a video.
 
 ## Screen control (accessibility)
 
 Agents can operate other apps step by step: open the app, read the screen, tap, type, scroll and repeat. Each action returns the updated screen to the agent. For apps that don't expose readable elements (games, maps, video, some web views), the agent takes a screenshot and has the vision model look at it.
 
-**To enable:** *Settings → Screen control → Enable in Accessibility settings*, then switch on **Nexus Agent screen control**. Android shows its standard warning for accessibility services.
+**To enable:** *Settings → Screen control → Enable in Accessibility settings*, then switch on **Vela screen control**. Android shows its standard warning for accessibility services.
 
 **Guardrails:**
 
 - **Consent per task and app.** The first time an agent wants to control an app during a task, it asks you.
-- **Money, sending and deleting always ask you first.** Buttons such as *Place order, Pay, Buy, Checkout, Confirm, Send, Transfer, Tip, Subscribe, Book, Delete, Post* need your confirmation, and **cannot be set to always allow**. Nexus jumps to the front to ask (on screen and aloud, and by nod if you enabled that), then returns to the app.
+- **Money, sending and deleting always ask you first.** Buttons such as *Place order, Pay, Buy, Checkout, Confirm, Send, Transfer, Tip, Subscribe, Book, Delete, Post* need your confirmation, and **cannot be set to always allow**. Vela jumps to the front to ask (on screen and aloud, and by nod if you enabled that), then returns to the app.
 - **Password fields** are never read or typed into. Text that looks like a card number is refused; you enter payment details yourself.
 - **Protected apps are blocked:** banking, wallets (PayPal, Venmo, Cash App, crypto exchanges), password managers and authenticators. You can edit the pattern in Settings.
-- **You can always stop it.** A floating *🤖 Nexus is controlling — tap to stop* pill shows while it works. Tapping it, saying "stop" after "Hey Nexus", or the back key stops the task.
-- When the task ends, Nexus returns to the front. You can turn this off.
+- **You can always stop it.** A floating *🤖 Vela is controlling — tap to stop* pill shows while it works. Tapping it, saying "stop" after "Hey Vela", or the back key stops the task.
+- When the task ends, Vela returns to the front. You can turn this off.
 
 The service only acts when an agent task calls it. Screen contents go to your chosen model provider, just like any other prompt, so use a local model for anything private.
 
@@ -589,7 +591,7 @@ Notes:
 All endpoints need the token, sent in one of three ways:
 
 - `Authorization: Bearer <token>`
-- `X-Nexus-Token: <token>`
+- `X-Vela-Token: <token>`
 - `?token=<token>`
 
 | Method & path | Body | Effect |
@@ -606,7 +608,7 @@ All endpoints need the token, sent in one of three ways:
 ```bash
 curl -X POST http://192.168.1.20:8787/run \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"prompt":"Summarize my day","agent":"Nexus"}'
+  -d '{"prompt":"Summarize my day","agent":"Vela"}'
 ```
 
 The server runs only while the app is open, and only on your local network.
@@ -614,7 +616,7 @@ The server runs only while the app is open, and only on your local network.
 Other ways in:
 
 - **Deep link:** `nexusagent://ask?q=hello&agent=Grok&mode=council`
-- **Share:** sharing text from another app to *Nexus Agent* puts it in the prompt.
+- **Share:** sharing text from another app to *Vela* puts it in the prompt.
 
 ## Safety and privacy
 
@@ -638,7 +640,7 @@ android/
     RawHttp.java           HTTP/1.1 client for WebDAV/CalDAV verbs (PROPFIND, REPORT) and PATCH
     GlassesTools.java      battery/network/storage status, volume, media keys, settings panels, head pose, nod/shake detection
     NexusNotificationListener.java  notification access (read, announce, dismiss)
-    WakeWordService.java   offline "Hey Nexus" wake word (Vosk) as a microphone foreground service
+    WakeWordService.java   offline "Hey Vela" wake word (Vosk) as a microphone foreground service
     NexusAccessibilityService.java  screen control: UI tree, tap/type/scroll/swipe/gestures, screenshots, stop pill, app block list
     MusicTools.java        media sessions of all apps: now playing + per-app transport controls
     HudPresentation.java   HUD on external displays (Lenovo Legion Glasses / Glasses T1 and other display glasses)
@@ -665,7 +667,7 @@ android/
     js/skills-dev.js    APK services & app integrations, scraper, downloads, Python/code runner/templates/builds, GitHub
     js/skills-trust.js  Verizon Cloud, deepfake detection & provenance, consent-gated synthetic media of yourself
     js/skills-auto.js   AutoGPT: autonomous plan→act→review runs, budgets, scheduling, Auto tab, Agent Protocol client
-    js/server-phone.js  phone server for Nexus Glasses: pairing, /client/* API, event stream, confirmations on the glasses
+    js/server-phone.js  phone server for Vela Glasses: pairing, /client/* API, event stream, confirmations on the glasses
     hud.html            HUD shown on external display glasses
     lib/                bundled pdf.js, pdf-lib, Tesseract.js (+ English model): see THIRD_PARTY_LICENSES.txt
     remote.html         phone remote console
@@ -675,7 +677,7 @@ android/
     java/com/nexus/rayneo/BluetoothTools.java  Bluetooth state, scan, pairing, audio output (both apps)
     sdk/ | nosdk/          RayNeoSdk bridge: with / without the RayNeo Mercury SDK
   libs/rayneo/            place for the optional RayNeo SDK AAR (git-ignored)
-  glasses/                Nexus Glasses client APK (com.nexus.agent.glasses)
+  glasses/                Vela Glasses client APK (com.nexus.agent.glasses)
     src/main/cpp/nexus_xr.cpp  6DoF head pose from the OpenXR runtime (headless or GLES session)
     src/main/java/com/nexus/glasses/
       ClientActivity.java  WebView host, glasses keys (assistant/camera/menu/back), permissions

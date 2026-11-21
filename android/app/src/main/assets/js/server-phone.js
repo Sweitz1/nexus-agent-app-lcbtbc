@@ -1,4 +1,4 @@
-/* Nexus Agent (phone) — server for the Nexus Glasses client APK.
+/* Vela (phone) — server for the Vela Glasses client APK.
  *
  * The glasses app is a thin client: voice, display, camera, touchpad and head gestures.
  * Everything else runs here on the phone (models, keys, skills, accounts, AutoGPT).
@@ -71,7 +71,7 @@
       forwarded.add(m);
       if (m.origin === 'glasses' || m.error) continue;
       if (m.role === 'assistant') pushEvent({ type: 'message', agent: m.agent, text: stripThink(m.content).slice(0, 4000) });
-      else if (m.role === 'system' && /^🔔|^🤖/.test(m.content)) pushEvent({ type: 'message', agent: 'Nexus', text: m.content.slice(0, 1000) });
+      else if (m.role === 'system' && /^🔔|^🤖/.test(m.content)) pushEvent({ type: 'message', agent: 'Vela', text: m.content.slice(0, 1000) });
     }
   }, 1500);
   onNative('notification', n => { if (S.settings.glassesForwardNotifications && online()) pushEvent({ type: 'notification', app: n.app, title: n.title, text: clip(n.text || '', 300) }); });
@@ -145,26 +145,26 @@
     const info = parseJSON(N.deviceInfo(), {}); const p = newPin();
     const payload = JSON.stringify({ nexus: 1, host: info.ip, port: Number(S.settings.server.port) || 8787, pin: p, hosts: phoneAddrs() });
     let qr = ''; try { qr = await NexusMedia.qrDataUrl(payload); } catch { /* optional */ }
-    $('#modalBox').innerHTML = `<h3>Pair Nexus Glasses</h3><p>Open <b>Nexus Glasses</b> on your glasses (same Wi-Fi). It finds this phone automatically — then scan this code with the glasses camera, or enter the code:</p>
+    $('#modalBox').innerHTML = `<h3>Pair Vela Glasses</h3><p>Open <b>Vela Glasses</b> on your glasses (same Wi-Fi). It finds this phone automatically — then scan this code with the glasses camera, or enter the code:</p>
       <div style="font-size:2.4em;letter-spacing:.25em;text-align:center;color:var(--accent);font-weight:700">${p}</div>
       ${qr ? `<div style="text-align:center"><img src="${esc(wsUrl(qr))}" alt="" style="width:13em;background:#fff;padding:.5em;border-radius:8px"></div>` : ''}
       <p class="hint">Phone address ${esc(info.ip || '?')}:${esc(String(S.settings.server.port))} · code valid 5 minutes</p><div class="row"><button id="prX">Close</button></div>`;
     $('#modal').classList.add('show'); modalClose = () => { $('#modal').classList.remove('show'); modalClose = null; }; $('#prX').onclick = () => modalClose();
   }
   const coreRenderPro = renderProSettings, coreBindPro = bindProSettings;
-  renderProSettings = () => coreRenderPro() + `<div class="card" id="glassSrvCard"><h3>Nexus Glasses (client app)</h3>
-    <p class="hint">Run Nexus on this phone and use the lightweight <b>Nexus Glasses</b> app on your RayNeo X3 Pro (or any Android glasses): voice, display and camera on the glasses; models, keys, skills and accounts stay on the phone.</p>
+  renderProSettings = () => coreRenderPro() + `<div class="card" id="glassSrvCard"><h3>Vela Glasses (client app)</h3>
+    <p class="hint">Run Vela on this phone and use the lightweight <b>Vela Glasses</b> app on your RayNeo X3 Pro (or any Android glasses): voice, display and camera on the glasses; models, keys, skills and accounts stay on the phone.</p>
     <p>${online() ? `<span class="status-dot on"></span>Connected: <b>${esc(clientName || 'glasses')}</b>` : '<span class="status-dot"></span>No glasses connected'}</p>
     <div class="row"><button class="primary nogrow" id="gsPair">Pair glasses</button></div>
     <label class="inline"><input type="checkbox" data-k="glassesForwardNotifications" data-t="bool">Forward phone notifications to the glasses</label>
     <label class="inline"><input type="checkbox" data-k="glassesNarrator" data-t="bool">Speak on the glasses in the narrator voice (Settings → Narrator; needs ElevenLabs or an AI voice)</label>
     <label>Remote address for glasses on mobile data / eSIM (optional)</label><input data-k="glassesRemoteAddr" placeholder="e.g. my-phone.tailnet.ts.net or 100.101.102.103">
     <p class="hint">When the glasses use their own eSIM they are not on your Wi-Fi. Install <b>Tailscale</b> (or another private VPN) on both phone and glasses and pair once; the glasses then reach the phone over the VPN automatically. Don't expose the port to the open internet.</p>
-    <p class="hint">Keep Nexus running on the phone (it can stay in the background). Both devices must be on the same Wi-Fi or the phone's hotspot.</p></div>`;
+    <p class="hint">Keep Vela running on the phone (it can stay in the background). Both devices must be on the same Wi-Fi or the phone's hotspot.</p></div>`;
   bindProSettings = v => { coreBindPro(v); const c = $('#glassSrvCard', v); if (!c) return; bind(c, S.settings); $('#gsPair', c).onclick = () => pairUI().catch(e => toast(e.message)); };
 
-  BUILTIN_SKILLS.push({ name: 'glasses_client', group: 'Glasses', description: 'Status of the paired Nexus Glasses client app, or start pairing (shows a code/QR on the phone).', parameters: { type: 'object', properties: { action: { type: 'string', description: 'status | pair' } }, required: ['action'] },
-    run: async a => { if (a.action === 'pair') { await pairUI(); return 'Pairing code shown on the phone — scan it with Nexus Glasses.'; } return online() ? `Glasses connected: ${clientName || 'client'} (last seen ${Math.round((Date.now() - lastSeen) / 1000)}s ago).` : 'No glasses client connected.'; } });
+  BUILTIN_SKILLS.push({ name: 'glasses_client', group: 'Glasses', description: 'Status of the paired Vela Glasses client app, or start pairing (shows a code/QR on the phone).', parameters: { type: 'object', properties: { action: { type: 'string', description: 'status | pair' } }, required: ['action'] },
+    run: async a => { if (a.action === 'pair') { await pairUI(); return 'Pairing code shown on the phone — scan it with Vela Glasses.'; } return online() ? `Glasses connected: ${clientName || 'client'} (last seen ${Math.round((Date.now() - lastSeen) / 1000)}s ago).` : 'No glasses client connected.'; } });
 
   window.NexusPhoneServer = { pushEvent, newPin, online, events };
 })();

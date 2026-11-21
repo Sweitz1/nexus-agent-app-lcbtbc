@@ -1,4 +1,4 @@
-/* Nexus Agent — Google services: Gmail, Google Calendar (as a calendar source), Drive, Docs,
+/* Vela — Google services: Gmail, Google Calendar (as a calendar source), Drive, Docs,
  * Sheets, Tasks, Contacts, YouTube (your account), Google Maps Platform (Places/Routes),
  * Google Translate, and quick launchers for Google apps. Loaded after skills-music.js. */
 'use strict';
@@ -393,11 +393,11 @@
         g('DELETE', `https://photospicker.googleapis.com/v1/sessions/${sess.id}`, null, { raw: true }).catch(() => {});
         return `Downloaded ${saved.length} item(s):\n` + saved.join('\n');
       } },
-    { name: 'gphotos_albums', group: 'Google Photos', description: 'List albums and items that Nexus uploaded to Google Photos (Google only lets apps list what they created).', parameters: P({ album: Str('optional album name to list items of') }),
+    { name: 'gphotos_albums', group: 'Google Photos', description: 'List albums and items that Vela uploaded to Google Photos (Google only lets apps list what they created).', parameters: P({ album: Str('optional album name to list items of') }),
       run: async a => {
         need('photos');
         const albums = (await g('GET', `${PH}/albums?excludeNonAppCreatedData=true&pageSize=50`)).albums || [];
-        if (!a.album) return albums.map(x => `• ${x.title} · ${x.mediaItemsCount || 0} items · ${x.productUrl}`).join('\n') || 'No albums created by Nexus yet.';
+        if (!a.album) return albums.map(x => `• ${x.title} · ${x.mediaItemsCount || 0} items · ${x.productUrl}`).join('\n') || 'No albums created by Vela yet.';
         const al = albums.find(x => x.title.toLowerCase().includes(a.album.toLowerCase())); if (!al) return 'Album not found.';
         return ((await g('POST', `${PH}/mediaItems:search`, { albumId: al.id, pageSize: 50 })).mediaItems || []).map(m => `• ${m.filename} · ${m.mimeType} · ${m.productUrl}`).join('\n') || 'Empty album.';
       } },

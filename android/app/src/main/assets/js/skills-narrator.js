@@ -1,4 +1,4 @@
-/* Nexus Agent — Narrator: natural, expressive audiobook-style narration.
+/* Vela — Narrator: natural, expressive audiobook-style narration.
  *
  * - Narration styles (genre/delivery presets, or your own direction) applied to every AI voice:
  *   OpenAI gpt-4o(-mini)-tts gets them as voice instructions, ElevenLabs as voice settings.
@@ -6,7 +6,7 @@
  *   filtered for audiobook narration, preview them and add one as your narrator.
  * - Optional: speak chat replies in the narrator voice instead of the device voice.
  *
- * Nexus does not imitate or clone specific real people (celebrities or narrators). Use a voice the
+ * Vela does not imitate or clone specific real people (celebrities or narrators). Use a voice the
  * owner published or licensed, a stock AI voice, or your own voice (voice_clone_self).
  * Loaded after skills-media.js. */
 'use strict';
@@ -54,7 +54,7 @@
     return (d.voices || []).map(v => ({ id: v.voice_id, owner: v.public_owner_id, name: v.name, description: clip(v.description || '', 160), gender: v.gender, age: v.age, accent: v.accent, use_case: v.use_case, preview: v.preview_url, uses: v.cloned_by_count }));
   }
   async function useVoice(id, owner, name) {
-    const d = await eleven('POST', `/v1/voices/add/${encodeURIComponent(owner)}/${encodeURIComponent(id)}`, { new_name: name || 'Nexus narrator' });
+    const d = await eleven('POST', `/v1/voices/add/${encodeURIComponent(owner)}/${encodeURIComponent(id)}`, { new_name: name || 'Vela narrator' });
     const vid = d.voice_id || id;
     S.settings.elevenVoice = vid; S.settings.ttsEngine = 'elevenlabs'; save();
     return vid;
@@ -116,7 +116,7 @@
     <div class="row"><div><label>Describe the voice</label><input id="nvQ" placeholder="warm young female, romance, American"></div><div><label>Gender</label><select id="nvG"><option value="">any</option><option>female</option><option>male</option><option>neutral</option></select></div><div><label>Accent</label><input id="nvA" placeholder="any"></div></div>
     <div class="row"><button class="nogrow" id="nvGo">Search Voice Library</button><button class="nogrow" id="nvTest">▶ Test current narrator</button></div>
     <div id="nvList"></div>
-    <p class="hint">Voices come from ElevenLabs' library of voices shared by their owners. Nexus won't imitate or clone specific real people (celebrities or narrators) — pick a published voice, a stock voice, or your own (Trust → voice_clone_self).</p></div>`;
+    <p class="hint">Voices come from ElevenLabs' library of voices shared by their owners. Vela won't imitate or clone specific real people (celebrities or narrators) — pick a published voice, a stock voice, or your own (Trust → voice_clone_self).</p></div>`;
   bindProSettings = v => {
     coreBind(v); const c = $('#narrCard', v); if (!c) return; bind(c, S.settings);
     $('#nvGo', c).onclick = async () => {

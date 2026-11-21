@@ -1,4 +1,4 @@
-name: Build Nexus Agent APK
+name: Build Vela APK
 
 on:
   push:
@@ -101,12 +101,12 @@ jobs:
       - name: Collect APKs
         run: |
           mkdir -p out
-          cp android/app/build/outputs/apk/release/app-release.apk out/nexus-agent.apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk out/nexus-agent-debug.apk
-          cp android/glasses/build/outputs/apk/release/glasses-release.apk out/nexus-glasses.apk
+          cp android/app/build/outputs/apk/release/app-release.apk out/vela.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk out/vela-debug.apk
+          cp android/glasses/build/outputs/apk/release/glasses-release.apk out/vela-glasses.apk
           if [ -f android/app/build/outputs/bundle/release/app-release.aab ]; then
-            cp android/app/build/outputs/bundle/release/app-release.aab out/nexus-agent.aab
-            cp android/glasses/build/outputs/bundle/release/glasses-release.aab out/nexus-glasses.aab
+            cp android/app/build/outputs/bundle/release/app-release.aab out/vela.aab
+            cp android/glasses/build/outputs/bundle/release/glasses-release.aab out/vela-glasses.aab
           fi
           ls -la out
 
@@ -115,7 +115,7 @@ jobs:
           shopt -s nullglob
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           : > out/SIGNING.txt
-          for f in out/nexus-agent.apk out/nexus-glasses.apk; do
+          for f in out/vela.apk out/vela-glasses.apk; do
             echo "== $(basename "$f")" >> out/SIGNING.txt
             "$APKSIGNER" verify --verbose --print-certs "$f" > verify.log   # fails the step if the signature is invalid
             grep -E "Verified using v(2|3) scheme" verify.log >> out/SIGNING.txt || true
@@ -129,7 +129,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: nexus-agent-apk
+          name: vela-apk
           path: |
             out/*.apk
             out/*.aab
@@ -143,10 +143,10 @@ jobs:
           TAG: ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
         run: |
           {
-            echo "## Nexus Agent $TAG"
+            echo "## Vela $TAG"
             echo
-            echo "- **nexus-agent.apk**: the full app, for your phone (as the server) or standalone on the glasses"
-            echo "- **nexus-glasses.apk**: the lightweight Nexus Glasses client for RayNeo X3 / X3 Pro"
+            echo "- **vela.apk**: the full app, for your phone (as the server) or standalone on the glasses"
+            echo "- **vela-glasses.apk**: the lightweight Vela Glasses client for RayNeo X3 / X3 Pro"
             echo "- **\*.aab**: Android App Bundles for uploading to Google Play"
             echo "- **SHA256SUMS.txt** / **SIGNING.txt**: checksums and signing certificate"
             echo
@@ -157,7 +157,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" out/*.apk out/*.aab out/*.txt --clobber
           else
-            gh release create "$TAG" out/*.apk out/*.aab out/*.txt --target "$GITHUB_SHA" --title "Nexus Agent $TAG" --notes-file notes.md
+            gh release create "$TAG" out/*.apk out/*.aab out/*.txt --target "$GITHUB_SHA" --title "Vela $TAG" --notes-file notes.md
           fi
 
       - name: Attach to GitHub release (published manually)

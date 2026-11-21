@@ -1,5 +1,5 @@
-/* Nexus Agent — Roleplay: character chat in the style of TavernAI / SillyTavern, plus an
- * OpenAI-compatible API so the real SillyTavern can use Nexus' providers.
+/* Vela — Roleplay: character chat in the style of TavernAI / SillyTavern, plus an
+ * OpenAI-compatible API so the real SillyTavern can use Vela' providers.
  *
  *  - Character cards: import/export TavernAI / SillyTavern cards (PNG with embedded JSON, or JSON;
  *    V1, V2 "chara_card_v2" and V3 "chara_card_v3"), edit, tags, alternate greetings.
@@ -11,7 +11,7 @@
  *    locked with a PIN. Fixed rules always apply: no sexual content involving minors or real people;
  *    cards that describe a minor cannot be used with mature content. Roleplay chats are kept
  *    separate from the agent chat, so they are never forwarded to the glasses, car, Telegram,
- *    webhooks or AutoGPT. Each provider's own usage policy still applies — Nexus does not try to
+ *    webhooks or AutoGPT. Each provider's own usage policy still applies — Vela does not try to
  *    get around it.
  *  - /v1/models and /v1/chat/completions on the local server (token = API key) for SillyTavern.
  * Loaded after skills-connect.js. */
@@ -625,11 +625,11 @@
           <button class="nogrow" id="rsPin">${st.pinHash ? 'Change / remove PIN' : 'Set a PIN'}</button></div>` : '<div class="row"><input id="rsPinU" type="password" inputmode="numeric" placeholder="PIN"><button class="nogrow" id="rsUnl">Unlock to change</button></div>'}
         <label class="inline"><input type="checkbox" data-s="lockMature" ${st.lockMature ? 'checked' : ''} ${st.pinHash && isUnlocked() ? '' : 'disabled'}> Ask for the PIN when opening Roleplay (18+ characters and chats are hidden until unlocked)</label>
         <p class="hint">Always applies, whatever the settings: no sexual content involving minors (cards that describe a minor are SFW-only) and none about real people. Roleplay chats are private to this tab: never sent to the glasses, car, Telegram, webhooks or AutoGPT. The provider's own policy still applies — for adult fiction pick a provider that allows it (e.g. Venice or a local model).</p></div>
-      <div class="card"><h3>Nexus Glasses</h3>
-        <p class="hint">Roleplay is also available in the Nexus Glasses app (☰ → Roleplay): pick a character, talk by voice, swipe or continue replies.</p>
+      <div class="card"><h3>Vela Glasses</h3>
+        <p class="hint">Roleplay is also available in the Vela Glasses app (☰ → Roleplay): pick a character, talk by voice, swipe or continue replies.</p>
         <label class="inline"><input type="checkbox" data-s="glassesMature" ${st.glassesMature ? 'checked' : ''} ${isUnlocked() ? '' : 'disabled'}> Show 18+ characters and chats on the glasses${st.pinHash && st.lockMature ? ' (after entering the PIN on the glasses)' : ''}</label></div>
-      <div class="card"><h3>Use SillyTavern with Nexus</h3>
-        <p class="hint">Run SillyTavern on a PC (or in Termux on Android) and use Nexus as its backend: models and keys stay on this phone.</p>
+      <div class="card"><h3>Use SillyTavern with Vela</h3>
+        <p class="hint">Run SillyTavern on a PC (or in Termux on Android) and use Vela as its backend: models and keys stay on this phone.</p>
         <ol class="hint"><li>Turn on the local server (Settings → Webhooks &amp; server).</li><li>In SillyTavern: API → <b>Chat Completion</b> → source <b>Custom (OpenAI-compatible)</b>.</li><li>Endpoint <code>${esc(apiBase())}</code>, API key = the server token, then pick a model (<code>provider/model</code>).</li></ol>
         <div class="row"><button class="nogrow" id="rsCopy">Copy endpoint &amp; key</button></div></div>`;
     $$('[data-s]', v).forEach(el => el.onchange = () => { const k = el.dataset.s; st[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? Number(el.value) : el.value; saveRp(); if (k === 'providerId') renderSettingsRp(); });
@@ -760,7 +760,7 @@
       else if (vision.has_character !== false && /child|teen|unclear/i.test(String(vision.apparent_age || 'unclear'))) lock = 'the picture may show someone under 18';
     }
     const j = await writeCard({ concept, genre, name, mature: mature && !lock, vision });
-    const c = { id: uid(), created: Date.now(), ...normalizeCard(j), creator: 'Nexus' };
+    const c = { id: uid(), created: Date.now(), ...normalizeCard(j), creator: 'Vela' };
     if (vision) { c.creator_notes = [c.creator_notes, `Created from an image: ${vision.summary || ''}`].filter(Boolean).join('\n'); c.bgHint = vision.setting || ''; }
     c.avatar = await saveAvatar(c.id, img ? img.png : await glyphPng(c.name, '', [...c.name].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 360, 7)));
     if (lock) { c.sfwLock = true; c.sfwReason = lock; }
@@ -884,7 +884,7 @@
     } catch (e) { reply(e.status && e.status < 600 ? e.status : 500, { error: { message: e.message, type: 'api_error' } }); }
   });
 
-  /* ================================================================ Nexus Glasses client: /client/rp/… */
+  /* ================================================================ Vela Glasses client: /client/rp/… */
   // The glasses app is a remote for this tab. 18+ content shows there only when allowed for the
   // glasses (setting) and, with a PIN lock, after the PIN is entered on the glasses (expires after
   // 30 minutes without use). Nothing is pushed to the glasses unasked.

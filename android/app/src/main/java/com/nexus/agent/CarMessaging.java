@@ -16,8 +16,8 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 /**
- * Talk to Nexus from Android Auto (or any car / watch that reads messaging notifications):
- * Nexus messages are posted as a MessagingStyle conversation with a voice Reply action. Android
+ * Talk to Vela from Android Auto (or any car / watch that reads messaging notifications):
+ * Vela messages are posted as a MessagingStyle conversation with a voice Reply action. Android
  * Auto reads them aloud; the spoken reply comes back here and is passed to the agent, whose answer
  * is posted to the same conversation.
  */
@@ -35,18 +35,18 @@ final class CarMessaging {
     static synchronized void post(Context c, String sender, String text, boolean fromUser) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm.getNotificationChannel(CHANNEL) == null) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "Nexus conversations (Android Auto)", NotificationManager.IMPORTANCE_HIGH);
+            NotificationChannel ch = new NotificationChannel(CHANNEL, "Vela conversations (Android Auto)", NotificationManager.IMPORTANCE_HIGH);
             nm.createNotificationChannel(ch);
         }
         history.add(new String[]{fromUser ? "" : sender, text, String.valueOf(System.currentTimeMillis())});
         while (history.size() > 12) history.remove(0);
 
         Person me = new Person.Builder().setName("You").build();
-        Person nexus = new Person.Builder().setName(sender == null || sender.isEmpty() ? "Nexus" : sender).setBot(true).build();
-        Notification.MessagingStyle style = new Notification.MessagingStyle(me).setConversationTitle("Nexus");
+        Person nexus = new Person.Builder().setName(sender == null || sender.isEmpty() ? "Vela" : sender).setBot(true).build();
+        Notification.MessagingStyle style = new Notification.MessagingStyle(me).setConversationTitle("Vela");
         for (String[] h : history) style.addMessage(h[1], Long.parseLong(h[2]), h[0].isEmpty() ? null : nexus);
 
-        RemoteInput ri = new RemoteInput.Builder(KEY_TEXT).setLabel("Reply to Nexus").build();
+        RemoteInput ri = new RemoteInput.Builder(KEY_TEXT).setLabel("Reply to Vela").build();
         PendingIntent replyPi = PendingIntent.getBroadcast(c, 1, new Intent(c, ReplyReceiver.class).setAction("reply"),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
         Notification.Action reply = new Notification.Action.Builder(null, "Reply", replyPi)
@@ -89,7 +89,7 @@ final class CarMessaging {
                 post(c, "", text, true);               // show the user's message in the thread right away
                 s.reply(text);
             } else {
-                post(c, "Nexus", "Open Nexus on your phone so I can answer, then reply again.", false);
+                post(c, "Vela", "Open Vela on your phone so I can answer, then reply again.", false);
             }
         }
     }

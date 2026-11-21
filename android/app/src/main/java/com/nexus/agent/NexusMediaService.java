@@ -22,11 +22,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Nexus as a media app for cars and Bluetooth:
- *  - A MediaSession mirrors Nexus' own player (audiobooks, narration, podcasts, spoken replies), so
+ * Vela as a media app for cars and Bluetooth:
+ *  - A MediaSession mirrors Vela' own player (audiobooks, narration, podcasts, spoken replies), so
  *    Bluetooth car stereos show the title over AVRCP and steering-wheel / headset buttons work.
- *  - A MediaBrowserService lets Android Auto (and other media browsers) list Nexus' audiobooks,
- *    narrations and "Ask Nexus"; voice search ("play … on Nexus") goes to the agent.
+ *  - A MediaBrowserService lets Android Auto (and other media browsers) list Vela' audiobooks,
+ *    narrations and "Ask Vela"; voice search ("play … on Vela") goes to the agent.
  * Playback itself stays in the app's player; commands from the car are forwarded to it as events.
  */
 public class NexusMediaService extends MediaBrowserService {
@@ -45,7 +45,7 @@ public class NexusMediaService extends MediaBrowserService {
     public void onCreate() {
         super.onCreate();
         instance = this;
-        session = new MediaSession(this, "Nexus");
+        session = new MediaSession(this, "Vela");
         session.setCallback(new MediaSession.Callback() {
             @Override public void onPlay() { send("play", null); }
             @Override public void onPause() { send("pause", null); }
@@ -73,7 +73,7 @@ public class NexusMediaService extends MediaBrowserService {
             if (s != null) s.command(o);
             else if ("playId".equals(action) || "search".equals(action) || "play".equals(action)) {
                 session.setPlaybackState(new PlaybackState.Builder().setState(PlaybackState.STATE_ERROR, 0, 0)
-                        .setErrorMessage("Open Nexus on your phone first").build());
+                        .setErrorMessage("Open Vela on your phone first").build());
             }
         } catch (Exception ignored) { }
     }
@@ -131,10 +131,10 @@ public class NexusMediaService extends MediaBrowserService {
             if (j.has("title")) {
                 session.setMetadata(new MediaMetadata.Builder()
                         .putString(MediaMetadata.METADATA_KEY_TITLE, j.optString("title"))
-                        .putString(MediaMetadata.METADATA_KEY_ARTIST, j.optString("artist", "Nexus"))
+                        .putString(MediaMetadata.METADATA_KEY_ARTIST, j.optString("artist", "Vela"))
                         .putString(MediaMetadata.METADATA_KEY_ALBUM, j.optString("album", ""))
                         .putString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE, j.optString("title"))
-                        .putString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE, j.optString("artist", "Nexus"))
+                        .putString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE, j.optString("artist", "Vela"))
                         .putLong(MediaMetadata.METADATA_KEY_DURATION, j.optLong("durationMs", 0))
                         .build());
             }
@@ -164,13 +164,13 @@ public class NexusMediaService extends MediaBrowserService {
     private Notification build(JSONObject j, boolean playing) {
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (nm.getNotificationChannel(CHANNEL) == null) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "Nexus playback", NotificationManager.IMPORTANCE_LOW);
+            NotificationChannel ch = new NotificationChannel(CHANNEL, "Vela playback", NotificationManager.IMPORTANCE_LOW);
             ch.setShowBadge(false);
             nm.createNotificationChannel(ch);
         }
         Notification.Builder b = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_media_play)
-                .setContentTitle(j == null ? "Nexus" : j.optString("title", "Nexus"))
+                .setContentTitle(j == null ? "Vela" : j.optString("title", "Vela"))
                 .setContentText(j == null ? "" : j.optString("artist", ""))
                 .setContentIntent(session.getController().getSessionActivity())
                 .setOngoing(playing)
@@ -201,7 +201,7 @@ public class NexusMediaService extends MediaBrowserService {
         JSONObject cat = catalog;
         JSONArray items = cat == null ? null : cat.optJSONArray(ROOT.equals(parentId) ? "root" : parentId);
         if (items == null) {
-            if (ROOT.equals(parentId)) out.add(item("open", "Open Nexus on your phone", "Then your audiobooks and narrations appear here", false));
+            if (ROOT.equals(parentId)) out.add(item("open", "Open Vela on your phone", "Then your audiobooks and narrations appear here", false));
         } else {
             for (int i = 0; i < items.length() && i < 200; i++) {
                 JSONObject it = items.optJSONObject(i);

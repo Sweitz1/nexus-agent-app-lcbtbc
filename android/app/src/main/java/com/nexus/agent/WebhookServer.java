@@ -288,7 +288,7 @@ class WebhookServer extends Thread {
             while ((n = is.read(buf)) > 0) bos.write(buf, 0, n);
             return bos.toString("UTF-8");
         } catch (IOException e) {
-            return "<h1>Nexus Agent</h1>";
+            return "<h1>Vela</h1>";
         }
     }
 
@@ -310,7 +310,7 @@ class WebhookServer extends Thread {
                 + "Content-Type: " + type + "\r\n"
                 + "Content-Length: " + b.length + "\r\n"
                 + "Access-Control-Allow-Origin: *\r\n"
-                + "Access-Control-Allow-Headers: Content-Type, Authorization, X-Nexus-Token\r\n"
+                + "Access-Control-Allow-Headers: Content-Type, Authorization, X-Vela-Token\r\n"
                 + "Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS\r\n"
                 + "Connection: close\r\n\r\n";
         out.write(head.getBytes(StandardCharsets.UTF_8));

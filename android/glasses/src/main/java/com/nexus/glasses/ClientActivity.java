@@ -28,8 +28,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Nexus Glasses: thin client UI (assets/client.html) for AR glasses. Voice, display, camera and
- * gestures live here; the Nexus phone app does the thinking. Served from a secure local origin so
+ * Vela Glasses: thin client UI (assets/client.html) for AR glasses. Voice, display, camera and
+ * gestures live here; the Vela phone app does the thinking. Served from a secure local origin so
  * the camera and workers are available.
  */
 public class ClientActivity extends Activity {

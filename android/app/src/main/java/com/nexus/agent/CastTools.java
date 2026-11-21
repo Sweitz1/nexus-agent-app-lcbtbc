@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  * Casting to smart TVs, speakers and receivers on the local network via DLNA / UPnP AV (Samsung,
  * LG, Sony, Panasonic, Philips, Roku TVs, Fire TV/Kodi/VLC renderers, AV receivers …) — no SDK.
  * Discovery is SSDP; control is SOAP to the renderer's AVTransport / RenderingControl services. The
- * media itself is streamed by Nexus' local server (WebhookServer cast shares, with Range support).
+ * media itself is streamed by Vela' local server (WebhookServer cast shares, with Range support).
  *
  * Chromecast / Google TV use Google's proprietary Cast protocol instead; for those (and for mirroring
  * the whole screen) the system Cast / Smart View panel is used.

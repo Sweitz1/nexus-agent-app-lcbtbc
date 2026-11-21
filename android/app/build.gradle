@@ -11,8 +11,8 @@ android {
         // RayNeo X3 Pro ships an Android 12-based OS; 26+ keeps phones/tablets working too.
         minSdk 26
         targetSdk 34
-        versionCode 25
-        versionName '2.10.3'
+        versionCode 26
+        versionName '3.0.0'
         // Native speech libraries (wake word): ARM covers the RayNeo X3 Pro and practically all phones.
         // -PnexusAbis=x86_64 adds emulator ABIs for the device test workflow.
         ndk { abiFilters(*((project.findProperty('nexusAbis') ?: 'arm64-v8a,armeabi-v7a').toString().split(',').collect { it.trim() })) }
@@ -43,7 +43,7 @@ dependencies {
     // IMAP/SMTP for the email skills (Android build of JavaMail).
     implementation 'com.sun.mail:android-mail:1.6.7'
     implementation 'com.sun.mail:android-activation:1.6.7'
-    // Offline speech recognition for the "Hey Nexus" wake word.
+    // Offline speech recognition for the "Hey Vela" wake word.
     implementation 'com.alphacephei:vosk-android:0.3.47@aar'
     implementation 'net.java.dev.jna:jna:5.13.0@aar'
 }

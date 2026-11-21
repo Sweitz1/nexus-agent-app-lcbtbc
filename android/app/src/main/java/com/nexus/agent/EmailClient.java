@@ -332,7 +332,7 @@ class EmailClient {
         msg.setSentDate(new Date());
         if (!spec.optString("inReplyTo", "").isEmpty()) msg.setHeader("In-Reply-To", spec.optString("inReplyTo"));
         if (!spec.optString("references", "").isEmpty()) msg.setHeader("References", spec.optString("references"));
-        msg.setHeader("X-Mailer", "Nexus Agent");
+        msg.setHeader("X-Mailer", "Vela");
 
         String body = spec.optString("body", "");
         String htmlBody = spec.optString("html", "");

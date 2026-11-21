@@ -205,7 +205,7 @@ class ApkTools {
     String install(String path) throws Exception {
         if (Build.VERSION.SDK_INT >= 26 && !pm().canRequestPackageInstalls()) {
             ctx.startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + ctx.getPackageName())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            return "First allow \"Install unknown apps\" for Nexus Agent (settings opened), then try again.";
+            return "First allow \"Install unknown apps\" for Vela (settings opened), then try again.";
         }
         File f = ws.resolve(path);
         if (!f.getName().endsWith(".apk")) throw new IllegalArgumentException("Only single .apk files can be installed here");

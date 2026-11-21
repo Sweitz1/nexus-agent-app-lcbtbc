@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>Nexus Agent</title>
+<title>Vela</title>
 <style>
 :root{
   --bg:#000;--panel:#07090d;--panel2:#0d1117;--line:#1c2430;--text:#e6f7ff;--dim:#8aa0b2;
@@ -92,7 +92,7 @@ body.glasses header .brand{display:none}
 </head>
 <body>
 <header id="tabs">
-  <span class="brand">⬡ NEXUS</span>
+  <span class="brand">⬡ VELA</span>
   <button data-tab="chat" class="active">Chat</button>
   <button data-tab="agents">Agents</button>
   <button data-tab="providers">Models</button>
@@ -219,7 +219,7 @@ function defaultState() {
     A('Claude', 'anthropic', 'claude-sonnet-5-5', 'You are Claude, a thoughtful, precise assistant. Use tools when they help.'),
     A('Grok', 'xai', 'grok-4', 'You are Grok: witty, bold and to the point. Use tools when they help.'),
     A('Local', 'ollama', 'llama3.1:8b', 'You are a private assistant running fully on the user\'s own hardware. Be concise.', { tools: false, council: false }),
-    A('Nexus', 'anthropic', 'claude-sonnet-5-5', 'You are Nexus, the orchestrator. Break tasks down, delegate to other agents with ask_agent when another model is a better fit (Venice for unfiltered answers, Grok for real-time/witty takes, Local for private data), use your skills (web, files, code, PDF, OCR, images, video, zip, maps, phone, translation; camera_photo shows you what the user is looking at), then give one clear final answer. You are displayed on AR glasses: keep answers short and scannable.', { council: false }),
+    A('Vela', 'anthropic', 'claude-sonnet-5-5', 'You are Vela, the orchestrator. Break tasks down, delegate to other agents with ask_agent when another model is a better fit (Venice for unfiltered answers, Grok for real-time/witty takes, Local for private data), use your skills (web, files, code, PDF, OCR, images, video, zip, maps, phone, translation; camera_photo shows you what the user is looking at), then give one clear final answer. You are displayed on AR glasses: keep answers short and scannable.', { council: false }),
   ];
   return {
     v: 1, providers, agents, customSkills: [], disabledSkills: [], webhooks: [], memory: {},
@@ -243,6 +243,12 @@ function extraSettingDefaults(agents) {
   };
 }
 let S = (() => { const s = parseJSON(localStorage.getItem('nexus_state'), null); return s && s.v === 1 ? s : defaultState(); })();
+// Rename migration (Nexus → Vela): the built-in orchestrator agent and its prompt in existing installs.
+for (const a of S.agents || []) {
+  if (a.name === 'Nexus') a.name = 'Vela';
+  if (typeof a.system === 'string' && /^You are Nexus\b/.test(a.system)) a.system = a.system.replace(/^You are Nexus\b/, 'You are Vela');
+}
+if (S.settings && /^\s*(hey|hi|okay) nexus\s*$/i.test(S.settings.wakeCustom || '')) S.settings.wakeCustom = '';
 S.settings = { ...extraSettingDefaults(S.agents), ...S.settings };
 S.autoApprove = S.autoApprove || [];
 let _saveT; function save() { clearTimeout(_saveT); _saveT = setTimeout(() => { try { localStorage.setItem('nexus_state', JSON.stringify(S)); } catch (e) { toast('Save failed: ' + e.message); } }, 250); }
@@ -271,7 +277,7 @@ function authHeaders(p, key) {
     return h;
   }
   const h = key ? { Authorization: 'Bearer ' + key } : {};
-  if (p.baseUrl.includes('openrouter.ai')) { h['HTTP-Referer'] = 'https://nexus-agent.local'; h['X-Title'] = 'Nexus Agent'; }
+  if (p.baseUrl.includes('openrouter.ai')) { h['HTTP-Referer'] = 'https://nexus-agent.local'; h['X-Title'] = 'Vela'; }
   return h;
 }
 const base = p => p.baseUrl.replace(/\/+$/, '');
@@ -874,7 +880,7 @@ function renderHooks() {
       <label>Access token</label><div class="row"><input data-k="token"><button class="small" id="regen">New</button></div>
       <label class="inline"><input type="checkbox" data-k="showInChat" data-t="bool">Show webhook conversations in chat</label>
       <p>📱 <b>Phone remote console</b> (type, paste API keys, import config): open <b>${esc(url)}</b> on a phone on the same Wi-Fi.</p>
-      <p class="hint">Endpoints (send the token as <code>Authorization: Bearer …</code>, <code>X-Nexus-Token</code> or <code>?token=</code>):</p>
+      <p class="hint">Endpoints (send the token as <code>Authorization: Bearer …</code>, <code>X-Vela-Token</code> or <code>?token=</code>):</p>
       <code class="block">POST ${esc(url)}/run      {"prompt":"…","agent":"Claude","mode":"solo|council|chain"}
 GET  ${esc(url)}/run?q=…&amp;agent=Grok
 POST ${esc(url)}/hook/&lt;name&gt; any JSON → default agent handles the event
@@ -895,7 +901,7 @@ GET  ${esc(url)}/agents</code>
       <label>URL</label><input data-k="url" inputmode="url"><label>Headers JSON</label><input data-k="headers" placeholder="{}">
       <label class="inline"><input type="checkbox" data-k="onReply" data-t="bool">Send on every agent reply</label><span class="hint res"></span>`;
     list.appendChild(card); bind(card, w, k => k === 'name' && renderHooks());
-    $('[data-act=test]', card).onclick = async () => { const r = $('.res', card); r.textContent = 'sending…'; try { const x = await fireWebhook(w, 'test', 'Nexus', { text: 'Hello from Nexus Agent' }); r.textContent = 'HTTP ' + x.status; } catch (e) { r.textContent = '✗ ' + e.message; } };
+    $('[data-act=test]', card).onclick = async () => { const r = $('.res', card); r.textContent = 'sending…'; try { const x = await fireWebhook(w, 'test', 'Vela', { text: 'Hello from Vela' }); r.textContent = 'HTTP ' + x.status; } catch (e) { r.textContent = '✗ ' + e.message; } };
     $('[data-act=del]', card).onclick = () => { S.webhooks = S.webhooks.filter(x => x !== w); save(); renderHooks(); };
   });
   $('#addHook').onclick = () => { S.webhooks.push({ id: uid(), name: 'hook' + (S.webhooks.length + 1), method: 'POST', url: 'https://', headers: '{}', onReply: false }); save(); renderHooks(); };
@@ -949,7 +955,7 @@ function exportConfig(withKeys) {
   return c;
 }
 function importConfig(c) {
-  if (!c || c.nexus !== 1) throw new Error('Not a Nexus config');
+  if (!c || c.nexus !== 1) throw new Error('Not a Vela config');
   ['providers', 'agents', 'customSkills', 'disabledSkills', 'webhooks', 'emailAccounts', 'caldavAccounts', 'autoApprove'].forEach(k => { if (Array.isArray(c[k])) S[k] = c[k]; });
   if (c.settings) { const tok = S.settings.server.token; S.settings = { ...S.settings, ...c.settings, server: { ...S.settings.server, ...(c.settings.server || {}), token: tok } }; }
   if (c.keys) Object.entries(c.keys).forEach(([k, v]) => setKey(k, v));
@@ -1000,10 +1006,10 @@ function renderSettings() {
       <div class="row"><button class="nogrow" id="exp">Export config</button><button class="nogrow" id="expKeys">Export with keys</button><button class="nogrow" id="imp">Import…</button><button class="danger nogrow" id="reset">Factory reset</button></div>
       <p class="hint">Device: ${esc(deviceLabel())}${N ? ' · native bridge ✓' : ' · browser preview'}</p></div>
     <div class="card"><h3>Community</h3>
-      <p class="hint">Questions, X3 Pro test results, bug reports and ideas: join the Nexus Agent Discord.</p>
+      <p class="hint">Questions, X3 Pro test results, bug reports and ideas: join the Vela Discord.</p>
       <div class="row"><button class="primary nogrow" id="discordJoin">💬 Join the Discord</button><span class="hint" style="align-self:center">${esc(DISCORD_INVITE)}</span></div>
       <p class="hint">Downloads, setup guide, source code and bug reports are on GitHub.</p>
-      <div class="row"><button class="nogrow" id="githubRepo">🐙 GitHub: Nexus Agent</button><span class="hint" style="align-self:center">${esc(GITHUB_REPO.replace('https://', ''))}</span></div></div>`;
+      <div class="row"><button class="nogrow" id="githubRepo">🐙 GitHub: Vela</button><span class="hint" style="align-self:center">${esc(GITHUB_REPO.replace('https://', ''))}</span></div></div>`;
   bind(v, st, k => { applySettings(); if (k === 'glasses') renderSettings(); });
   bindProSettings(v);
   bindDisplayMode(v);

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Nexus Glasses</title>
+<title>Vela Glasses</title>
 <style>
 :root{--bg:#000;--panel:#05080b;--line:#163040;--text:#e8fbff;--dim:#86a0b2;--accent:#00e5ff;--accent2:#b388ff;--ok:#39ff88;--bad:#ff5577;--fs:22px}
 *{box-sizing:border-box}
@@ -50,8 +50,8 @@ video{width:100%;max-height:60vh;border-radius:10px;background:#000}
 <body>
 <!-- connect / pair -->
 <section id="connect" class="screen">
-  <h2 style="margin:.2em 0;color:var(--accent)">⬡ Nexus Glasses</h2>
-  <p class="hint">Open Nexus on your phone (same Wi-Fi or its hotspot) → Settings → <b>Pair glasses</b>.</p>
+  <h2 style="margin:.2em 0;color:var(--accent)">⬡ Vela Glasses</h2>
+  <p class="hint">Open Vela on your phone (same Wi-Fi or its hotspot) → Settings → <b>Pair glasses</b>.</p>
   <div id="found"></div>
   <div class="row"><button class="primary f" id="scan">📷 Scan phone QR</button><button class="f" id="search">🔍 Search again</button></div>
   <div class="row"><input id="addr" class="f" placeholder="phone address, e.g. 192.168.1.20:8787"><input id="pin" class="f" placeholder="6-digit code" inputmode="numeric"></div>
@@ -138,7 +138,7 @@ async function api(path, body, { method = 'POST', timeoutMs = 60000 } = {}) {
 /* ------------------------------------------------------------ connect & pair */
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); focusFirst(); }
 async function search() {
-  $('#cstatus').textContent = 'Looking for Nexus on this Wi-Fi…'; $('#found').innerHTML = '';
+  $('#cstatus').textContent = 'Looking for Vela on this Wi-Fi…'; $('#found').innerHTML = '';
   let list = []; try { list = N ? await nat('discover', 5000) : []; } catch (e) { $('#cstatus').textContent = e.message; }
   $('#found').innerHTML = list.map((p, i) => `<button class="f" data-i="${i}" style="width:100%;margin:.2em 0">📱 ${esc(p.name)} · ${esc(p.host)}:${p.port}</button>`).join('');
   $$('#found [data-i]').forEach(b => b.onclick = () => { const p = list[Number(b.dataset.i)]; $('#addr').value = `${p.host}:${p.port}`; $('#pin').focus(); });
@@ -161,7 +161,7 @@ $('#pinVoice').onclick = async () => { try { const t = await hear(); $('#pin').v
 $('#scan').onclick = async () => {
   try {
     const t = await scanQR(); const j = JSON.parse(t);
-    if (!j.nexus || !j.pin || !(j.host || (j.hosts || []).length)) throw new Error('Not a Nexus pairing code');
+    if (!j.nexus || !j.pin || !(j.host || (j.hosts || []).length)) throw new Error('Not a Vela pairing code');
     const hosts = j.hosts || []; if (j.host) hosts.unshift(`${j.host}:${j.port || 8787}`);
     const first = await firstReachable(hosts) || hosts[0]; const [h, pt] = first.split(':');
     pair(h, pt || 8787, j.pin, hosts);
@@ -316,7 +316,7 @@ async function poll() {
   polling = false;
 }
 function handleEvent(e) {
-  if (e.type === 'message') { if (busy || e.text === lastReply) return; add('ev', `${e.agent || 'Nexus'}: ${e.text}`); if (cfg.speakEvents) speak(e.text.slice(0, 300)); if (N) N.vibrate(40); }
+  if (e.type === 'message') { if (busy || e.text === lastReply) return; add('ev', `${e.agent || 'Vela'}: ${e.text}`); if (cfg.speakEvents) speak(e.text.slice(0, 300)); if (N) N.vibrate(40); }
   else if (e.type === 'notification') { add('ev', `🔔 ${e.app}: ${e.title}${e.text ? ' — ' + e.text : ''}`); if (cfg.speakEvents) speak(`${e.app}. ${e.title}`); if (N) N.vibrate(40); }
   else if (e.type === 'confirm') confirmUI(e);
 }
@@ -363,7 +363,7 @@ async function rpList() {
     b.innerHTML = '<button class="primary f" id="rpNewC" style="width:100%">＋ New character</button>' + (r.chats.length ? '<div class="hint">Recent chats</div>' + r.chats.map(c => `<button class="ch f" data-chat="${esc(c.id)}"><span class="t">${esc(c.title)}</span>${c.mature ? '<span class="tag">18+</span>' : ''}</button>`).join('') : '')
       + '<div class="hint" style="margin-top:.4em">Characters</div>'
       + (r.chars.length ? r.chars.map(c => `<button class="ch f" data-char="${esc(c.id)}">${c.avatar ? `<img src="${esc(rpAvatar(c.id))}" alt="">` : '<img alt="">'}<span class="t">${esc(c.name)}</span>${c.mature ? '<span class="tag">18+</span>' : ''}</button>`).join('') : '<div class="hint">No characters yet: tap ＋ New character, or import cards in the phone\'s Roleplay tab.</div>')
-      + (r.canUnlock ? '<button class="f" id="rpUnl" style="width:100%;margin-top:.4em">🔓 Unlock 18+</button>' : r.hidden ? '<div class="hint" style="margin-top:.4em">Some 18+ content is hidden on the glasses (phone: Roleplay → Settings → Nexus Glasses).</div>' : '');
+      + (r.canUnlock ? '<button class="f" id="rpUnl" style="width:100%;margin-top:.4em">🔓 Unlock 18+</button>' : r.hidden ? '<div class="hint" style="margin-top:.4em">Some 18+ content is hidden on the glasses (phone: Roleplay → Settings → Vela Glasses).</div>' : '');
     $$('#rpBody [data-chat]').forEach(x => { x.onclick = () => rpOpen({ chatId: x.dataset.chat }); });
     $$('#rpBody [data-char]').forEach(x => { x.onclick = () => rpOpen({ charId: x.dataset.char }); });
     const u = $('#rpUnl'); if (u) u.onclick = rpUnlock;
@@ -456,7 +456,7 @@ async function rpCreate(body) {
 /* ------------------------------------------------------------ Bluetooth on the glasses */
 const btFmt = d => `${esc(d.name)} <span class="hint">${esc(d.kind)}${d.connected ? ' · connected' : d.paired ? ' · paired' : ''}${d.rssi != null && d.rssi > -32768 ? ` · ${d.rssi} dBm` : ''}</span>`;
 async function btReady() {
-  if (!N || !N.btPermissions) throw new Error('Bluetooth needs the Nexus Glasses app');
+  if (!N || !N.btPermissions) throw new Error('Bluetooth needs the Vela Glasses app');
   for (const p of JSON.parse(N.btPermissions())) {
     if (N.hasPermission(p)) continue;
     const r = await nat('requestPermission', p); if (!r.granted) throw new Error('Bluetooth permission denied');
@@ -527,7 +527,7 @@ if (cfg.worldLock !== 'off') setTimeout(trackStart, 500);
 async function start() {
   show('main'); $('#phone').textContent = conn.name || conn.host; $('#clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   try { const h = await api('/client/hello', {}, { timeoutMs: 8000 }).catch(async e => { if (await reconnect()) return api('/client/hello', {}, { timeoutMs: 8000 }); throw e; }); setOnline(true); seq = h.seq || 0; phoneNarrator = !!h.narrator; $('#phone').textContent = h.name; add('ev', `Connected to ${h.name} · agent ${h.current || '?'}${h.battery ? ` · phone 🔋${h.battery.percent}%` : ''}`); }
-  catch (e) { setOnline(false); add('ev', '⚠ Phone not reachable: ' + e.message + ' — is Nexus open on the phone, and is it on the same Wi-Fi or VPN?'); }
+  catch (e) { setOnline(false); add('ev', '⚠ Phone not reachable: ' + e.message + ' — is Vela open on the phone, and is it on the same Wi-Fi or VPN?'); }
   poll();
 }
 window.NexusGlassesClient = { ask, pair, start, handleEvent, rpList, rpOpen, rpNew, btUI, trackStart, trackApply, trackRecenter, get track() { return track; }, get rp() { return rp; }, get conn() { return conn; } };

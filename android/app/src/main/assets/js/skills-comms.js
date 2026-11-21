@@ -1,4 +1,4 @@
-/* Nexus Agent — email (IMAP/SMTP or mail app) and calendar (Android device calendars +
+/* Vela — email (IMAP/SMTP or mail app) and calendar (Android device calendars +
  * CalDAV: iCloud, Fastmail, Nextcloud, Yahoo…) skills. Loaded after skills-pro.js. */
 'use strict';
 
@@ -71,7 +71,7 @@ function icsFold(line) { const out = []; let l = line; while (l.length > 74) { o
 const icsUtc = ms => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 const icsDate = ms => { const d = new Date(ms); return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`; };
 function buildICS(events, { method } = {}) {
-  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Nexus Agent//EN', 'CALSCALE:GREGORIAN'];
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Vela//EN', 'CALSCALE:GREGORIAN'];
   if (method) L.push('METHOD:' + method);
   for (const e of events) {
     L.push('BEGIN:VEVENT', 'UID:' + (e.uid || (crypto.randomUUID ? crypto.randomUUID() : uid() + uid()) + '@nexus-agent'), 'DTSTAMP:' + icsUtc(Date.now()));

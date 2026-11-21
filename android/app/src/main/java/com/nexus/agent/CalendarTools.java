@@ -66,7 +66,7 @@ class CalendarTools {
             if (c.optBoolean("primary") && c.optBoolean("visible")) return c.getLong("id");
             if (fallback < 0) fallback = c.getLong("id");
         }
-        if (fallback < 0) throw new IllegalStateException("No writable calendar on this device. Add an account in Android Settings, or use a CalDAV account (iCloud, Fastmail…) in Nexus settings.");
+        if (fallback < 0) throw new IllegalStateException("No writable calendar on this device. Add an account in Android Settings, or use a CalDAV account (iCloud, Fastmail…) in Vela settings.");
         return fallback;
     }
 

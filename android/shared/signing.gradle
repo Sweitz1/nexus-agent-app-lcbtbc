@@ -1,4 +1,4 @@
-// Release signing shared by both APKs (phone app and Nexus Glasses).
+// Release signing shared by both APKs (phone app and Vela Glasses).
 //
 // Your release key is supplied by CI secrets (never committed): NEXUS_KEYSTORE_PATH (written from
 // NEXUS_KEYSTORE_BASE64), NEXUS_KEYSTORE_PASSWORD, NEXUS_KEY_ALIAS, NEXUS_KEY_PASSWORD.

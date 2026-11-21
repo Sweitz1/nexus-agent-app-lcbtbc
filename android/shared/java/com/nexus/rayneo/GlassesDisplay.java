@@ -20,7 +20,7 @@ import org.json.JSONObject;
 
 /**
  * Binocular display + temple touchpad support for RayNeo X3 / X3 Pro glasses, shared by the
- * Nexus phone/standalone app and the Nexus Glasses client.
+ * Vela phone/standalone app and the Vela Glasses client.
  *
  * Mirror: those glasses expose both micro-LED panels as ONE wide logical screen (left eye | right
  * eye), so a normal app is split across the two eyes. Modes:

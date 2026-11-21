@@ -1,11 +1,11 @@
-/* Nexus Agent — Connect: Bluetooth devices, media over Bluetooth / in the car, Android Auto,
+/* Vela — Connect: Bluetooth devices, media over Bluetooth / in the car, Android Auto,
  * casting to TVs and screen mirroring. Loaded after skills-narrator.js.
  *
  *  Bluetooth   pair and list devices (speakers, headphones, cars, keyboards); see where audio goes.
- *  Car / BT    Nexus' player is mirrored into the system media session, so a car stereo (e.g. a VW
+ *  Car / BT    Vela' player is mirrored into the system media session, so a car stereo (e.g. a VW
  *              Passat over Bluetooth) shows the title and the steering-wheel buttons work.
- *  Android Auto  Nexus appears as a media app (audiobooks, narrations, "Ask Nexus") and as a
- *              messaging app: hear Nexus and reply by voice while driving.
+ *  Android Auto  Vela appears as a media app (audiobooks, narrations, "Ask Vela") and as a
+ *              messaging app: hear Vela and reply by voice while driving.
  *  Casting     DLNA/UPnP smart TVs & speakers get files streamed from the phone; Chromecast and
  *              whole-screen mirroring go through the system Cast / Smart View panel. */
 'use strict';
@@ -32,7 +32,7 @@
     const push = force => {
       const now = NexusMedia.nowPlaying();
       const st = !now ? 'none' : AP.ended ? 'stopped' : AP.paused ? 'paused' : AP.readyState < 3 ? 'buffering' : 'playing';
-      const o = now ? { state: st, title: now.title || 'Nexus', artist: now.sub || (now.kind === 'book' ? 'Audiobook' : 'Nexus'), album: now.kind === 'book' ? now.title : 'Nexus', durationMs: Math.round((AP.duration || 0) * 1000) || 0, positionMs: Math.round(AP.currentTime * 1000), rate: AP.playbackRate } : { state: 'none' };
+      const o = now ? { state: st, title: now.title || 'Vela', artist: now.sub || (now.kind === 'book' ? 'Audiobook' : 'Vela'), album: now.kind === 'book' ? now.title : 'Vela', durationMs: Math.round((AP.duration || 0) * 1000) || 0, positionMs: Math.round(AP.currentTime * 1000), rate: AP.playbackRate } : { state: 'none' };
       const key = `${o.state}|${o.title}|${o.artist}|${o.durationMs}`;
       if (!force && key === last && Date.now() - lastT < 15000) return;   // position is extrapolated by the system between updates
       last = key; lastT = Date.now(); N.mediaSessionUpdate(JSON.stringify(o));
@@ -58,7 +58,7 @@
       for (const f of files) cat.narrations.push({ id: 'file:' + (f.path || 'audio/' + f.name), title: (f.name || f.path).replace(/^.*\//, '').replace(/\.\w+$/, '').replace(/[_-]+/g, ' '), subtitle: 'Narration', playable: true });
     } catch { /* no audio folder yet */ }
     if (cat.narrations.length) cat.root.push({ id: 'narrations', title: 'Narrations & audio', subtitle: `${cat.narrations.length} recent`, playable: false });
-    cat.root.push({ id: 'ask:', title: 'Ask Nexus', subtitle: 'Say "play <question> on Nexus" — the answer is read aloud', playable: true });
+    cat.root.push({ id: 'ask:', title: 'Ask Vela', subtitle: 'Say "play <question> on Vela" — the answer is read aloud', playable: true });
     N.mediaCatalog(JSON.stringify(cat));
   }
   setTimeout(() => publishCatalog().catch(() => {}), 1500); setInterval(() => publishCatalog().catch(() => {}), 120000);
@@ -70,7 +70,7 @@
     const r = await dispatch(q, { origin: 'car', agentId: agent.id });
     const text = stripThink(r.text || '');
     if (S.settings.carNarrate && (S.settings.ttsEngine || 'device') !== 'device' && window.NexusMedia) {
-      try { const a = await NexusMedia.textToAudioFile(text.slice(0, 3000), { output: `audio/car_answer_${tsName()}.mp3` }); await NexusMedia.playFile(a.path, 'Nexus: ' + clip(q, 40)); return text; } catch (e) { console.warn('car narrate', e); }
+      try { const a = await NexusMedia.textToAudioFile(text.slice(0, 3000), { output: `audio/car_answer_${tsName()}.mp3` }); await NexusMedia.playFile(a.path, 'Vela: ' + clip(q, 40)); return text; } catch (e) { console.warn('car narrate', e); }
     }
     speak(text); return text;
   }
@@ -91,7 +91,7 @@
           const id = String(c.arg || '');
           if (id.startsWith('book:')) { const [, bid, ch] = id.split(':'); await NexusMedia.playBook(bid, ch === 'resume' ? undefined : Number(ch), ch === 'resume' ? undefined : 0); }
           else if (id.startsWith('file:')) await NexusMedia.playFile(id.slice(5));
-          else if (id.startsWith('ask:')) { if (id.length > 4) await carAsk(id.slice(4)); else speak('Ask me something: say, play, then your question, on Nexus.'); }
+          else if (id.startsWith('ask:')) { if (id.length > 4) await carAsk(id.slice(4)); else speak('Ask me something: say, play, then your question, on Vela.'); }
           break;
         }
         case 'search': {
@@ -112,7 +112,7 @@
       const agent = agentById(S.current) || S.agents[0];
       const r = await dispatch(String(p.text || ''), { origin: 'car', agentId: agent.id });
       N.carMessage(r.agent || agent.name, plain(stripThink(r.text || '')).slice(0, 1500));
-    } catch (e) { N.carMessage('Nexus', 'Sorry — ' + e.message); }
+    } catch (e) { N.carMessage('Vela', 'Sorry — ' + e.message); }
   });
 
   /* ---------------------------------------------------------------- skills */
@@ -151,8 +151,8 @@
       run: async a => { needNative('Cast'); const r = await nativeAsync('castControl', a.device || '', a.action, String(a.value ?? '')); return r.result; } },
     { name: 'screen_mirror', group: 'Cast', description: 'Mirror the whole screen to a TV or display: opens the system Cast / Smart View / Screen mirroring panel (Chromecast, Google TV, Miracast TVs, Fire TV). On glasses this shows the glasses view on the TV.', parameters: P({}),
       run: async () => { needNative('Screen mirroring'); const r = N.openSettings('cast'); return `${r}. Pick your TV in the list. (On Samsung phones use the Smart View tile in Quick Settings; on cars, screen mirroring is only possible through Android Auto.)`; } },
-    { name: 'car_message', group: 'Car', description: 'Send a message to the Nexus conversation in Android Auto (read aloud in the car; the driver can reply by voice and the agent answers).', parameters: P({ text: Str('message') }, ['text']),
-      run: async a => { needNative('Car messaging'); N.carMessage((agentById(S.current) || {}).name || 'Nexus', String(a.text).slice(0, 1500)); return 'Posted to the Nexus conversation (shows in Android Auto and as a notification).'; } },
+    { name: 'car_message', group: 'Car', description: 'Send a message to the Vela conversation in Android Auto (read aloud in the car; the driver can reply by voice and the agent answers).', parameters: P({ text: Str('message') }, ['text']),
+      run: async a => { needNative('Car messaging'); N.carMessage((agentById(S.current) || {}).name || 'Vela', String(a.text).slice(0, 1500)); return 'Posted to the Vela conversation (shows in Android Auto and as a notification).'; } },
   );
 
   /* ---------------------------------------------------------------- settings card */
@@ -161,9 +161,9 @@
     <div class="row"><button class="nogrow" id="cnBt">Bluetooth devices</button><button class="nogrow" id="cnScan">Scan &amp; pair…</button><button class="nogrow" id="cnOut">Audio output</button></div>
     <div class="row"><button class="nogrow" id="cnCast">Find TVs / speakers</button><button class="nogrow" id="cnMirror">Mirror screen to TV</button><button class="nogrow" id="cnCar">Start car conversation</button></div>
     <div id="cnOutBox" class="hint"></div>
-    <label class="inline"><input type="checkbox" data-k="carMessaging" data-t="bool">Answer replies from Android Auto (voice replies to the Nexus conversation go to the agent)</label>
+    <label class="inline"><input type="checkbox" data-k="carMessaging" data-t="bool">Answer replies from Android Auto (voice replies to the Vela conversation go to the agent)</label>
     <label class="inline"><input type="checkbox" data-k="carNarrate" data-t="bool">Read car answers in the narrator voice</label>
-    <p class="hint"><b>Car over Bluetooth</b> (e.g. 2015 VW Passat): pair the phone with the car once; Nexus audio (answers, audiobooks, narration) then plays through the car speakers, the title shows on the dash display, and the steering-wheel next/previous/pause buttons control Nexus. <b>Android Auto</b>: Nexus appears as a media app (audiobooks, narrations, "Ask Nexus") and a messaging app. Sideloaded apps only show in Android Auto after enabling <i>Unknown sources</i> in Android Auto's developer settings. <b>TVs</b>: DLNA smart TVs play files directly; Chromecast / Google TV / screen mirroring use the system Cast panel.</p></div>`;
+    <p class="hint"><b>Car over Bluetooth</b> (e.g. 2015 VW Passat): pair the phone with the car once; Vela audio (answers, audiobooks, narration) then plays through the car speakers, the title shows on the dash display, and the steering-wheel next/previous/pause buttons control Vela. <b>Android Auto</b>: Vela appears as a media app (audiobooks, narrations, "Ask Vela") and a messaging app. Sideloaded apps only show in Android Auto after enabling <i>Unknown sources</i> in Android Auto's developer settings. <b>TVs</b>: DLNA smart TVs play files directly; Chromecast / Google TV / screen mirroring use the system Cast panel.</p></div>`;
   bindProSettings = v => {
     coreBind(v); const c = $('#connCard', v); if (!c) return; bind(c, S.settings);
     const out = $('#cnOutBox', c); const run = async (name, args = {}) => { out.textContent = '…'; try { out.textContent = await execSkill(name, args, { agent: agentById(S.current) || S.agents[0], depth: 0 }); } catch (e) { out.textContent = e.message; } };
@@ -171,7 +171,7 @@
     $('#cnOut', c).onclick = () => { run('audio_output'); if (N && N.openOutputSwitcher) N.openOutputSwitcher(); };
     $('#cnCast', c).onclick = () => run('cast_devices');
     $('#cnMirror', c).onclick = () => run('screen_mirror');
-    $('#cnCar', c).onclick = () => { if (N && N.carMessage) { N.carMessage('Nexus', 'Hi! Reply to this message to ask me anything while you drive.'); out.textContent = 'Posted — open Android Auto (or the notification) and reply by voice.'; } };
+    $('#cnCar', c).onclick = () => { if (N && N.carMessage) { N.carMessage('Vela', 'Hi! Reply to this message to ask me anything while you drive.'); out.textContent = 'Posted — open Android Auto (or the notification) and reply by voice.'; } };
     $('#cnScan', c).onclick = async () => {
       out.textContent = 'Scanning for 12 s — put the device in pairing mode…';
       try {

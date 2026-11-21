@@ -17,7 +17,7 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <!-- "Hey Nexus" wake word: microphone foreground service, its notification, and
+    <!-- "Hey Vela" wake word: microphone foreground service, its notification, and
          (optional, user-granted) bringing the app to the front when the phrase is heard. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
@@ -105,7 +105,7 @@
     </queries>
 
     <application
-        android:label="Nexus Agent"
+        android:label="Vela"
         android:icon="@drawable/ic_launcher"
         android:roundIcon="@drawable/ic_launcher"
         android:allowBackup="false"
@@ -152,7 +152,7 @@
         <service
             android:name=".NexusNotificationListener"
             android:exported="true"
-            android:label="Nexus Agent"
+            android:label="Vela"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
@@ -163,7 +163,7 @@
         <service
             android:name=".NexusAccessibilityService"
             android:exported="true"
-            android:label="Nexus Agent screen control"
+            android:label="Vela screen control"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
@@ -179,7 +179,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Local server for the user's own Nexus Glasses client and webhooks while the app is in the background" />
+                android:value="Local server for the user's own Vela Glasses client and webhooks while the app is in the background" />
         </service>
 
         <service
@@ -187,7 +187,7 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
-        <!-- Media app for cars / Bluetooth / Android Auto: session mirroring Nexus' player + browse tree -->
+        <!-- Media app for cars / Bluetooth / Android Auto: session mirroring Vela' player + browse tree -->
         <service
             android:name=".NexusMediaService"
             android:exported="true"
@@ -197,7 +197,7 @@
             </intent-filter>
         </service>
 
-        <!-- Voice replies to Nexus conversations from Android Auto -->
+        <!-- Voice replies to Vela conversations from Android Auto -->
         <receiver
             android:name=".CarMessaging$ReplyReceiver"
             android:exported="false" />

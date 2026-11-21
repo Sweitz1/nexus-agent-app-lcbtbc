@@ -2,10 +2,10 @@
 //
 // The SDK is proprietary and is NOT committed to this (public) repository. Put the AAR at
 // android/libs/rayneo/MercuryAndroidSDK.aar (CI writes it there from the RAYNEO_SDK_AAR_BASE64
-// secret). Without it the apps build with Nexus' own mirror and temple-gesture code.
+// secret). Without it the apps build with Vela' own mirror and temple-gesture code.
 def rayneoAar = rootProject.file('libs/rayneo/MercuryAndroidSDK.aar')
 def withRayneo = rayneoAar.exists()
-println("Nexus: RayNeo Mercury SDK ${withRayneo ? 'found — using RayNeo gestures/mirroring' : 'not present — using built-in fallback'} (${project.name})")
+println("Vela: RayNeo Mercury SDK ${withRayneo ? 'found — using RayNeo gestures/mirroring' : 'not present — using built-in fallback'} (${project.name})")
 
 android {
     sourceSets {

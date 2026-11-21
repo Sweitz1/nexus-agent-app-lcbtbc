@@ -138,7 +138,7 @@ public class ClientBridge {
         });
     }
 
-    /** Finds Nexus phone apps advertising _nexus._tcp on the Wi-Fi. Resolves [{name, host, port}]. */
+    /** Finds Vela phone apps advertising _nexus._tcp on the Wi-Fi. Resolves [{name, host, port}]. */
     @JavascriptInterface
     public void discover(String id, int timeoutMs) {
         act.runOnUiThread(() -> {

@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
 /**
  * Screen control for agents: reads the UI tree of the foreground app and performs taps,
  * typing, scrolling, swipes and global navigation. Only acts on explicit calls from the
- * Nexus agent runtime (NativeBridge.screen). Never reads or fills password fields, and
+ * Vela agent runtime (NativeBridge.screen). Never reads or fills password fields, and
  * refuses to work inside blocked apps (banking, wallets, password managers...).
  */
 public class NexusAccessibilityService extends AccessibilityService {
@@ -71,7 +71,7 @@ public class NexusAccessibilityService extends AccessibilityService {
 
     // ------------------------------------------------------------------ indicator
 
-    /** Floating "Nexus is controlling" pill (accessibility overlay: no extra permission). Tap = stop. */
+    /** Floating "Vela is controlling" pill (accessibility overlay: no extra permission). Tap = stop. */
     void showPill(String text) {
         main.post(() -> {
             try {
@@ -122,7 +122,7 @@ public class NexusAccessibilityService extends AccessibilityService {
 
     private void checkAllowed(AccessibilityNodeInfo r) {
         String pkg = r == null || r.getPackageName() == null ? "" : r.getPackageName().toString();
-        if (pkg.equals(getPackageName())) throw new SecurityException("Nexus itself is in front — open the target app first (screen_open_app)");
+        if (pkg.equals(getPackageName())) throw new SecurityException("Vela itself is in front — open the target app first (screen_open_app)");
         if (blocked.matcher(pkg).find()) throw new SecurityException("Screen control is blocked in " + pkg + " (protected app: banking, wallet or password manager)");
     }
 

@@ -14,7 +14,7 @@ import java.util.Iterator;
 
 /**
  * Reads phone/glasses notifications (messages, calls, apps) so agents can summarize or
- * announce them. Only active after the user enables "Notification access" for Nexus Agent.
+ * announce them. Only active after the user enables "Notification access" for Vela.
  */
 public class NexusNotificationListener extends NotificationListenerService {
 

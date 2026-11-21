@@ -497,7 +497,7 @@ public class NativeBridge {
         try {
             android.net.nsd.NsdManager nsd = (android.net.nsd.NsdManager) activity.getSystemService(Context.NSD_SERVICE);
             android.net.nsd.NsdServiceInfo info = new android.net.nsd.NsdServiceInfo();
-            info.setServiceName("Nexus " + Build.MODEL);
+            info.setServiceName("Vela " + Build.MODEL);
             info.setServiceType("_nexus._tcp");
             info.setPort(port);
             nsdListener = new android.net.nsd.NsdManager.RegistrationListener() {
@@ -540,7 +540,7 @@ public class NativeBridge {
 
     // ------------------------------------------------------------------ car / Bluetooth media session, Android Auto
 
-    /** Mirrors Nexus' player into the system media session (car display, steering-wheel buttons, lock screen). */
+    /** Mirrors Vela' player into the system media session (car display, steering-wheel buttons, lock screen). */
     @JavascriptInterface public void mediaSessionUpdate(String json) { NexusMediaService.update(activity, json); }
 
     /** Browse tree for Android Auto: {root:[{id,title,subtitle,playable}], "<folder id>":[…]}. */
@@ -571,7 +571,7 @@ public class NativeBridge {
                 if (!f.isFile()) throw new Exception("File not found: " + r.getString("path"));
                 url = "http://" + localIp() + ":" + serverPort + WebhookServer.share(f, mime, 6 * 3600_000L);
             }
-            return ok("result", cast().play(r.optString("device", ""), url, mime, r.optString("title", "Nexus")));
+            return ok("result", cast().play(r.optString("device", ""), url, mime, r.optString("title", "Vela")));
         });
     }
 
@@ -1071,7 +1071,7 @@ public class NativeBridge {
         return byteRate > 0 ? pcm.length * 1000L / byteRate : 0;
     }
 
-    // ------------------------------------------------------------------ wake word ("Hey Nexus")
+    // ------------------------------------------------------------------ wake word ("Hey Vela")
 
     @JavascriptInterface
     public boolean wakeModelInstalled(String name) { return WakeWordService.installed(activity, name); }
@@ -1163,7 +1163,7 @@ public class NativeBridge {
     @JavascriptInterface
     public void wakeResume() { WakeWordService.resume(); }
 
-    /** "Display over other apps" lets the wake word bring Nexus to the front from the background. */
+    /** "Display over other apps" lets the wake word bring Vela to the front from the background. */
     @JavascriptInterface
     public boolean canDrawOverlays() { return Build.VERSION.SDK_INT < 23 || android.provider.Settings.canDrawOverlays(activity); }
 
@@ -1196,7 +1196,7 @@ public class NativeBridge {
         if (text == null || text.isEmpty()) s.hidePill(); else s.showPill(text);
     }
 
-    /** Brings Nexus back to the front after a screen-control task. */
+    /** Brings Vela back to the front after a screen-control task. */
     @JavascriptInterface
     public void bringToFront() {
         activity.runOnUiThread(() -> {
@@ -1213,7 +1213,7 @@ public class NativeBridge {
     public void screen(String id, String specJson) {
         async(id, () -> {
             NexusAccessibilityService s = NexusAccessibilityService.instance;
-            if (s == null) throw new IllegalStateException("Screen control is off. Enable \"Nexus Agent screen control\" in Android Settings → Accessibility.");
+            if (s == null) throw new IllegalStateException("Screen control is off. Enable \"Vela screen control\" in Android Settings → Accessibility.");
             JSONObject sp = new JSONObject(specJson);
             String op = sp.getString("op");
             String r;
@@ -1329,7 +1329,7 @@ public class NativeBridge {
 
     /**
      * "Tap the glasses to talk": owns the media-button route with a silent media session, so a
-     * tap on the glasses (play/pause) opens Nexus voice input instead of pausing music.
+     * tap on the glasses (play/pause) opens Vela voice input instead of pausing music.
      */
     @JavascriptInterface
     public String tapToTalk(boolean on) {
@@ -1365,7 +1365,7 @@ public class NativeBridge {
             silentTrack.write(new short[rate], 0, rate);
             silentTrack.play();
         });
-        return on ? "Tap-to-talk on: tap your glasses (play/pause) to talk to Nexus" : "Tap-to-talk off";
+        return on ? "Tap-to-talk on: tap your glasses (play/pause) to talk to Vela" : "Tap-to-talk off";
     }
 
     // ------------------------------------------------------------------ photos/videos from the gallery (e.g. Meta glasses captures)
@@ -1462,7 +1462,7 @@ public class NativeBridge {
         }
     }
 
-    /** Waits for the browser redirect; resolves {query} and brings Nexus back to the front. */
+    /** Waits for the browser redirect; resolves {query} and brings Vela back to the front. */
     @JavascriptInterface
     public void oauthWait(String id, int port, int timeoutMs) {
         async(id, () -> {
@@ -1480,7 +1480,7 @@ public class NativeBridge {
                         String[] parts = line.toString().trim().split(" ");
                         String target = parts.length > 1 ? parts[1] : "/";
                         if (target.startsWith("/favicon")) { sock.getOutputStream().write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".getBytes(StandardCharsets.UTF_8)); continue; }
-                        String html = "<!doctype html><meta name=viewport content='width=device-width'><body style='font-family:sans-serif;background:#000;color:#e6f7ff;text-align:center;padding:3em'><h2>✅ Signed in</h2><p>You can return to Nexus Agent.</p></body>";
+                        String html = "<!doctype html><meta name=viewport content='width=device-width'><body style='font-family:sans-serif;background:#000;color:#e6f7ff;text-align:center;padding:3em'><h2>✅ Signed in</h2><p>You can return to Vela.</p></body>";
                         byte[] b = html.getBytes(StandardCharsets.UTF_8);
                         sock.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + b.length + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
                         sock.getOutputStream().write(b);
@@ -1582,7 +1582,7 @@ public class NativeBridge {
             String name = (fileName == null || fileName.isEmpty() ? Uri.parse(url).getLastPathSegment() : fileName);
             if (name == null || name.isEmpty()) name = "download_" + System.currentTimeMillis();
             name = name.replaceAll("[\\\\/:*?\"<>|]", "_");
-            r.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "Nexus/" + name);
+            r.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "Vela/" + name);
             r.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             r.setTitle(name);
             if (headersJson != null && !headersJson.isEmpty()) {
@@ -1591,7 +1591,7 @@ public class NativeBridge {
                 while (it.hasNext()) { String k = it.next(); r.addRequestHeader(k, h.optString(k)); }
             }
             long dl = dm.enqueue(r);
-            return "{\"id\":" + dl + ",\"file\":" + JSONObject.quote("Download/Nexus/" + name) + "}";
+            return "{\"id\":" + dl + ",\"file\":" + JSONObject.quote("Download/Vela/" + name) + "}";
         } catch (Exception e) {
             return errorJson(e);
         }
@@ -1666,7 +1666,7 @@ public class NativeBridge {
     }
 
     /**
-     * Saves a workspace file into shared storage (Pictures/Movies/Music/Download, subfolder Nexus) so
+     * Saves a workspace file into shared storage (Pictures/Movies/Music/Download, subfolder Vela) so
      * the gallery and backup apps (Google Photos, Verizon Cloud, Samsung Cloud…) pick it up.
      */
     @JavascriptInterface
@@ -1684,7 +1684,7 @@ public class NativeBridge {
                 case "audio": coll = android.provider.MediaStore.Audio.Media.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY); dir = android.os.Environment.DIRECTORY_MUSIC; break;
                 default: coll = android.provider.MediaStore.Downloads.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY); dir = android.os.Environment.DIRECTORY_DOWNLOADS;
             }
-            String folder = s.optString("folder", "Nexus").replaceAll("[^\\w .-]", "_");
+            String folder = s.optString("folder", "Vela").replaceAll("[^\\w .-]", "_");
             android.content.ContentValues v = new android.content.ContentValues();
             v.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, f.getName());
             v.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime);
@@ -1790,7 +1790,7 @@ public class NativeBridge {
             activity.startActivity(chooser);
             return "Email draft opened in the mail app";
         } catch (ActivityNotFoundException e) {
-            return "No email app on this device. Add an email account in Nexus settings to send directly.";
+            return "No email app on this device. Add an email account in Vela settings to send directly.";
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }
